@@ -37,3 +37,20 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+bootJar {
+    archiveFileName = 'app.jar'
+}
+
+task createElasticBeanstalkZip(type: Zip) {
+    dependsOn bootJar
+
+    archiveFileName = "deploy.zip"
+    destinationDirectory = file("$buildDir/distributions")
+
+    from(bootJar.archiveFile) {
+        into('/')
+    }
+}
+
+build.dependsOn createElasticBeanstalkZip
