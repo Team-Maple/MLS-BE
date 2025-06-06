@@ -1,0 +1,62 @@
+spring.application.name: maple-api
+server:
+  port: 8080
+  shutdown: graceful
+
+
+spring:
+  # graceful shutdown ??
+  lifecycle:
+    timeout-per-shutdown-phase: 5s
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/maple_db
+    username: maple_username
+    password: maple_password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        ddl-auto: validate
+        default_batch_fetch_size: 1000
+        # ????? insert? update? ???? ????? ??
+        order_updates: true
+        order_inserts: true
+        jdbc:
+          # insert/update? ??? ?? ??
+          batch_size: 1000
+management:
+  server.port: 8080
+  endpoints.enabled-by-default: false
+  endpoints.web.exposure.include: info, health
+  endpoint.info.enabled: true
+  endpoint.health.enabled: true
+
+jwt:
+  secret: JTh4bhwwq69/Cj9gDLDXh8Riktoi9ndjD5T0cfHeSWkyC1aE7Xk2XpcDxwbk3Yyotj9d007VxNQuOYMjRoXMzg==
+kakao:
+  client-id: ${KAKAO_CLIENT_ID}
+  redirect-uri: ${KAKAO_REDIRECT_URI}
+  client-secret: ${KAKAO_CLIENT_SECRET}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  jpa:
+    properties:
+      hibernate:
+        ddl-auto: update
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+#    url: ${DB_URL}
+#    username: ${DB_USERNAME}
+#    password: ${DB_PASSWORD}
+
+    driver-class-name: org.postgresql.Driver
