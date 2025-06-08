@@ -1,5 +1,6 @@
-package com.maple.api.config;
+package com.maple.api.auth.presentation.config;
 
+import com.maple.api.auth.application.PrincipalOauth2UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +24,9 @@ public class SecurityConfig {
   private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
   private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
   private final JwtSecurityAdapter jwtSecurityAdapter;
+
+  private final PrincipalOauth2UserService principalOauth2UserService;
+  private final JwtOAuth2SuccessHandler jwtOAuth2SuccessHandler;
 
   @Bean
   public PasswordEncoder passwordEncoder() {
@@ -55,12 +59,16 @@ public class SecurityConfig {
         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       // 로그인, 회원가입 API 는 토큰이 없는 상태에서 요청이 들어오기 때문에 permitAll 설정
       .authorizeHttpRequests(customizer ->
-        customizer.requestMatchers("/feign/**").permitAll()
-          .requestMatchers("/api/auth/login").permitAll()
-          .requestMatchers("/actuator/health").permitAll()
-          .anyRequest().authenticated()
+          customizer.anyRequest().permitAll()
+//        customizer.requestMatchers("/feign/**").permitAll()
+//          .requestMatchers("/api/auth/login").permitAll()
+//          .requestMatchers("/actuator/health").permitAll()
+//          .anyRequest().authenticated()
       )
-      // JwtFilter 를 addFilterBefore 로 등록했던 JwtSecurityConfig 클래스를 적용
+      .oauth2Login(oauth2 -> oauth2
+        .userInfoEndpoint(userInfo -> userInfo.userService(principalOauth2UserService))
+        .successHandler(jwtOAuth2SuccessHandler) // 여기!
+      )    // JwtFilter 를 addFilterBefore 로 등록했던 JwtSecurityConfig 클래스를 적용
       .with(jwtSecurityAdapter, Customizer.withDefaults());
 
     return http.build();

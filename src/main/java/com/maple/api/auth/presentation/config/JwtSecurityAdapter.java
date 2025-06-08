@@ -1,4 +1,4 @@
-package com.maple.api.config;
+package com.maple.api.auth.presentation.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.config.annotation.SecurityConfigurerAdapter;
@@ -11,12 +11,12 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class JwtSecurityAdapter extends SecurityConfigurerAdapter<DefaultSecurityFilterChain, HttpSecurity> {
-  private final TokenValidator tokenValidator;
+  private final JwtTokenValidator jwtTokenValidator;
 
   // TokenProviderImpl 를 주입받아서 JwtFilter 를 통해 Security 로직에 필터를 등록
   @Override
   public void configure(HttpSecurity http) {
-    JwtAuthFilter customFilter = new JwtAuthFilter(tokenValidator);
+    JwtAuthFilter customFilter = new JwtAuthFilter(jwtTokenValidator);
     http.addFilterBefore(customFilter, UsernamePasswordAuthenticationFilter.class);
   }
 }

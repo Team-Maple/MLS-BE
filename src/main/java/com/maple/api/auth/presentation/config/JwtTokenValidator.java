@@ -1,5 +1,6 @@
-package com.maple.api.config;
+package com.maple.api.auth.presentation.config;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -13,11 +14,11 @@ import javax.crypto.SecretKey;
 import java.security.Key;
 
 @Component
-public class TokenValidator {
+public class JwtTokenValidator {
   public static final String BEARER_PREFIX = "Bearer ";
   private Key key;
 
-  public TokenValidator(@Value("${jwt.secret}") String secretKey) {
+  public JwtTokenValidator(@Value("${jwt.secret}") String secretKey) {
     this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey));
   }
 
@@ -50,6 +51,24 @@ public class TokenValidator {
     } catch (Exception e) {
       // 유효하지 않은 토큰인 경우
       return false;
+    }
+  }
+
+  /**
+   * 토큰에서 사용자 ID 추출
+   * @param token JWT 토큰
+   * @return subject에 들어 있는 사용자 ID
+   */
+  public String getUserIdFromToken(String token) {
+    try {
+      Claims claims = Jwts.parser()
+        .verifyWith((SecretKey) key)
+        .build()
+        .parseSignedClaims(token)
+        .getPayload();
+      return claims.getSubject();
+    } catch (Exception e) {
+      return null;
     }
   }
 }

@@ -15,10 +15,11 @@ spring:
     password: maple_password
     driver-class-name: org.postgresql.Driver
   jpa:
+    hibernate:
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        ddl-auto: validate
         default_batch_fetch_size: 1000
         # ????? insert? update? ???? ????? ??
         order_updates: true
@@ -26,6 +27,25 @@ spring:
         jdbc:
           # insert/update? ??? ?? ??
           batch_size: 1000
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-name: kakao
+            authorization-grant-type: authorization_code
+            redirect-uri: http://192.168.45.205:8080/login/oauth2/code/kakao
+            client-id: 4d931a5ba1ff89881779dfd513f4bfa4
+            scope:
+              - profile_nickname
+              - account_email
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            user-name-attribute: id
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+
 management:
   server.port: 8080
   endpoints.enabled-by-default: false
@@ -35,28 +55,25 @@ management:
 
 jwt:
   secret: JTh4bhwwq69/Cj9gDLDXh8Riktoi9ndjD5T0cfHeSWkyC1aE7Xk2XpcDxwbk3Yyotj9d007VxNQuOYMjRoXMzg==
-kakao:
-  client-id: ${KAKAO_CLIENT_ID}
-  redirect-uri: ${KAKAO_REDIRECT_URI}
-  client-secret: ${KAKAO_CLIENT_SECRET}
-
 ---
 spring:
   config:
     activate:
       on-profile: local
   jpa:
-    properties:
-      hibernate:
-        ddl-auto: update
+    hibernate:
+      ddl-auto: update
+logging:
+  level:
+    com.maple.api: DEBUG
 ---
 spring:
   config:
     activate:
       on-profile: prod
   datasource:
-#    url: ${DB_URL}
-#    username: ${DB_USERNAME}
-#    password: ${DB_PASSWORD}
+    #    url: ${DB_URL}
+    #    username: ${DB_USERNAME}
+    #    password: ${DB_PASSWORD}
 
     driver-class-name: org.postgresql.Driver
