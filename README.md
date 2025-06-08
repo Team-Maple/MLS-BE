@@ -13,17 +13,22 @@ docker run --name maple-postgresql \
   -d postgres:15
 ```
 
-### 2. 실행 스크립트
+## 2. 실행 스크립트
 ```bash
 $ ./gradlew bootRun
 ```
 
-## 2-1. 로컬환경 스크립트 ( JPA DDL Auto Update 설정 )
+### 2-1. 로컬환경 스크립트 ( JPA DDL Auto Update 설정 )
 ```
 $ ./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
-## 2-1. 로컬환경 스크립트 ( JPA DDL Auto Validate 설정 )
+### 2-1. 로컬환경 스크립트 ( JPA DDL Auto Validate 설정 )
 ```
 $ ./gradlew bootRun --args='--spring.profiles.active=live'
+```
+
+## 3. Spring Docs UI 경로
+```plaintext
+http://localhost:8080/swagger-ui-maple/index.html
 ```

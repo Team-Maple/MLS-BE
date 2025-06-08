@@ -1,4 +1,4 @@
-package com.maple.api.config;
+package com.maple.api.auth.presentation.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

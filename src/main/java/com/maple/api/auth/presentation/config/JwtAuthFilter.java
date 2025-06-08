@@ -1,4 +1,4 @@
-package com.maple.api.config;
+package com.maple.api.auth.presentation.config;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
-  private final TokenValidator tokenValidator;
+  private final JwtTokenValidator jwtTokenValidator;
 
   @Override
   protected void doFilterInternal(
@@ -32,9 +32,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     FilterChain filterChain
   ) throws ServletException, IOException {
 
-    String jwtToken = tokenValidator.resolveToken(request, "Authorization");
+    String jwtToken = jwtTokenValidator.resolveToken(request, "Authorization");
 
-    if (StringUtils.hasText(jwtToken) && tokenValidator.validateToken(jwtToken)) {
+    if (StringUtils.hasText(jwtToken) && jwtTokenValidator.validateToken(jwtToken)) {
       List<String> authorities = Arrays.asList("ROLE_USER");
       Collection<? extends GrantedAuthority> grantedAuthorities = authorities.stream()
         .map(SimpleGrantedAuthority::new)

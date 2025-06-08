@@ -1,4 +1,4 @@
-package com.maple.api.config;
+package com.maple.api.auth.presentation.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -30,18 +30,6 @@ public class SecurityConfig {
   }
 
   @Bean
-  public WebSecurityCustomizer webSecurityCustomizer() {
-    return (web) -> web.ignoring()
-      .requestMatchers("/favicon.ico"
-        // -- Static resources
-        , "/css/**", "/images/**", "/js/**"
-        // -- Swagger UI v3 (Open API)
-        , "/v3/api-docs/**"
-      );
-  }
-
-
-  @Bean
   protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     // CSRF 공격을 막기 위해 Disable
     http.csrf(AbstractHttpConfigurer::disable)
@@ -55,12 +43,11 @@ public class SecurityConfig {
         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       // 로그인, 회원가입 API 는 토큰이 없는 상태에서 요청이 들어오기 때문에 permitAll 설정
       .authorizeHttpRequests(customizer ->
-        customizer.requestMatchers("/feign/**").permitAll()
-          .requestMatchers("/api/auth/login").permitAll()
-          .requestMatchers("/actuator/health").permitAll()
-          .anyRequest().authenticated()
+          customizer.anyRequest().permitAll()
+//        customizer
+//          .requestMatchers("/actuator/health").permitAll()
+//          .anyRequest().authenticated()
       )
-      // JwtFilter 를 addFilterBefore 로 등록했던 JwtSecurityConfig 클래스를 적용
       .with(jwtSecurityAdapter, Customizer.withDefaults());
 
     return http.build();
