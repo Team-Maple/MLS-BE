@@ -1,4 +1,4 @@
-package com.maple.api.auth.presentation.config;
+package com.maple.api.common.presentation.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.config.annotation.SecurityConfigurerAdapter;

@@ -1,4 +1,4 @@
-package com.maple.api.auth.presentation.config;
+package com.maple.api.common.presentation.config;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;

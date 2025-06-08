@@ -3,14 +3,12 @@ package com.maple.api.auth.application;
 import com.maple.api.auth.application.dto.LoginResponseDto;
 import com.maple.api.auth.application.dto.MemberDto;
 import com.maple.api.auth.application.dto.TokenResponseDto;
-import com.maple.api.auth.presentation.config.JwtTokenProvider;
-import com.maple.api.auth.presentation.config.JwtTokenValidator;
+import com.maple.api.common.presentation.config.JwtTokenProvider;
+import com.maple.api.common.presentation.config.JwtTokenValidator;
 import com.maple.api.auth.repository.RefreshTokenRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
