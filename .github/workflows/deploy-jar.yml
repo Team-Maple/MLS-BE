@@ -35,7 +35,7 @@ jobs:
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
           source: "build/libs/${{ env.JAR_NAME }}"
-          target: "~/"
+          target: "~/${{ env.JAR_NAME }}"
 
       - name: Deploy on EC2 instance
         uses: appleboy/ssh-action@v1.0.3
@@ -47,10 +47,10 @@ jobs:
           script: |
             PID=$(pgrep -f ${{ env.JAR_NAME }})
             if [ -n "$PID" ]; then
-              echo "Stopping old process with PID: $PID"
+              echo "🛑 Stopping old process with PID: $PID"
               kill $PID
               sleep 5
             fi
 
-            echo "Starting new application..."
+            echo "🚀 Starting new application..."
             nohup java -jar -Dserver.port=8080 ~/${{ env.JAR_NAME }}
