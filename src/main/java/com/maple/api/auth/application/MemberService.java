@@ -25,7 +25,7 @@ public class MemberService {
   }
 
   public MemberDto createMember(CreateMemberRequestDto createMemberRequestDto) {
-    log.info("Craete member with memberId: {}", createMemberRequestDto.getProviderId());
+    log.info("Create member with memberId: {}", createMemberRequestDto.getProviderId());
     Member result = memberRepository.save(new Member(
       createMemberRequestDto.getProviderId(),
       createMemberRequestDto.getEmail(),
