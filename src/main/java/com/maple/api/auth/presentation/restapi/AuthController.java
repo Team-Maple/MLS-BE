@@ -42,7 +42,7 @@ public class AuthController {
     if (userInfo == null || userInfo.getId() == null) {
       return ResponseEntity
         .status(HttpStatus.UNAUTHORIZED)
-        .body(ResponseTemplate.failure("401", "카카오 로그인 access_token이 유효하지 않습니다. " + accessToken));
+        .body(ResponseTemplate.failure("401", "카카오 로그인 access_token이 유효하지 않습니다."));
     }
     String kakaoId = userInfo.getId().toString();
 
