@@ -52,8 +52,8 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: jdbc:mysql://mapledb.c1w8cws8cmvy.ap-northeast-2.rds.amazonaws.com:3306/mapledb # 환경변수로 바꾸셔도 됩니다.
-    username: maple
-    password: Mapleland12!! # 환경변수로 바꾸셔도 됩니다.
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
 
-    driver-class-name: org.postgresql.Driver
+    driver-class-name: com.mysql.cj.jdbc.Driver
