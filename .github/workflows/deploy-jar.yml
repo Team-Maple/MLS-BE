@@ -55,4 +55,4 @@ jobs:
             set +a
 
             echo "🚀 새로운 애플리케이션을 시작합니다!"
-            nohup java -Dspring.profiles.active=prod -jar ~/build/libs/${{ env.JAR_NAME }}
+            java -Dspring.profiles.active=prod -jar ~/build/libs/${{ env.JAR_NAME }}
