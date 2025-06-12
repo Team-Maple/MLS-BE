@@ -43,16 +43,14 @@ jobs:
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
           script: |
-            PID=$(pgrep -f ${{ env.JAR_NAME }})
-            if [ -n "$PID" ]; then
-              echo "🛑 기존 실행되고 있던 애플리케이션을 종료합니다.: $PID"
-              kill $PID
-              sleep 5
-            fi
+            cd ~
 
-            set -a
-            source ~/.env
-            set +a
+            echo "🆕 새로운 이미지를 빌드합니다."
+            docker build -t mapleland-api:latest .
+
+            echo "🔄 기존 컨테이너를 중지하고 제거합니다..."
+            docker ps -f name=mapleland-api -q | xargs --no-run-if-empty docker container stop
+            docker ps -a -f name=mapleland-api -q | xargs --no-run-if-empty docker container rm
 
             echo "🚀 새로운 애플리케이션을 시작합니다!"
-            setsid java -Dspring.profiles.active=prod -jar ~/${{ env.JAR_NAME }} > /dev/null 2>&1 &
+            docker run -d -p 8080:8080 --name mapleland-api --restart always --env-file ~/.env mapleland-api:latest
