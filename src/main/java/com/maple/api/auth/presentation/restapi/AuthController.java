@@ -1,10 +1,12 @@
 package com.maple.api.auth.presentation.restapi;
 
+import com.maple.api.auth.application.AppleUserInfoClient;
 import com.maple.api.auth.application.AuthService;
 import com.maple.api.auth.application.KakaoUserInfoClient;
 import com.maple.api.auth.application.MemberService;
 import com.maple.api.auth.application.dto.*;
 import com.maple.api.auth.domain.PrincipalDetails;
+import com.maple.api.common.presentation.config.JwtTokenValidator;
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,21 +22,9 @@ import java.util.Optional;
 public class AuthController {
   private final MemberService memberService;
   private final AuthService authService;
+  private final JwtTokenValidator jwtTokenValidator;
   private final KakaoUserInfoClient kakaoUserInfoClient;
-
-  @PostMapping("/login/apple")
-  public ResponseEntity<ResponseTemplate<LoginResponseDto>> loginWithApple(
-    @RequestParam("userId") String userId
-  ) {
-    // 가입된 유저인지 확인
-    return memberService.findMember(userId)
-      .map(member -> ResponseEntity.ok(
-        ResponseTemplate.success(authService.login(member))
-      ))
-      .orElse(ResponseEntity
-        .status(HttpStatus.UNAUTHORIZED)
-        .body(ResponseTemplate.failure("401", "가입되지 않은 사용자입니다.")));
-  }
+  private final AppleUserInfoClient appleUserInfoClient;
 
   @PostMapping("/login/kakao")
   public ResponseEntity<ResponseTemplate<LoginResponseDto>> loginWithKakao(@RequestParam("access_token") String accessToken) {
@@ -55,6 +45,24 @@ public class AuthController {
         .status(HttpStatus.UNAUTHORIZED)
         .body(ResponseTemplate.failure("401", "가입되지 않은 사용자입니다.")));
   }
+
+  @PostMapping("/login/apple")
+  public ResponseEntity<ResponseTemplate<LoginResponseDto>> loginWithApple(
+    @RequestParam("id_token") String idToken
+  ) {
+    String appleUserId = appleUserInfoClient.getUserIdFromIdToken(idToken);
+
+    if (appleUserId == null) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(ResponseTemplate.failure("401", "Apple ID Token이 유효하지 않습니다."));
+    }
+
+    return memberService.findMember(appleUserId)
+      .map(member -> ResponseEntity.ok(ResponseTemplate.success(authService.login(member))))
+      .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(ResponseTemplate.failure("401", "가입되지 않은 사용자입니다.")));
+  }
+
 
   @PostMapping("/signup/kakao")
   public ResponseEntity<ResponseTemplate<LoginResponseDto>> signupWithKakao(
@@ -100,23 +108,28 @@ public class AuthController {
     }
   }
 
-
-  @PostMapping("/logout")
-  public ResponseEntity<ResponseTemplate<Void>> logout(@AuthenticationPrincipal PrincipalDetails principalDetails) {
-    authService.logout(principalDetails.getMember().getId());
-    return ResponseEntity.ok(ResponseTemplate.success(null));
-  }
-
-
   @PostMapping("/reissue")
-  public ResponseEntity<ResponseTemplate<TokenResponseDto>> reissue(@RequestHeader("refresh_token") String refreshToken) {
-    return authService.reissue(refreshToken)
+  public ResponseEntity<ResponseTemplate<LoginResponseDto>> reissue(
+    @RequestHeader("refresh_token") String refreshToken
+  ) {
+    String userId = jwtTokenValidator.getUserDetails(refreshToken).getUsername();
+    if (userId == null) {
+      return ResponseEntity
+        .status(HttpStatus.UNAUTHORIZED)
+        .body(ResponseTemplate.failure("401", "잘못된 토큰입니다."));
+    }
+
+    Optional<MemberDto> memberOpt = memberService.findMember(userId);
+
+    return memberOpt.map(memberDto -> authService.reissue(refreshToken.replace("Bearer ", ""), memberDto)
       .map(res ->
         ResponseEntity.ok(ResponseTemplate.success(res))
       )
       .orElse(ResponseEntity
         .status(HttpStatus.UNAUTHORIZED)
-        .body(ResponseTemplate.failure("401", "잘못된 토큰입니다..")));
+        .body(ResponseTemplate.failure("401", "잘못된 토큰입니다..")))).orElseGet(() -> ResponseEntity
+      .status(HttpStatus.UNAUTHORIZED)
+      .body(ResponseTemplate.failure("401", "가입된 유저가 없습니다.")));
   }
 
   @PutMapping("/member")

@@ -5,14 +5,22 @@
 ### 1. PostgreSQL Docker 컨테이너 실행
 
 ```bash
-docker run --name maple-postgresql \
-  -e POSTGRES_USER=maple_username \
-  -e POSTGRES_PASSWORD=maple_password \
-  -e POSTGRES_DB=maple_db \
-  -p 5432:5432 \
-  -d postgres:15
+docker run --name mysql \
+  -e MYSQL_ROOT_PASSWORD=rootpassword \
+  -e MYSQL_DATABASE=maple_db \
+  -e MYSQL_USER=maple_username \
+  -e MYSQL_PASSWORD=maple_password \
+  -p 3306:3306 \
+  -d mysql:8
 ```
-
+혹은
+```bash
+create database maple_db;
+create user 'maple_username'@'%' IDENTIFIED BY 'maple_password';
+grant all privileges on maple_db.* to 'maple_username'@'%';
+flush privileges;
+```
+****
 ## 2. 실행 스크립트
 ```bash
 $ ./gradlew bootRun

@@ -1,6 +1,8 @@
 package com.maple.api.auth.domain;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -16,12 +18,11 @@ public class Member {
   @Id
   private String id; // = Social ID
 
-  private String email;
-
+  @Enumerated(EnumType.STRING)
   private Provider provider;
 
   @Nullable
-  private String userName;
+  private String nickname;
 
   // private String role;
   public String getRole() {
@@ -36,16 +37,15 @@ public class Member {
   private LocalDateTime updatedAt = LocalDateTime.now();
 
   public Member(
-    String providerId, String email, Provider provider
+    String providerId, Provider provider, @Nullable String nickname
   ) {
     this.id = providerId;
-    this.email = email;
     this.provider = provider;
-    this.userName = provider.name() + "_" + providerId;
+    this.nickname = nickname != null ? nickname :"용감한 주황버섯";
   }
 
-  public Member update(String userName){
-    this.userName = userName;
+  public Member update(String nickname){
+    this.nickname = nickname;
     return this;
   }
 }

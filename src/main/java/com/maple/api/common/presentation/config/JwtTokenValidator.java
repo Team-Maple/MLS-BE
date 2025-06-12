@@ -7,11 +7,18 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.security.Key;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtTokenValidator {
@@ -54,19 +61,19 @@ public class JwtTokenValidator {
     }
   }
 
-  /**
-   * 토큰에서 사용자 ID 추출
-   * @param token JWT 토큰
-   * @return subject에 들어 있는 사용자 ID
-   */
-  public String getUserIdFromToken(String token) {
+  public UserDetails getUserDetails(String token) {
     try {
       Claims claims = Jwts.parser()
         .verifyWith((SecretKey) key)
         .build()
         .parseSignedClaims(token)
         .getPayload();
-      return claims.getSubject();
+
+      Collection<? extends GrantedAuthority> grantedAuthorities = (Arrays.asList("ROLE_USER")).stream()
+        .map(SimpleGrantedAuthority::new)
+        .collect(Collectors.toList());
+
+      return new User(claims.getSubject(), "", grantedAuthorities);
     } catch (Exception e) {
       return null;
     }

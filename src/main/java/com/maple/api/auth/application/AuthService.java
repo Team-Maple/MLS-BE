@@ -2,10 +2,9 @@ package com.maple.api.auth.application;
 
 import com.maple.api.auth.application.dto.LoginResponseDto;
 import com.maple.api.auth.application.dto.MemberDto;
-import com.maple.api.auth.application.dto.TokenResponseDto;
+import com.maple.api.auth.repository.RefreshTokenRepository;
 import com.maple.api.common.presentation.config.JwtTokenProvider;
 import com.maple.api.common.presentation.config.JwtTokenValidator;
-import com.maple.api.auth.repository.RefreshTokenRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,12 +34,12 @@ public class AuthService {
     refreshTokenService.delete(memberId);
   }
 
-  public Optional<TokenResponseDto> reissue(String refreshToken) {
+  public Optional<LoginResponseDto> reissue(String refreshToken, MemberDto member) {
     if (!jwtTokenValidator.validateToken(refreshToken)) {
       return Optional.empty();
     }
 
-    String userId = jwtTokenValidator.getUserIdFromToken(refreshToken);
+    String userId = jwtTokenValidator.getUserDetails(refreshToken).getUsername();
 
     // 저장된 RefreshToken과 비교 (DB 또는 Redis)
     String savedToken = refreshTokenService.get(userId);
@@ -54,6 +53,6 @@ public class AuthService {
     // refreshToken 갱신 (보안 상 권장)
     refreshTokenService.save(userId, newRefreshToken);
 
-    return Optional.of(new TokenResponseDto(newAccessToken, newRefreshToken));
+    return Optional.of(new LoginResponseDto(newAccessToken, newRefreshToken, member));
   }
 }

@@ -28,8 +28,8 @@ public class MemberService {
     log.info("Create member with memberId: {}", createMemberRequestDto.getProviderId());
     Member result = memberRepository.save(new Member(
       createMemberRequestDto.getProviderId(),
-      createMemberRequestDto.getEmail(),
-      createMemberRequestDto.getProvider()
+      createMemberRequestDto.getProvider(),
+      createMemberRequestDto.getNickname()
     ));
     return MemberDto.toDto(result);
   }
@@ -39,7 +39,7 @@ public class MemberService {
     Optional<Member> member = memberRepository.findById(updateMemberRequestDto.getProviderId());
 
     return member.map(m -> {
-        return m.update(updateMemberRequestDto.getName());
+        return m.update(updateMemberRequestDto.getNickname());
       })
       .map(MemberDto::toDto);
   }

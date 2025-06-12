@@ -12,18 +12,12 @@ springdoc:
 spring:
   lifecycle:
     timeout-per-shutdown-phase: 5s
-
-  datasource:
-    url: jdbc:postgresql://localhost:5432/maple_db
-    username: maple_username
-    password: maple_password
-    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: validate
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.MySQLDialect
         default_batch_fetch_size: 1000
         order_updates: true
         order_inserts: true
@@ -41,6 +35,11 @@ spring:
   config:
     activate:
       on-profile: local
+  datasource:
+    driverClassName: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/maple_db
+    username: maple_username
+    password: maple_password
   jpa:
     hibernate:
       ddl-auto: update
@@ -53,8 +52,8 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    #    url: ${DB_URL}
-    #    username: ${DB_USERNAME}
-    #    password: ${DB_PASSWORD}
+    url: jdbc:mysql://mapledb.c1w8cws8cmvy.ap-northeast-2.rds.amazonaws.com:3306/mapledb # 환경변수로 바꾸셔도 됩니다.
+    username: maple
+    password: Mapleland12!! # 환경변수로 바꾸셔도 됩니다.
 
     driver-class-name: org.postgresql.Driver

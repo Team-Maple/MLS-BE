@@ -30,7 +30,6 @@ public class SecurityConfig {
 
   @Bean
   protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    // CSRF 공격을 막기 위해 Disable
     http.csrf(AbstractHttpConfigurer::disable)
       // exception handling 할 때 우리가 만든 클래스를 추가
       .exceptionHandling(c ->
@@ -42,10 +41,13 @@ public class SecurityConfig {
         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       // 로그인, 회원가입 API 는 토큰이 없는 상태에서 요청이 들어오기 때문에 permitAll 설정
       .authorizeHttpRequests(customizer ->
-          customizer.anyRequest().permitAll()
-//        customizer
-//          .requestMatchers("/actuator/health").permitAll()
-//          .anyRequest().authenticated()
+        customizer
+          .requestMatchers("/actuator/health").permitAll()
+          .requestMatchers("/api/v1/auth/login/**").permitAll()
+          .requestMatchers("/api/v1/auth/signup/**").permitAll()
+          .requestMatchers("/swagger-ui-maple/**").permitAll()
+          .requestMatchers("/v3/api-docs/**").permitAll()
+          .anyRequest().authenticated()
       )
       .with(jwtSecurityAdapter, Customizer.withDefaults());
 
