@@ -52,5 +52,7 @@ jobs:
               sleep 5
             fi
 
+            source ~/.env
+
             echo "🚀 새로운 애플리케이션을 시작합니다!"
-            nohup java -jar -Dserver.port=8080 ~/build/libs/${{ env.JAR_NAME }}
+            nohup java -Dspring.profiles.active=prod -jar ~/build/libs/${{ env.JAR_NAME }}
