@@ -1,0 +1,56 @@
+name: Deploy Spring Boot App to EC2
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      JAR_NAME: "app.jar"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'corretto'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew bootJar
+
+      - name: SCP to EC2 instance
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          source: "build/libs/${{ env.JAR_NAME }}"
+          target: "~/"
+
+      - name: Deploy on EC2 instance
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            PID=$(pgrep -f ${{ env.JAR_NAME }})
+            if [ -n "$PID" ]; then
+              echo "🛑 기존 실행되고 있던 애플리케이션을 종료합니다.: $PID"
+              kill $PID
+              sleep 5
+            fi
+
+            source ~/.env
+
+            echo "🚀 새로운 애플리케이션을 시작합니다!"
+            nohup java -Dspring.profiles.active=prod -jar ~/build/libs/${{ env.JAR_NAME }}
