@@ -1,0 +1,4 @@
+name: Deploy Spring Boot App to EC2
+
+on:
+  workflow_dispatch:
