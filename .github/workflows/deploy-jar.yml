@@ -2,3 +2,55 @@ name: Deploy Spring Boot App to EC2
 
 on:
   workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      JAR_NAME: "api-0.0.1-SNAPSHOT.jar"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'corretto'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew bootJar
+
+      - name: SCP to EC2 instance
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          source: "build/libs/${{ env.JAR_NAME }}"
+          target: "~/"
+
+      - name: Deploy on EC2 instance
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            cd ~
+
+            echo "🆕 새로운 이미지를 빌드합니다."
+            docker build -t mapleland-api:latest .
+
+            echo "🔄 기존 컨테이너를 중지하고 제거합니다..."
+            docker ps -f name=mapleland-api -q | xargs --no-run-if-empty docker container stop
+            docker ps -a -f name=mapleland-api -q | xargs --no-run-if-empty docker container rm
+
+            echo "🚀 새로운 애플리케이션을 시작합니다!"
+            docker run -d -p 8080:8080 --name mapleland-api --restart always --env-file ~/.env mapleland-api:latest

@@ -1,0 +1,61 @@
+spring.application.name: maple-api
+server:
+  port: 8080
+  shutdown: graceful
+
+springdoc:
+  use-fqn: true
+  swagger-ui:
+    path: /swagger-ui-maple/index.html
+    disable-swagger-default-url: true
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 5s
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        default_batch_fetch_size: 1000
+        order_updates: true
+        order_inserts: true
+        jdbc:
+          batch_size: 1000
+
+management:
+  server.port: 8080
+  endpoints.web.exposure.include: info, health
+
+jwt:
+  secret: JTh4bhwwq69/Cj9gDLDXh8Riktoi9ndjD5T0cfHeSWkyC1aE7Xk2XpcDxwbk3Yyotj9d007VxNQuOYMjRoXMzg==
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    driverClassName: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/maple_db
+    username: maple_username
+    password: maple_password
+  jpa:
+    hibernate:
+      ddl-auto: update
+logging:
+  level:
+    com.maple.api: DEBUG
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
