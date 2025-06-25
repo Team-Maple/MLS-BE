@@ -23,6 +23,6 @@ public class VwSearchSummary {
     @Column(name = "image_url")
     private String imageUrl;
 
-    @Column(name = "category")
-    private String category;
+    @Column(name = "type")
+    private String type;
 }
