@@ -16,6 +16,11 @@ public class ItemScrollDetail {
     @Column(name = "item_id")
     private Integer itemId;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @MapsId
+    @JoinColumn(name = "item_id")
+    private Item item;
+
     @Column(name = "success_rate_percent")
     private Integer successRatePercent;
 

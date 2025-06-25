@@ -1,11 +1,17 @@
 package com.maple.api.job.domain;
 
+import com.maple.api.item.domain.ItemJob;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "jobs")
@@ -20,11 +26,15 @@ public class Job {
     @Column(name = "job_name")
     private String jobName;
 
-    @Column(name = "parent_job_id")
-    private Integer parentJobId;
-
     @Column(name = "job_level")
     private Integer jobLevel;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_job_id")
+    private Job parentJob;
+
+    @OneToMany(mappedBy = "parentJob")
+    private List<Job> childJobs = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at")

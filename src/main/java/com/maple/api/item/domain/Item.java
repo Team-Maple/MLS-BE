@@ -1,11 +1,16 @@
 package com.maple.api.item.domain;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "items")
@@ -25,9 +30,6 @@ public class Item {
 
     @Column(name = "description_text")
     private String descriptionText;
-
-    @Column(name = "category_id")
-    private Integer categoryId;
 
     @Column(name = "item_image_url")
     private String itemImageUrl;
@@ -52,6 +54,19 @@ public class Item {
 
     @Column(name = "required_pop")
     private Integer requiredPop;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
+    @OneToOne(mappedBy = "item")
+    private ItemEquipmentStats equipmentStats;
+
+    @OneToOne(mappedBy = "item")
+    private ItemScrollDetail scrollDetail;
+
+    @OneToMany(mappedBy = "item")
+    private List<ItemJob> itemsJobs = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at")

@@ -16,6 +16,11 @@ public class ItemEquipmentStats {
     @Column(name = "item_id")
     private Integer itemId;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @MapsId
+    @JoinColumn(name = "item_id")
+    private Item item;
+
     @Column(name = "str_base")
     private Integer strBase;
 
