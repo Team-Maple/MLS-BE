@@ -1,6 +1,5 @@
 package com.maple.api.job.domain;
 
-import com.maple.api.item.domain.ItemJob;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
