@@ -27,7 +27,7 @@ public class VwSearchSummaryQueryDslRepositoryImpl implements VwSearchSummaryQue
         BooleanBuilder builder = new BooleanBuilder();
 
         if (StringUtils.hasText(keyword)) {
-            builder.and(vwSearchSummary.name.like("%" + keyword + "%"));
+            builder.and(vwSearchSummary.name.contains(keyword));
         }
 
         List<VwSearchSummary> content = queryFactory
