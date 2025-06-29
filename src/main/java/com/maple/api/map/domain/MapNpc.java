@@ -1,7 +1,9 @@
 package com.maple.api.map.domain;
 
-import com.maple.api.npc.domain.Npc;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -19,19 +21,11 @@ public class MapNpc {
     @Id
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "map_id")
-    private Map map;
+    @Column(name = "map_id")
+    private Integer mapId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "npc_id")
-    private Npc npc;
-
-    @Column(name = "npc_name")
-    private String npcName;
-
-    @Column(name = "npc_icon_url")
-    private String npcIconUrl;
+    @Column(name = "npc_id")
+    private Integer npcId;
 
     @Column(name = "pos_x_pixel_preview")
     private String posXPixelPreview;

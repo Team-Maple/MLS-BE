@@ -19,13 +19,11 @@ public class MonsterSpawnMap {
     @Id
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "monster_id")
-    private Monster monster;
+    @Column(name = "monster_id")
+    private Integer monsterId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "map_id")
-    private Map map;
+    @Column(name = "map_id")
+    private Integer mapId;
 
     @CreationTimestamp
     @Column(name = "created_at")

@@ -1,7 +1,9 @@
 package com.maple.api.monster.domain;
 
-import com.maple.api.item.domain.Item;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -21,13 +23,11 @@ public class ItemMonsterDrop {
     @Column(name = "id")
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "item_id")
-    private Item item;
+    @Column(name = "item_id")
+    private Integer itemId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "monster_id")
-    private Monster monster;
+    @Column(name = "monster_id")
+    private Integer monsterId;
 
     @Column(name = "drop_rate")
     private Double dropRate;

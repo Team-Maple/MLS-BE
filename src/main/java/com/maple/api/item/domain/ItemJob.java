@@ -1,6 +1,5 @@
 package com.maple.api.item.domain;
 
-import com.maple.api.job.domain.Job;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -19,13 +18,11 @@ public class ItemJob {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "item_id")
-    private EquipmentItem item;
+    @Column(name = "item_id")
+    private Integer itemId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "job_id")
-    private Job job;
+    @Column(name = "job_id")
+    private Integer jobId;
 
     @CreationTimestamp
     @Column(name = "created_at")

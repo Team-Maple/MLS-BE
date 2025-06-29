@@ -16,13 +16,11 @@ public class QuestRewardItem {
     @Id
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "quest_id")
-    private Quest quest;
+    @Column(name = "quest_id")
+    private Integer questId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "item_id")
-    private Item item;
+    @Column(name = "item_id")
+    private Integer itemId;
 
     @Column(name = "quantity")
     private Integer quantity;
