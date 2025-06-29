@@ -1,7 +1,9 @@
 package com.maple.api.item.domain;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
@@ -10,7 +12,6 @@ import java.time.LocalDateTime;
 @Table(name = "item_equipments_stats")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
 public class ItemEquipmentStats {
     @Id
     @Column(name = "item_id")
@@ -19,7 +20,7 @@ public class ItemEquipmentStats {
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "item_id")
-    private Item item;
+    private EquipmentItem item;
 
     @Embedded
     @AttributeOverrides({

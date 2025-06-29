@@ -3,7 +3,6 @@ package com.maple.api.item.domain;
 import com.maple.api.job.domain.Job;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -14,7 +13,6 @@ import java.time.LocalDateTime;
 @Table(name = "items_job")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
 public class ItemJob {
 
     @Id
@@ -23,7 +21,7 @@ public class ItemJob {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "item_id")
-    private Item item;
+    private EquipmentItem item;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_id")
