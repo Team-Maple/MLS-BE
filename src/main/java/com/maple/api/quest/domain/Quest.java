@@ -9,8 +9,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "quests")
@@ -52,17 +50,6 @@ public class Quest {
     @Column(name = "end_npc_id")
     private Integer endNpcId;
 
-    @OneToMany(mappedBy = "quest")
-    private List<QuestRequirement> requirements = new ArrayList<>();
-
-    @OneToMany(mappedBy = "quest")
-    private List<QuestAllowedJob> allowedJobs = new ArrayList<>();
-
-    @OneToOne
-    private QuestReward reward;
-
-    @OneToMany(mappedBy = "quest")
-    private List<QuestRewardItem> rewardItems = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at")
