@@ -11,11 +11,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class SearchService {
 
     private final VwSearchSummaryQueryDslRepository vwSearchSummaryQueryDslRepository;
 
+    @Transactional(readOnly = true)
     public Page<SearchSummaryDto> search(String keyword, Pageable pageable) {
         Page<VwSearchSummary> resultPage = vwSearchSummaryQueryDslRepository.search(keyword, pageable);
         return resultPage.map(SearchSummaryDto::toDto);
