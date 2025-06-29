@@ -37,9 +37,8 @@ public abstract class Item {
     @Column(name = "npc_price")
     private Integer npcPrice;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private Category category;
+    @Column(name = "category_id")
+    private Integer categoryId;
 
     @CreationTimestamp
     @Column(name = "created_at")
