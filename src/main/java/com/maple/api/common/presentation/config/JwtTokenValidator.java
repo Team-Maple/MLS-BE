@@ -62,6 +62,10 @@ public class JwtTokenValidator {
   }
 
   public UserDetails getUserDetails(String token) {
+    if (token.contains(BEARER_PREFIX)) {
+      token = token.replace(BEARER_PREFIX, "").trim();
+    }
+
     try {
       Claims claims = Jwts.parser()
         .verifyWith((SecretKey) key)
