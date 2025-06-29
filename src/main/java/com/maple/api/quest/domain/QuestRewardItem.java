@@ -1,7 +1,10 @@
 package com.maple.api.quest.domain;
 
-import com.maple.api.item.domain.Item;
-import jakarta.persistence.*;
+import com.maple.api.common.domain.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -12,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class QuestRewardItem {
+public class QuestRewardItem extends BaseEntity {
     @Id
     private Integer id;
 

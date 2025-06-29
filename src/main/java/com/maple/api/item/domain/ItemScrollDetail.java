@@ -1,5 +1,6 @@
 package com.maple.api.item.domain;
 
+import com.maple.api.common.domain.BaseEntity;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -13,7 +14,7 @@ import java.time.LocalDateTime;
 @Table(name = "item_scrolls_details")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ItemScrollDetail {
+public class ItemScrollDetail extends BaseEntity {
     @Id
     @Column(name = "item_id")
     private Integer itemId;

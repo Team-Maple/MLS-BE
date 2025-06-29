@@ -1,5 +1,6 @@
 package com.maple.api.quest.domain;
 
+import com.maple.api.common.domain.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -8,7 +9,7 @@ import lombok.*;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class QuestChainMember {
+public class QuestChainMember extends BaseEntity {
     @Id
     private Integer id;
 

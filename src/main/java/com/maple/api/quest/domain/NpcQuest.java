@@ -1,18 +1,22 @@
 package com.maple.api.quest.domain;
 
+import com.maple.api.common.domain.BaseEntity;
 import jakarta.annotation.Nullable;
-import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.LocalDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "npc_quests")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class NpcQuest {
+public class NpcQuest extends BaseEntity {
     @Id
     private Integer id;
 
@@ -29,8 +33,4 @@ public class NpcQuest {
 
     @Column(name = "quest_icon_url")
     private String questIconUrl;
-
-    @CreationTimestamp
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
 }

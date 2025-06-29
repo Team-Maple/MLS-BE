@@ -1,19 +1,22 @@
 package com.maple.api.monster.domain;
 
+import com.maple.api.common.domain.BaseEntity;
 import jakarta.annotation.Nullable;
-import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
-import java.time.LocalDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "monsters")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class Monster {
+public class Monster extends BaseEntity {
     @Id
     @Column(name = "monster_id")
     private Integer monsterId;
@@ -61,12 +64,4 @@ public class Monster {
     @Nullable
     @Column(name = "meso_drop_rate")
     private Integer mesoDropRate;
-
-    @CreationTimestamp
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
 }

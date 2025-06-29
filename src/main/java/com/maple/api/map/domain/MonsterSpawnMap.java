@@ -1,21 +1,21 @@
 package com.maple.api.map.domain;
 
-import com.maple.api.monster.domain.Monster;
-import jakarta.persistence.*;
+import com.maple.api.common.domain.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "monster_spawn_maps")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class MonsterSpawnMap {
+public class MonsterSpawnMap extends BaseEntity {
     @Id
     private Integer id;
 
@@ -24,10 +24,6 @@ public class MonsterSpawnMap {
 
     @Column(name = "map_id")
     private Integer mapId;
-
-    @CreationTimestamp
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
 
     @Column(name = "max_spawn_count")
     private Integer maxSpawnCount;

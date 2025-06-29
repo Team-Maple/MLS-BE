@@ -1,5 +1,6 @@
 package com.maple.api.item.domain;
 
+import com.maple.api.common.domain.BaseEntity;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -13,7 +14,7 @@ import java.time.LocalDateTime;
 @Table(name = "item_equipments_stats")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ItemEquipmentStats {
+public class ItemEquipmentStats extends BaseEntity {
     @Id
     @Column(name = "item_id")
     private Integer itemId;

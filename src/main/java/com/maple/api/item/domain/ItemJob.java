@@ -1,5 +1,6 @@
 package com.maple.api.item.domain;
 
+import com.maple.api.common.domain.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -12,11 +13,11 @@ import java.time.LocalDateTime;
 @Table(name = "items_job")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ItemJob {
+public class ItemJob extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
     @Column(name = "item_id")
     private Integer itemId;

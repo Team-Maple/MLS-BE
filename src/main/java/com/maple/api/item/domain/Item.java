@@ -1,14 +1,11 @@
 package com.maple.api.item.domain;
 
+import com.maple.api.common.domain.BaseEntity;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "items")
@@ -16,7 +13,7 @@ import java.time.LocalDateTime;
 @DiscriminatorColumn(name = "item_type", discriminatorType = DiscriminatorType.STRING)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public abstract class Item {
+public abstract class Item extends BaseEntity {
     @Id
     @Column(name = "item_id")
     private Integer itemId;
@@ -39,12 +36,4 @@ public abstract class Item {
 
     @Column(name = "category_id")
     private Integer categoryId;
-
-    @CreationTimestamp
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
 }
