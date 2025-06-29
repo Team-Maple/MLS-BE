@@ -21,131 +21,117 @@ public class ItemEquipmentStats {
     @JoinColumn(name = "item_id")
     private Item item;
 
-    @Column(name = "str_base")
-    private Integer strBase;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "base", column = @Column(name = "str_base")),
+            @AttributeOverride(name = "min", column = @Column(name = "str_min")),
+            @AttributeOverride(name = "max", column = @Column(name = "str_max"))
+    })
+    private StatRange str;
 
-    @Column(name = "str_min")
-    private Integer strMin;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "base", column = @Column(name = "dex_base")),
+            @AttributeOverride(name = "min", column = @Column(name = "dex_min")),
+            @AttributeOverride(name = "max", column = @Column(name = "dex_max"))
+    })
+    private StatRange dex;
 
-    @Column(name = "str_max")
-    private Integer strMax;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "base", column = @Column(name = "int_base")),
+            @AttributeOverride(name = "min", column = @Column(name = "int_min")),
+            @AttributeOverride(name = "max", column = @Column(name = "int_max"))
+    })
+    private StatRange intelligence;
 
-    @Column(name = "dex_base")
-    private Integer dexBase;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "base", column = @Column(name = "luk_base")),
+            @AttributeOverride(name = "min", column = @Column(name = "luk_min")),
+            @AttributeOverride(name = "max", column = @Column(name = "luk_max"))
+    })
+    private StatRange luk;
 
-    @Column(name = "dex_min")
-    private Integer dexMin;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "base", column = @Column(name = "hp_base")),
+            @AttributeOverride(name = "min", column = @Column(name = "hp_min")),
+            @AttributeOverride(name = "max", column = @Column(name = "hp_max"))
+    })
+    private StatRange hp;
 
-    @Column(name = "dex_max")
-    private Integer dexMax;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "base", column = @Column(name = "mp_base")),
+            @AttributeOverride(name = "min", column = @Column(name = "mp_min")),
+            @AttributeOverride(name = "max", column = @Column(name = "mp_max"))
+    })
+    private StatRange mp;
 
-    @Column(name = "int_base")
-    private Integer intBase;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "base", column = @Column(name = "weapon_attack_base")),
+            @AttributeOverride(name = "min", column = @Column(name = "weapon_attack_min")),
+            @AttributeOverride(name = "max", column = @Column(name = "weapon_attack_max"))
+    })
+    private StatRange weaponAttack;
 
-    @Column(name = "int_min")
-    private Integer intMin;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "base", column = @Column(name = "magic_attack_base")),
+            @AttributeOverride(name = "min", column = @Column(name = "magic_attack_min")),
+            @AttributeOverride(name = "max", column = @Column(name = "magic_attack_max"))
+    })
+    private StatRange magicAttack;
 
-    @Column(name = "int_max")
-    private Integer intMax;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "base", column = @Column(name = "physical_defense_base")),
+            @AttributeOverride(name = "min", column = @Column(name = "physical_defense_min")),
+            @AttributeOverride(name = "max", column = @Column(name = "physical_defense_max"))
+    })
+    private StatRange physicalDefense;
 
-    @Column(name = "luk_base")
-    private Integer lukBase;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "base", column = @Column(name = "magic_defense_base")),
+            @AttributeOverride(name = "min", column = @Column(name = "magic_defense_min")),
+            @AttributeOverride(name = "max", column = @Column(name = "magic_defense_max"))
+    })
+    private StatRange magicDefense;
 
-    @Column(name = "luk_min")
-    private Integer lukMin;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "base", column = @Column(name = "accuracy_base")),
+            @AttributeOverride(name = "min", column = @Column(name = "accuracy_min")),
+            @AttributeOverride(name = "max", column = @Column(name = "accuracy_max"))
+    })
+    private StatRange accuracy;
 
-    @Column(name = "luk_max")
-    private Integer lukMax;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "base", column = @Column(name = "evasion_base")),
+            @AttributeOverride(name = "min", column = @Column(name = "evasion_min")),
+            @AttributeOverride(name = "max", column = @Column(name = "evasion_max"))
+    })
+    private StatRange evasion;
 
-    @Column(name = "hp_base")
-    private Integer hpBase;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "base", column = @Column(name = "speed_base")),
+            @AttributeOverride(name = "min", column = @Column(name = "speed_min")),
+            @AttributeOverride(name = "max", column = @Column(name = "speed_max"))
+    })
+    private StatRange speed;
 
-    @Column(name = "hp_min")
-    private Integer hpMin;
-
-    @Column(name = "hp_max")
-    private Integer hpMax;
-
-    @Column(name = "mp_base")
-    private Integer mpBase;
-
-    @Column(name = "mp_min")
-    private Integer mpMin;
-
-    @Column(name = "mp_max")
-    private Integer mpMax;
-
-    @Column(name = "weapon_attack_base")
-    private Integer weaponAttackBase;
-
-    @Column(name = "weapon_attack_min")
-    private Integer weaponAttackMin;
-
-    @Column(name = "weapon_attack_max")
-    private Integer weaponAttackMax;
-
-    @Column(name = "magic_attack_base")
-    private Integer magicAttackBase;
-
-    @Column(name = "magic_attack_min")
-    private Integer magicAttackMin;
-
-    @Column(name = "magic_attack_max")
-    private Integer magicAttackMax;
-
-    @Column(name = "physical_defense_base")
-    private Integer physicalDefenseBase;
-
-    @Column(name = "physical_defense_min")
-    private Integer physicalDefenseMin;
-
-    @Column(name = "physical_defense_max")
-    private Integer physicalDefenseMax;
-
-    @Column(name = "magic_defense_base")
-    private Integer magicDefenseBase;
-
-    @Column(name = "magic_defense_min")
-    private Integer magicDefenseMin;
-
-    @Column(name = "magic_defense_max")
-    private Integer magicDefenseMax;
-
-    @Column(name = "accuracy_base")
-    private Integer accuracyBase;
-
-    @Column(name = "accuracy_min")
-    private Integer accuracyMin;
-
-    @Column(name = "accuracy_max")
-    private Integer accuracyMax;
-
-    @Column(name = "evasion_base")
-    private Integer evasionBase;
-
-    @Column(name = "evasion_min")
-    private Integer evasionMin;
-
-    @Column(name = "evasion_max")
-    private Integer evasionMax;
-
-    @Column(name = "speed_base")
-    private Integer speedBase;
-
-    @Column(name = "speed_min")
-    private Integer speedMin;
-
-    @Column(name = "speed_max")
-    private Integer speedMax;
-
-    @Column(name = "jump_base")
-    private Integer jumpBase;
-
-    @Column(name = "jump_min")
-    private Integer jumpMin;
-
-    @Column(name = "jump_max")
-    private Integer jumpMax;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "base", column = @Column(name = "jump_base")),
+            @AttributeOverride(name = "min", column = @Column(name = "jump_min")),
+            @AttributeOverride(name = "max", column = @Column(name = "jump_max"))
+    })
+    private StatRange jump;
 
     @Column(name = "attack_speed")
     private Integer attackSpeed;
