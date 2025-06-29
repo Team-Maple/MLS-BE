@@ -1,5 +1,6 @@
 package com.maple.api.item.domain;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -26,6 +27,7 @@ public abstract class Item {
     @Column(name = "name_en")
     private String nameEn;
 
+    @Nullable
     @Column(name = "description_text")
     private String descriptionText;
 

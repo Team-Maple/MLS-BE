@@ -1,5 +1,6 @@
 package com.maple.api.quest.domain;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -18,9 +19,11 @@ public class NpcQuest {
     @Column(name = "npc_id")
     private Integer npcId;
 
+    @Nullable
     @Column(name = "quest_id")
     private Integer questId;
 
+    @Nullable
     @Column(name = "quest_name")
     private String questName;
 

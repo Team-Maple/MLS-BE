@@ -1,5 +1,6 @@
 package com.maple.api.quest.domain;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -20,6 +21,7 @@ public class Quest {
     @Column(name = "quest_id")
     private Integer questId;
 
+    @Nullable
     @Column(name = "title_prefix")
     private String titlePrefix;
 
@@ -38,6 +40,7 @@ public class Quest {
     @Column(name = "min_level")
     private Integer minLevel;
 
+    @Nullable
     @Column(name = "max_level")
     private Integer maxLevel;
 

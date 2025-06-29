@@ -1,5 +1,6 @@
 package com.maple.api.quest.domain;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -21,9 +22,11 @@ public class QuestRequirement {
     @Column(name = "requirement_type")
     private String requirementType;
 
+    @Nullable
     @Column(name = "item_id")
     private Integer itemId;
 
+    @Nullable
     @Column(name = "monster_id")
     private Integer monsterId;
 

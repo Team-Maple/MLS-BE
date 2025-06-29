@@ -1,5 +1,6 @@
 package com.maple.api.item.domain;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -22,6 +23,7 @@ public class ItemScrollDetail {
     @JoinColumn(name = "item_id")
     private ScrollItem item;
 
+    @Nullable
     @Column(name = "success_rate_percent")
     private Integer successRatePercent;
 

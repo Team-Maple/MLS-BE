@@ -1,5 +1,6 @@
 package com.maple.api.job.domain;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -28,6 +29,7 @@ public class Job {
     @Column(name = "job_level")
     private Integer jobLevel;
 
+    @Nullable
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_job_id")
     private Job parentJob;

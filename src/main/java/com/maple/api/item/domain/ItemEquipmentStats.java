@@ -1,5 +1,6 @@
 package com.maple.api.item.domain;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -134,9 +135,11 @@ public class ItemEquipmentStats {
     })
     private StatRange jump;
 
+    @Nullable
     @Column(name = "attack_speed")
     private Integer attackSpeed;
 
+    @Nullable
     @Column(name = "attack_speed_details")
     private String attackSpeedDetails;
 

@@ -1,5 +1,6 @@
 package com.maple.api.monster.domain;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -53,9 +54,11 @@ public class Monster {
     @Column(name = "evasion_rate")
     private Integer evasionRate;
 
+    @Nullable
     @Column(name = "meso_drop_amount")
     private Integer mesoDropAmount;
 
+    @Nullable
     @Column(name = "meso_drop_rate")
     private Integer mesoDropRate;
 
