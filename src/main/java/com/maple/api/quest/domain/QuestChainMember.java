@@ -16,7 +16,7 @@ public class QuestChainMember {
     @JoinColumn(name = "chain_id")
     private QuestChain chain;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "quest_id")
     private Quest quest;
 
