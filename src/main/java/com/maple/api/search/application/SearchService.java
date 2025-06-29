@@ -2,7 +2,7 @@ package com.maple.api.search.application;
 
 import com.maple.api.search.application.dto.SearchSummaryDto;
 import com.maple.api.search.domain.VwSearchSummary;
-import com.maple.api.search.repository.VwSearchSummaryRepository;
+import com.maple.api.search.repository.VwSearchSummaryQueryDslRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,10 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class SearchService {
 
-    private final VwSearchSummaryRepository vwSearchSummaryRepository;
+    private final VwSearchSummaryQueryDslRepository vwSearchSummaryQueryDslRepository;
 
     public Page<SearchSummaryDto> search(String keyword, Pageable pageable) {
-        Page<VwSearchSummary> resultPage = vwSearchSummaryRepository.search(keyword, pageable);
+        Page<VwSearchSummary> resultPage = vwSearchSummaryQueryDslRepository.search(keyword, pageable);
         return resultPage.map(SearchSummaryDto::toDto);
     }
 
