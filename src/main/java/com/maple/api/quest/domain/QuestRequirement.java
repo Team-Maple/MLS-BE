@@ -1,7 +1,5 @@
 package com.maple.api.quest.domain;
 
-import com.maple.api.item.domain.Item;
-import com.maple.api.monster.domain.Monster;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -17,20 +15,17 @@ public class QuestRequirement {
     @Id
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "quest_id")
-    private Quest quest;
+    @Column(name = "quest_id")
+    private Integer questId;
 
     @Column(name = "requirement_type")
     private String requirementType;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "item_id")
-    private Item item;
+    @Column(name = "item_id")
+    private Integer itemId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "monster_id")
-    private Monster monster;
+    @Column(name = "monster_id")
+    private Integer monsterId;
 
     @Column(name = "quantity")
     private Integer quantity;
