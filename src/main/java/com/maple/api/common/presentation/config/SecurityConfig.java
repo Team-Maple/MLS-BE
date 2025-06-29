@@ -47,6 +47,7 @@ public class SecurityConfig {
           .requestMatchers("/api/v1/auth/signup/**").permitAll()
           .requestMatchers("/swagger-ui-maple/**").permitAll()
           .requestMatchers("/v3/api-docs/**").permitAll()
+          .requestMatchers("/api/v1/search/**").permitAll()
           .anyRequest().authenticated()
       )
       .with(jwtSecurityAdapter, Customizer.withDefaults());
