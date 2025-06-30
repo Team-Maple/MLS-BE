@@ -27,7 +27,9 @@ public class AuthController {
   private final AppleUserInfoClient appleUserInfoClient;
 
   @PostMapping("/login/kakao")
-  public ResponseEntity<ResponseTemplate<LoginResponseDto>> loginWithKakao(@RequestHeader("access_token") String accessToken) {
+  public ResponseEntity<ResponseTemplate<LoginResponseDto>> loginWithKakao(
+    @RequestHeader("access-token") String accessToken
+  ) {
     KakaoUserInfo userInfo = kakaoUserInfoClient.getUserInfo(accessToken);
     if (userInfo == null || userInfo.getId() == null) {
       return ResponseEntity
@@ -48,7 +50,7 @@ public class AuthController {
 
   @PostMapping("/login/apple")
   public ResponseEntity<ResponseTemplate<LoginResponseDto>> loginWithApple(
-    @RequestHeader("id_token") String idToken
+    @RequestHeader("id-token") String idToken
   ) {
     String appleUserId = appleUserInfoClient.getUserIdFromIdToken(idToken);
 
@@ -66,7 +68,7 @@ public class AuthController {
 
   @PostMapping("/signup/kakao")
   public ResponseEntity<ResponseTemplate<LoginResponseDto>> signupWithKakao(
-    @RequestHeader("access_token") String accessToken,
+    @RequestHeader("access-token") String accessToken,
     @RequestBody CreateMemberRequestDto createMemberRequestDto
   ) {
     KakaoUserInfo userInfo = kakaoUserInfoClient.getUserInfo(accessToken);
@@ -94,7 +96,7 @@ public class AuthController {
 
   @PostMapping("/signup/apple")
   public ResponseEntity<ResponseTemplate<LoginResponseDto>> signupWithApple(
-    @RequestHeader("id_token") String idToken,
+    @RequestHeader("id-token") String idToken,
     @RequestBody CreateMemberRequestDto createMemberRequestDto
   ) {
     String appleUserId = appleUserInfoClient.getUserIdFromIdToken(idToken);
@@ -119,7 +121,7 @@ public class AuthController {
 
   @PostMapping("/reissue")
   public ResponseEntity<ResponseTemplate<LoginResponseDto>> reissue(
-    @RequestHeader("refresh_token") String refreshToken
+    @RequestHeader("refresh-token") String refreshToken
   ) {
     String userId = jwtTokenValidator.getUserDetails(refreshToken).getUsername();
     if (userId == null) {
