@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 public class Quest extends BaseEntity {
     @Id
     @Column(name = "quest_id")
-    private Long questId;
+    private Integer questId;
 
     @Nullable
     @Column(name = "title_prefix")

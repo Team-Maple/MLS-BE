@@ -14,7 +14,7 @@ import lombok.*;
 public class Map extends BaseEntity {
     @Id
     @Column(name = "map_id")
-    private Long mapId;
+    private Integer mapId;
 
     @NotBlank
     @Column(name = "name_kr")

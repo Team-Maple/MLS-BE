@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 public class Category extends BaseEntity {
     @Id
     @Column(name = "category_id")
-    private Long categoryId;
+    private Integer categoryId;
 
     @NotBlank
     @Size(max = 255)
@@ -30,7 +30,7 @@ public class Category extends BaseEntity {
 
     @Nullable
     @Column(name = "parent_category_id")
-    private Long parentCategoryId;
+    private Integer parentCategoryId;
 
     @Column(name = "category_level")
     private Integer categoryLevel;
