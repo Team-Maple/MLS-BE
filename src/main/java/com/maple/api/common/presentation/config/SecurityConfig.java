@@ -43,6 +43,7 @@ public class SecurityConfig {
       .authorizeHttpRequests(customizer ->
         customizer
           .requestMatchers("/actuator/health").permitAll()
+          .requestMatchers("/actuator/info").permitAll()
           .requestMatchers("/api/v1/auth/login/**").permitAll()
           .requestMatchers("/api/v1/auth/signup/**").permitAll()
           .requestMatchers("/swagger-ui-maple/**").permitAll()
