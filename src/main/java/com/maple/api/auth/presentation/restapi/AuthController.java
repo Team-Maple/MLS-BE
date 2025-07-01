@@ -44,7 +44,7 @@ public class AuthController {
         ResponseTemplate.success(authService.login(member))
       ))
       .orElse(ResponseEntity
-        .status(HttpStatus.UNAUTHORIZED)
+        .status(HttpStatus.NOT_FOUND)
         .body(ResponseTemplate.failure("404", "가입되지 않은 사용자입니다.")));
   }
 
@@ -61,7 +61,7 @@ public class AuthController {
 
     return memberService.findMember(appleUserId)
       .map(member -> ResponseEntity.ok(ResponseTemplate.success(authService.login(member))))
-      .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+      .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
         .body(ResponseTemplate.failure("404", "가입되지 않은 사용자입니다.")));
   }
 
