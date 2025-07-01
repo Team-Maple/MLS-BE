@@ -1,6 +1,6 @@
 package com.maple.api.item.repository;
 
-import com.maple.api.item.application.dto.ItemSearchRequest;
+import com.maple.api.item.application.dto.ItemSearchRequestDto;
 import com.maple.api.item.domain.Item;
 import com.maple.api.job.domain.Job;
 import com.querydsl.core.BooleanBuilder;
@@ -31,7 +31,7 @@ public class ItemQueryDslRepositoryImpl implements ItemQueryDslRepository {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public Page<Item> searchItems(ItemSearchRequest searchRequest, Pageable pageable) {
+    public Page<Item> searchItems(ItemSearchRequestDto searchRequest, Pageable pageable) {
         // 1. WHERE 절 생성
         BooleanBuilder whereClause = createWhereClause(searchRequest);
 
@@ -54,26 +54,26 @@ public class ItemQueryDslRepositoryImpl implements ItemQueryDslRepository {
         return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
 
-    private BooleanBuilder createWhereClause(ItemSearchRequest request) {
+    private BooleanBuilder createWhereClause(ItemSearchRequestDto request) {
         BooleanBuilder builder = new BooleanBuilder();
 
-        if (StringUtils.hasText(request.getKeyword())) {
-            builder.and(item.nameKr.containsIgnoreCase(request.getKeyword().trim()));
+        if (StringUtils.hasText(request.keyword())) {
+            builder.and(item.nameKr.containsIgnoreCase(request.keyword().trim()));
         }
-        if (request.getJob() != null) {
+        if (request.jobId() != null) {
             BooleanBuilder jobBuilder = new BooleanBuilder();
-            jobBuilder.or(itemJob.jobId.eq(request.getJob()))
+            jobBuilder.or(itemJob.jobId.eq(request.jobId()))
                     .or(itemJob.jobId.eq(Job.COMMON_JOB_ID));
             builder.and(jobBuilder);
         }
-        if (request.getMinLevel() != null) {
-            builder.and(equipmentItem.requiredStats.level.goe(request.getMinLevel()));
+        if (request.minLevel() != null) {
+            builder.and(equipmentItem.requiredStats.level.goe(request.minLevel()));
         }
-        if (request.getMaxLevel() != null) {
-            builder.and(equipmentItem.requiredStats.level.loe(request.getMaxLevel()));
+        if (request.maxLevel() != null) {
+            builder.and(equipmentItem.requiredStats.level.loe(request.maxLevel()));
         }
-        if (request.getCategories() != null && !request.getCategories().isEmpty()) {
-            builder.and(item.categoryId.in(request.getCategories()));
+        if (request.categoryIds() != null && !request.categoryIds().isEmpty()) {
+            builder.and(item.categoryId.in(request.categoryIds()));
         }
         return builder;
     }

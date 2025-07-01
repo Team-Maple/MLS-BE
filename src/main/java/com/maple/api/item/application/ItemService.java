@@ -1,6 +1,6 @@
 package com.maple.api.item.application;
 
-import com.maple.api.item.application.dto.ItemSearchRequest;
+import com.maple.api.item.application.dto.ItemSearchRequestDto;
 import com.maple.api.item.application.dto.ItemSummaryDto;
 import com.maple.api.item.repository.ItemQueryDslRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +15,7 @@ public class ItemService {
     private final ItemQueryDslRepository itemQueryDslRepository;
 
     @Transactional(readOnly = true)
-    public Page<ItemSummaryDto> searchItems(ItemSearchRequest searchRequest, Pageable pageable) {
+    public Page<ItemSummaryDto> searchItems(ItemSearchRequestDto searchRequest, Pageable pageable) {
         return itemQueryDslRepository.searchItems(searchRequest, pageable)
                 .map(ItemSummaryDto::toDto);
     }
