@@ -17,6 +17,9 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 public class Job extends BaseEntity {
+
+    public static final int COMMON_JOB_ID = 0;
+
     @Id
     @Column(name = "job_id")
     private Integer jobId;

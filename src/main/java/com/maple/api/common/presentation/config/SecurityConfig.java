@@ -49,6 +49,8 @@ public class SecurityConfig {
           .requestMatchers("/swagger-ui-maple/**").permitAll()
           .requestMatchers("/v3/api-docs/**").permitAll()
           .requestMatchers("/api/v1/search/**").permitAll()
+          .requestMatchers("/api/v1/items/**").permitAll()
+          .requestMatchers("/api/v1/monsters/**").permitAll()
           .requestMatchers("/api/v1/maps/**").permitAll()
           .anyRequest().authenticated()
       )
