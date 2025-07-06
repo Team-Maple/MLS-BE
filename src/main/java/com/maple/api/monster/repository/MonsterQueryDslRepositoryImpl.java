@@ -25,6 +25,12 @@ import static com.maple.api.monster.domain.QMonster.monster;
 @RequiredArgsConstructor
 public class MonsterQueryDslRepositoryImpl implements MonsterQueryDslRepository {
     private final JPAQueryFactory queryFactory;
+    
+    private final Map<String, Path<?>> sortableProperties = Map.of(
+            "name", monster.nameKr,
+            "level", monster.level,
+            "exp", monster.exp
+    );
 
     @Override
     public Page<Monster> searchMonsters(MonsterSearchRequestDto request, Pageable pageable) {
@@ -69,18 +75,7 @@ public class MonsterQueryDslRepositoryImpl implements MonsterQueryDslRepository 
             return List.of(monster.monsterId.asc());
         }
 
-        Map<String, Path<?>> sortableProperties = Map.of(
-                "name", monster.nameKr,
-                "level", monster.level,
-                "exp", monster.exp
-        );
-
         List<OrderSpecifier<?>> orderSpecifiers = new ArrayList<>();
-
-        if (pageable.getSort().isUnsorted()) {
-            orderSpecifiers.add(monster.monsterId.asc());
-            return orderSpecifiers;
-        }
 
         pageable.getSort().forEach(order -> {
             Path<?> path = sortableProperties.get(order.getProperty());
@@ -88,7 +83,6 @@ public class MonsterQueryDslRepositoryImpl implements MonsterQueryDslRepository 
                 orderSpecifiers.add(new OrderSpecifier(order.isAscending() ? Order.ASC : Order.DESC, path));
             }
         });
-
 
         orderSpecifiers.add(monster.monsterId.asc());
         return orderSpecifiers;
