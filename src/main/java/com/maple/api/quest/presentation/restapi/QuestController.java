@@ -9,7 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,7 +22,7 @@ public class QuestController {
 
     @GetMapping
     public ResponseEntity<Page<QuestSummaryDto>> searchQuests(
-            @ModelAttribute QuestSearchRequestDto request,
+            @ParameterObject QuestSearchRequestDto request,
             @PageableDefault(size = 20) Pageable pageable) {
         Page<QuestSummaryDto> quests = questService.searchQuests(request, pageable);
         return ResponseEntity.ok(quests);
