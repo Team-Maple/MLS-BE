@@ -51,6 +51,7 @@ public class SecurityConfig {
           .requestMatchers("/api/v1/search/**").permitAll()
           .requestMatchers("/api/v1/items/**").permitAll()
           .requestMatchers("/api/v1/monsters/**").permitAll()
+          .requestMatchers("/api/v1/maps/**").permitAll()
           .anyRequest().authenticated()
       )
       .with(jwtSecurityAdapter, Customizer.withDefaults());
