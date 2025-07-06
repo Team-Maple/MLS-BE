@@ -1,7 +1,6 @@
 package com.maple.api.map.repository;
 
 import com.maple.api.map.application.dto.MapSearchRequestDto;
-import com.maple.api.map.domain.Map;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.jpa.impl.JPAQuery;
@@ -23,7 +22,7 @@ public class MapQueryDslRepositoryImpl implements MapQueryDslRepository {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public Page<Map> searchMaps(MapSearchRequestDto request, Pageable pageable) {
+    public Page<com.maple.api.map.domain.Map> searchMaps(MapSearchRequestDto request, Pageable pageable) {
         // 1. WHERE 절 생성
         BooleanBuilder whereClause = createWhereClause(request);
 
@@ -37,7 +36,7 @@ public class MapQueryDslRepositoryImpl implements MapQueryDslRepository {
         }
 
         // 4. ID 목록으로 실제 컨텐츠 조회
-        List<Map> content = fetchContent(mapIds, orderClause);
+        List<com.maple.api.map.domain.Map> content = fetchContent(mapIds, orderClause);
 
         // 5. 전체 카운트 쿼리 생성
         JPAQuery<Long> countQuery = createCountQuery(whereClause);
@@ -65,7 +64,7 @@ public class MapQueryDslRepositoryImpl implements MapQueryDslRepository {
                 .fetch();
     }
 
-    private List<Map> fetchContent(List<Integer> mapIds, OrderSpecifier<?> order) {
+    private List<com.maple.api.map.domain.Map> fetchContent(List<Integer> mapIds, OrderSpecifier<?> order) {
         return queryFactory
                 .selectFrom(map)
                 .where(map.mapId.in(mapIds))
