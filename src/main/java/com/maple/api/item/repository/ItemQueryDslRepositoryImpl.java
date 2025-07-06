@@ -29,6 +29,12 @@ import static com.maple.api.item.domain.QItemJob.itemJob;
 @RequiredArgsConstructor
 public class ItemQueryDslRepositoryImpl implements ItemQueryDslRepository {
     private final JPAQueryFactory queryFactory;
+    
+    private final Map<String, Path<?>> sortableProperties = Map.of(
+            "name", item.nameKr,
+            "level", equipmentItem.requiredStats.level,
+            "itemId", item.itemId
+    );
 
     @Override
     public Page<Item> searchItems(ItemSearchRequestDto searchRequest, Pageable pageable) {
@@ -80,18 +86,11 @@ public class ItemQueryDslRepositoryImpl implements ItemQueryDslRepository {
     }
 
     private List<OrderSpecifier<?>> createOrderClause(Pageable pageable) {
-        Map<String, Path<?>> sortableProperties = Map.of(
-                "name", item.nameKr,
-                "level", equipmentItem.requiredStats.level,
-                "itemId", item.itemId
-        );
+        if (pageable.getSort().isUnsorted()) {
+            return List.of(item.itemId.asc());
+        }
 
         List<OrderSpecifier<?>> orderSpecifiers = new ArrayList<>();
-
-        if (pageable.getSort().isUnsorted()) {
-            orderSpecifiers.add(item.itemId.asc());
-            return orderSpecifiers;
-        }
 
         pageable.getSort().forEach(order -> {
             Path<?> path = sortableProperties.get(order.getProperty());
