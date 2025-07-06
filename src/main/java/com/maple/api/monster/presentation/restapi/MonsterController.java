@@ -10,7 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,7 +23,7 @@ public class MonsterController {
 
     @GetMapping
     public ResponseEntity<Page<MonsterSummaryDto>> searchMonsters(
-            @Valid @ModelAttribute MonsterSearchRequestDto request,
+            @Valid @ParameterObject MonsterSearchRequestDto request,
             @PageableDefault(size = 20, sort = "monsterId") Pageable pageable) {
         return ResponseEntity.ok(monsterService.searchMonsters(request, pageable));
     }
