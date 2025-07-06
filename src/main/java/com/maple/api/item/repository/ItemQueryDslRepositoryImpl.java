@@ -61,10 +61,11 @@ public class ItemQueryDslRepositoryImpl implements ItemQueryDslRepository {
             builder.and(item.nameKr.containsIgnoreCase(request.keyword().trim()));
         }
         if (request.jobId() != null) {
-            BooleanBuilder jobBuilder = new BooleanBuilder();
-            jobBuilder.or(itemJob.jobId.eq(request.jobId()))
-                    .or(itemJob.jobId.eq(Job.COMMON_JOB_ID));
-            builder.and(jobBuilder);
+            builder.and(
+                new BooleanBuilder()
+                    .or(itemJob.jobId.eq(request.jobId()))
+                    .or(itemJob.jobId.eq(Job.COMMON_JOB_ID))
+            );
         }
         if (request.minLevel() != null) {
             builder.and(equipmentItem.requiredStats.level.goe(request.minLevel()));
