@@ -3,6 +3,7 @@ package com.maple.api.auth.presentation;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maple.api.auth.application.KakaoUserInfoClient;
+import com.maple.api.auth.application.dto.CreateMemberRequestDto;
 import com.maple.api.auth.application.dto.KakaoUserInfo;
 import com.maple.api.auth.application.dto.LoginResponseDto;
 import com.maple.api.auth.domain.Member;
@@ -24,6 +25,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -63,10 +65,73 @@ public class AuthControllerE2ETest {
           kakaoUserInfo.getId().toString(),
           Provider.KAKAO,
           "NICKNAME",
-          false,
           ""
         )));
     }
+
+
+    @Test
+    @DisplayName("성공: 회원가입: 일반적인 닉네임")
+    void signupSuccess() throws Exception {
+      // when
+      KakaoUserInfo kakaoUserInfo = createNonExistingKakaoUserInfo();
+      when(kakaoUserInfoClient.getUserInfo(anyString())).thenReturn(kakaoUserInfo);
+      when(memberRepository.save(any()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+      CreateMemberRequestDto requestDto = new CreateMemberRequestDto(
+        Provider.KAKAO,
+        kakaoUserInfo.getId().toString(),
+        "테스트닉네임",
+        "fcm-token-1234" // FCM 토큰은 테스트용으로 임의로 설정
+      );
+
+      // then
+      MvcResult result = mockMvc.perform(post("/api/v1/auth/signup/kakao")
+          .header("access-token", "valid-access-token")
+          .accept(MediaType.APPLICATION_JSON)
+          .contentType(MediaType.APPLICATION_JSON)
+          .content((new ObjectMapper()).writeValueAsString(requestDto))
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.accessToken").exists())
+        .andExpect(jsonPath("$.data.refreshToken").exists())
+        .andReturn();
+
+      System.out.println(result.getResponse().getContentAsString());
+    }
+
+    @Test
+    @DisplayName("성공: 회원가입: 닉네임 없어도 성공")
+    void signupSuccessWithoutNickname() throws Exception {
+      // when
+      KakaoUserInfo kakaoUserInfo = createNonExistingKakaoUserInfo();
+      when(kakaoUserInfoClient.getUserInfo(anyString())).thenReturn(kakaoUserInfo);
+      when(memberRepository.save(any()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+      CreateMemberRequestDto requestDto = new CreateMemberRequestDto(
+        Provider.KAKAO,
+        kakaoUserInfo.getId().toString(),
+        null,
+        "fcm-token-1234" // FCM 토큰은 테스트용으로 임의로 설정
+      );
+
+      // then
+      MvcResult result = mockMvc.perform(post("/api/v1/auth/signup/kakao")
+          .header("access-token", "valid-access-token")
+          .accept(MediaType.APPLICATION_JSON)
+          .contentType(MediaType.APPLICATION_JSON)
+          .content((new ObjectMapper()).writeValueAsString(requestDto))
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.accessToken").exists())
+        .andExpect(jsonPath("$.data.refreshToken").exists())
+        .andReturn();
+
+      System.out.println(result.getResponse().getContentAsString());
+    }
+
 
     @Test
     @DisplayName("성공: 가입된 사용자일 때 JWT 토큰 반환")
@@ -119,15 +184,6 @@ public class AuthControllerE2ETest {
   void 탈퇴성공() throws Exception {
     // given: 기존 회원 정보 및 kakaoUserInfoStub 준비
     KakaoUserInfo kakaoUserInfo = createExistingKakaoUserInfo();
-
-    when(memberRepository.findById(kakaoUserInfo.getId().toString()))
-      .thenReturn(Optional.of(new Member(
-        kakaoUserInfo.getId().toString(),
-        Provider.KAKAO,
-        "NICKNAME",
-        false,
-        ""
-      )));
     when(kakaoUserInfoClient.getUserInfo(anyString())).thenReturn(kakaoUserInfo);
 
     // when: 로그인 요청 후 토큰 발급

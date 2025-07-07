@@ -31,7 +31,6 @@ public class MemberService {
       createMemberRequestDto.getProviderId(),
       createMemberRequestDto.getProvider(),
       createMemberRequestDto.getNickname(),
-      createMemberRequestDto.getMarketingAgreement(),
       createMemberRequestDto.getFcmToken()
     ));
     return MemberDto.toDto(result);

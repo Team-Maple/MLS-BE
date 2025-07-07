@@ -38,11 +38,11 @@ public class Member {
   private String fcmToken;
 
   @Setter
-  private Boolean marketingAgreement;
+  private Boolean marketingAgreement = false;
 
-  private Boolean noticeAgreement;
-  private Boolean patchNoteAgreement;
-  private Boolean eventAgreement;
+  private Boolean noticeAgreement = false;
+  private Boolean patchNoteAgreement = false;
+  private Boolean eventAgreement = false;
 
   // private String role;
   public String getRole() {
@@ -60,13 +60,11 @@ public class Member {
     String providerId,
     Provider provider,
     @Nullable String nickname,
-    Boolean marketingAgreement,
     String fcmToken
   ) {
     this.id = providerId;
     this.provider = provider;
     this.nickname = nickname != null ? nickname : createRandomName();
-    this.marketingAgreement = marketingAgreement;
     this.fcmToken = fcmToken;
   }
 

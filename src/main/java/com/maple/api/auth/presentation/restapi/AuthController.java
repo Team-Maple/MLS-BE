@@ -9,6 +9,7 @@ import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.common.presentation.config.JwtTokenValidator;
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -73,7 +74,7 @@ public class AuthController {
   @PostMapping("/signup/kakao")
   public ResponseEntity<ResponseTemplate<LoginResponseDto>> signupWithKakao(
     @RequestHeader("access-token") String accessToken,
-    @RequestBody CreateMemberRequestDto createMemberRequestDto
+    @Valid @RequestBody CreateMemberRequestDto createMemberRequestDto
   ) {
     KakaoUserInfo userInfo = kakaoUserInfoClient.getUserInfo(accessToken);
     if (userInfo == null || userInfo.getId() == null) {
@@ -105,7 +106,7 @@ public class AuthController {
   @PostMapping("/signup/apple")
   public ResponseEntity<ResponseTemplate<LoginResponseDto>> signupWithApple(
     @RequestHeader("id-token") String idToken,
-    @RequestBody CreateMemberRequestDto createMemberRequestDto
+    @Valid @RequestBody CreateMemberRequestDto createMemberRequestDto
   ) {
     String appleUserId = appleUserInfoClient.getUserIdFromIdToken(idToken);
     if (appleUserId == null) {
@@ -157,7 +158,7 @@ public class AuthController {
 
   @PutMapping("/member/nickname")
   public ResponseEntity<ResponseTemplate<Void>> updateNickName(
-    @RequestBody UpdateCommand.NickName request
+    @Valid @RequestBody UpdateCommand.NickName request
   ) {
     memberService.updateNickname(request.getProviderId(), request.getNickname());
     return ResponseEntity.ok(ResponseTemplate.success(null));
