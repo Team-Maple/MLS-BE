@@ -1,5 +1,6 @@
 package com.maple.api.common.presentation.config;
 
+import com.maple.api.auth.domain.PrincipalDetails;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -9,15 +10,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.security.Key;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
@@ -61,7 +60,7 @@ public class JwtTokenValidator {
     }
   }
 
-  public UserDetails getUserDetails(String token) {
+  public PrincipalDetails getUserDetails(String token) {
     if (token.contains(BEARER_PREFIX)) {
       token = token.replace(BEARER_PREFIX, "").trim();
     }
@@ -73,11 +72,11 @@ public class JwtTokenValidator {
         .parseSignedClaims(token)
         .getPayload();
 
-      Collection<? extends GrantedAuthority> grantedAuthorities = (Arrays.asList("ROLE_USER")).stream()
+      Collection<GrantedAuthority> grantedAuthorities = (List.of("ROLE_USER")).stream()
         .map(SimpleGrantedAuthority::new)
         .collect(Collectors.toList());
 
-      return new User(claims.getSubject(), "", grantedAuthorities);
+      return new PrincipalDetails(claims.getSubject());
     } catch (Exception e) {
       return null;
     }

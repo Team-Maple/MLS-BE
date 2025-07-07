@@ -10,5 +10,7 @@ import org.springframework.lang.Nullable;
 public class CreateMemberRequestDto {
   private Provider provider;
   private String providerId;
-  private @Nullable String nickname;
+  @Nullable private String nickname;
+  private Boolean marketingAgreement;
+  @Nullable private String fcmToken;
 }

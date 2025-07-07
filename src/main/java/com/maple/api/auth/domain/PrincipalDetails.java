@@ -5,34 +5,29 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 
 @Data
-public class PrincipalDetails implements UserDetails
-{
-  private final Member member;
+public class PrincipalDetails implements UserDetails {
+  private final String providerId;
+  private Collection<GrantedAuthority> authorities;
   private Map<String, Object> attributes;
 
   // 일반 로그인
-  public PrincipalDetails(Member member) {
-    this.member = member;
+  public PrincipalDetails(String providerId) {
+    this.providerId = providerId;
   }
 
-  // OAuth 로그인
-  public PrincipalDetails(Member member, Map<String, Object> attributes) {
-    this.member = member;
+  public PrincipalDetails(String providerId, Collection<GrantedAuthority> authorities, Map<String, Object> attributes) {
+    this.providerId = providerId;
+    this.authorities = authorities;
     this.attributes = attributes;
   }
 
+
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
-    return List.of(new GrantedAuthority() {
-      @Override
-      public String getAuthority() {
-        return member.getRole();
-      }
-    });
+    return authorities;
   }
 
   @Override
@@ -42,6 +37,6 @@ public class PrincipalDetails implements UserDetails
 
   @Override
   public String getUsername() {
-    return member.getNickname();
+    return providerId;
   }
 }

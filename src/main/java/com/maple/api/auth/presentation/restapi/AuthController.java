@@ -8,6 +8,7 @@ import com.maple.api.auth.application.dto.*;
 import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.common.presentation.config.JwtTokenValidator;
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -65,7 +66,10 @@ public class AuthController {
         .body(ResponseTemplate.failure("404", "가입되지 않은 사용자입니다.")));
   }
 
-
+  @Operation(
+    summary = "카카오 회원가입 및 로그인",
+    description = "카카오 회원가입하며 이미 회원인 경우 access-token을 이용해 로그인합니다."
+  )
   @PostMapping("/signup/kakao")
   public ResponseEntity<ResponseTemplate<LoginResponseDto>> signupWithKakao(
     @RequestHeader("access-token") String accessToken,
@@ -94,6 +98,10 @@ public class AuthController {
     }
   }
 
+  @Operation(
+    summary = "애플 회원가입 및 로그인",
+    description = "애플 회원가입하며 이미 회원인 경우 access-token을 이용해 로그인합니다."
+  )
   @PostMapping("/signup/apple")
   public ResponseEntity<ResponseTemplate<LoginResponseDto>> signupWithApple(
     @RequestHeader("id-token") String idToken,
@@ -119,6 +127,10 @@ public class AuthController {
     }
   }
 
+  @Operation(
+    summary = "토큰 재발급",
+    description = "accesstoken, refreshtoken을 이용해 새로운 accesstoken과 refreshtoken을 발급합니다. 멤버 정보도 함께 반환합니다."
+  )
   @PostMapping("/reissue")
   public ResponseEntity<ResponseTemplate<LoginResponseDto>> reissue(
     @RequestHeader("refresh-token") String refreshToken
@@ -143,21 +155,47 @@ public class AuthController {
       .body(ResponseTemplate.failure("404", "가입된 유저가 없습니다.")));
   }
 
-  @PutMapping("/member")
-  public ResponseEntity<ResponseTemplate<Void>> updateMyInfo(
-    @RequestBody UpdateMemberRequestDto request
+  @PutMapping("/member/nickname")
+  public ResponseEntity<ResponseTemplate<Void>> updateNickName(
+    @RequestBody UpdateCommand.NickName request
   ) {
-    memberService.updateMember(request);
+    memberService.updateNickname(request.getProviderId(), request.getNickname());
     return ResponseEntity.ok(ResponseTemplate.success(null));
   }
 
+  @PutMapping("/member/fcm-token")
+  public ResponseEntity<ResponseTemplate<Void>> updateFcmToken(
+    @RequestBody UpdateCommand.FcmToken request
+  ) {
+    memberService.updateFcmToken(request.getProviderId(), request.getFcmToken());
+    return ResponseEntity.ok(ResponseTemplate.success(null));
+  }
 
+  @PutMapping("/member/marketing-agreement")
+  public ResponseEntity<ResponseTemplate<Void>> updateMarketingAgreement(
+    @RequestBody UpdateCommand.MarketingAgreement request
+  ) {
+    memberService.updateMarketingAgreement(request.getProviderId(), request.getMarketingAgreement());
+    return ResponseEntity.ok(ResponseTemplate.success(null));
+  }
+
+  @PutMapping("/member/alert-agreement")
+  public ResponseEntity<ResponseTemplate<Void>> updateAlertAgreement(
+    @RequestBody UpdateCommand.Agreements request
+  ) {
+    memberService.updateAlertAgreement(request.getProviderId(), request);
+    return ResponseEntity.ok(ResponseTemplate.success(null));
+  }
+
+  @Operation(
+    summary = "탈퇴하기"
+  )
   @DeleteMapping("/member")
-  public ResponseEntity<ResponseTemplate<Void>> deleteMe(@AuthenticationPrincipal PrincipalDetails principalDetails) {
-    String userId = principalDetails.getMember().getId();
-
-    memberService.deleteMember(userId);
-    authService.logout(userId);
+  public ResponseEntity<ResponseTemplate<Void>> deleteMe(
+    @AuthenticationPrincipal PrincipalDetails principalDetails
+  ) {
+    memberService.deleteMember(principalDetails.getProviderId());
+    authService.logout(principalDetails.getProviderId());
 
     return ResponseEntity.ok(ResponseTemplate.success(null));
   }

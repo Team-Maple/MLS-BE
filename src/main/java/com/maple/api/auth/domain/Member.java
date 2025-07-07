@@ -1,28 +1,48 @@
 package com.maple.api.auth.domain;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.lang.Nullable;
 
 import java.time.LocalDateTime;
+import java.util.Random;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 public class Member {
+  private static final String[] MONSTERS = {
+    "주황버섯", "슬라임", "골렘", "발록", "자쿰", "핑크빈", "혼테일", "반레온", "매그너스", "힐라",
+    "블러디퀸", "반반", "벨룸", "루시드", "윌", "더스크", "검은마법사"
+  };
+
+  private static final String[] EMOTIONS = {
+    "용감한", "슬픈", "화난", "기쁜", "지친", "신난", "겁먹은", "냉정한", "따뜻한", "차가운", "짜증난",
+    "졸린", "수줍은", "광기어린", "의욕적인", "무기력한"
+  };
+
   @Id
   private String id; // = Social ID
 
   @Enumerated(EnumType.STRING)
   private Provider provider;
 
-  @Nullable
+  @Setter
+  @Column(unique = true)
   private String nickname;
+
+  @Setter
+  private String fcmToken;
+
+  @Setter
+  private Boolean marketingAgreement;
+
+  private Boolean noticeAgreement;
+  private Boolean patchNoteAgreement;
+  private Boolean eventAgreement;
 
   // private String role;
   public String getRole() {
@@ -30,22 +50,44 @@ public class Member {
   }
 
 
-  @CreationTimestamp
+  @CreatedDate
   private LocalDateTime createdAt = LocalDateTime.now();
 
-  @CreationTimestamp
+  @LastModifiedDate
   private LocalDateTime updatedAt = LocalDateTime.now();
 
   public Member(
-    String providerId, Provider provider, @Nullable String nickname
+    String providerId,
+    Provider provider,
+    @Nullable String nickname,
+    Boolean marketingAgreement,
+    String fcmToken
   ) {
     this.id = providerId;
     this.provider = provider;
-    this.nickname = nickname != null ? nickname :"용감한 주황버섯";
+    this.nickname = nickname != null ? nickname : createRandomName();
+    this.marketingAgreement = marketingAgreement;
+    this.fcmToken = fcmToken;
   }
 
-  public Member update(String nickname){
-    this.nickname = nickname;
+  public Member setAlertAgreements(
+    Boolean noticeAgreement,
+    Boolean patchNoteAgreement,
+    Boolean eventAgreement
+  ) {
+    this.noticeAgreement = noticeAgreement;
+    this.patchNoteAgreement = patchNoteAgreement;
+    this.eventAgreement = eventAgreement;
     return this;
+  }
+
+  private String createRandomName() {
+    Random random = new Random();
+
+    String emotion = EMOTIONS[random.nextInt(EMOTIONS.length)];
+    String monster = MONSTERS[random.nextInt(MONSTERS.length)];
+    int number = 100 + random.nextInt(900); // 100 ~ 999
+
+    return emotion + " " + monster + "-" + number;
   }
 }
