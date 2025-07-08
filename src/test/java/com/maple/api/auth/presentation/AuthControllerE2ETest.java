@@ -65,7 +65,8 @@ public class AuthControllerE2ETest {
           kakaoUserInfo.getId().toString(),
           Provider.KAKAO,
           "NICKNAME",
-          ""
+          "",
+          false
         )));
     }
 
@@ -83,7 +84,8 @@ public class AuthControllerE2ETest {
         Provider.KAKAO,
         kakaoUserInfo.getId().toString(),
         "테스트닉네임",
-        "fcm-token-1234" // FCM 토큰은 테스트용으로 임의로 설정
+        "fcm-token-1234", // FCM 토큰은 테스트용으로 임의로 설정,
+        false
       );
 
       // then
@@ -114,7 +116,8 @@ public class AuthControllerE2ETest {
         Provider.KAKAO,
         kakaoUserInfo.getId().toString(),
         null,
-        "fcm-token-1234" // FCM 토큰은 테스트용으로 임의로 설정
+        "fcm-token-1234", // FCM 토큰은 테스트용으로 임의로 설정
+        false
       );
 
       // then
