@@ -158,33 +158,38 @@ public class AuthController {
 
   @PutMapping("/member/nickname")
   public ResponseEntity<ResponseTemplate<Void>> updateNickName(
+    @AuthenticationPrincipal PrincipalDetails principalDetails,
     @Valid @RequestBody UpdateCommand.NickName request
   ) {
-    memberService.updateNickname(request.getProviderId(), request.getNickname());
+    memberService.updateNickname(principalDetails.getProviderId(), request.getNickname());
     return ResponseEntity.ok(ResponseTemplate.success(null));
   }
 
   @PutMapping("/member/fcm-token")
   public ResponseEntity<ResponseTemplate<Void>> updateFcmToken(
+    @AuthenticationPrincipal PrincipalDetails principalDetails,
     @RequestBody UpdateCommand.FcmToken request
   ) {
-    memberService.updateFcmToken(request.getProviderId(), request.getFcmToken());
+
+    memberService.updateFcmToken(principalDetails.getProviderId(), request.getFcmToken());
     return ResponseEntity.ok(ResponseTemplate.success(null));
   }
 
   @PutMapping("/member/marketing-agreement")
   public ResponseEntity<ResponseTemplate<Void>> updateMarketingAgreement(
+    @AuthenticationPrincipal PrincipalDetails principalDetails,
     @RequestBody UpdateCommand.MarketingAgreement request
   ) {
-    memberService.updateMarketingAgreement(request.getProviderId(), request.getMarketingAgreement());
+    memberService.updateMarketingAgreement(principalDetails.getProviderId(), request.getMarketingAgreement());
     return ResponseEntity.ok(ResponseTemplate.success(null));
   }
 
   @PutMapping("/member/alert-agreement")
   public ResponseEntity<ResponseTemplate<Void>> updateAlertAgreement(
+    @AuthenticationPrincipal PrincipalDetails principalDetails,
     @RequestBody UpdateCommand.Agreements request
   ) {
-    memberService.updateAlertAgreement(request.getProviderId(), request);
+    memberService.updateAlertAgreement(principalDetails.getProviderId(), request);
     return ResponseEntity.ok(ResponseTemplate.success(null));
   }
 

@@ -60,12 +60,14 @@ public class Member {
     String providerId,
     Provider provider,
     @Nullable String nickname,
-    String fcmToken
+    String fcmToken,
+    Boolean marketingAgreement
   ) {
     this.id = providerId;
     this.provider = provider;
     this.nickname = nickname != null ? nickname : createRandomName();
     this.fcmToken = fcmToken;
+    this.marketingAgreement = marketingAgreement;
   }
 
   public Member setAlertAgreements(

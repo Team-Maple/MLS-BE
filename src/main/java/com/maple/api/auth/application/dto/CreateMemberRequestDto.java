@@ -16,4 +16,5 @@ public class CreateMemberRequestDto {
   private String nickname;
   @Nullable
   private String fcmToken;
+  private Boolean marketingAgreement;
 }
