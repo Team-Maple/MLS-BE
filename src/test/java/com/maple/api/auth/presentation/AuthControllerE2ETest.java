@@ -180,43 +180,44 @@ public class AuthControllerE2ETest {
           .header("access-token", "valid-token"))
         .andExpect(status().isNotFound());
     }
+
+    @Test
+    @DisplayName("회원 탈퇴 성공: 가입된 사용자가 아닐 때 탈퇴 성공")
+    void 탈퇴성공() throws Exception {
+      // given: 기존 회원 정보 및 kakaoUserInfoStub 준비
+      KakaoUserInfo kakaoUserInfo = createExistingKakaoUserInfo();
+      when(kakaoUserInfoClient.getUserInfo(anyString())).thenReturn(kakaoUserInfo);
+      
+      // when: 로그인 요청 후 토큰 발급
+      String loginResponseBody = mockMvc.perform(post("/api/v1/auth/login/kakao")
+          .header("access-token", "valid-access-token")
+          .accept(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.accessToken").exists())
+        .andExpect(jsonPath("$.data.refreshToken").exists())
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+
+      LoginResponseDto responseDTO = new ObjectMapper().readValue(
+        loginResponseBody,
+        new TypeReference<ResponseTemplate<LoginResponseDto>>() {
+        }
+      ).getData();
+
+      String authorizationToken = responseDTO.accessToken();
+
+      // then: 회원 탈퇴 요청
+      mockMvc.perform(delete("/api/v1/auth/member")
+          .header("Authorization", "Bearer " + authorizationToken)
+          .accept(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk());
+
+      // verify: 회원 정보 삭제 확인
+      verify(memberRepository).deleteById(kakaoUserInfo.getId().toString());
+    }
   }
 
-  @Test
-  @DisplayName("회원 탈퇴 성공: 가입된 사용자가 아닐 때 탈퇴 성공")
-  void 탈퇴성공() throws Exception {
-    // given: 기존 회원 정보 및 kakaoUserInfoStub 준비
-    KakaoUserInfo kakaoUserInfo = createExistingKakaoUserInfo();
-    when(kakaoUserInfoClient.getUserInfo(anyString())).thenReturn(kakaoUserInfo);
-
-    // when: 로그인 요청 후 토큰 발급
-    String loginResponseBody = mockMvc.perform(post("/api/v1/auth/login/kakao")
-        .header("access-token", "valid-access-token")
-        .accept(MediaType.APPLICATION_JSON))
-      .andExpect(status().isOk())
-      .andExpect(jsonPath("$.data.accessToken").exists())
-      .andExpect(jsonPath("$.data.refreshToken").exists())
-      .andReturn()
-      .getResponse()
-      .getContentAsString();
-
-    LoginResponseDto responseDTO = new ObjectMapper().readValue(
-      loginResponseBody,
-      new TypeReference<ResponseTemplate<LoginResponseDto>>() {
-      }
-    ).getData();
-
-    String authorizationToken = responseDTO.accessToken();
-
-    // then: 회원 탈퇴 요청
-    mockMvc.perform(delete("/api/v1/auth/member")
-        .header("Authorization", "Bearer " + authorizationToken)
-        .accept(MediaType.APPLICATION_JSON))
-      .andExpect(status().isOk());
-
-    // verify: 회원 정보 삭제 확인
-    verify(memberRepository).deleteById(kakaoUserInfo.getId().toString());
-  }
 
   private KakaoUserInfo createExistingKakaoUserInfo() {
     return new KakaoUserInfo(
