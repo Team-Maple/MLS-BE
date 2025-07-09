@@ -1,5 +1,6 @@
 package com.maple.api.item.application;
 
+import com.maple.api.item.application.dto.CategoryDto;
 import com.maple.api.item.domain.Category;
 import com.maple.api.item.repository.CategoryRepository;
 import jakarta.annotation.PostConstruct;
@@ -61,5 +62,12 @@ public class CategoryService {
         }
         
         return current != null ? current.getCategoryId() : null;
+    }
+
+    public List<CategoryDto> findAllCategoryDto() {
+        return categoryCache.values().stream()
+                .filter(Category::isEnabled)
+                .map(CategoryDto::toDto)
+                .toList();
     }
 }
