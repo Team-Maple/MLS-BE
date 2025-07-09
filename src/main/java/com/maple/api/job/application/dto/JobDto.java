@@ -1,4 +1,4 @@
-package com.maple.api.item.application.dto;
+package com.maple.api.job.application.dto;
 
 import com.maple.api.job.domain.Job;
 
