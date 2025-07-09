@@ -2,6 +2,7 @@ package com.maple.api.item.presentation.restapi;
 
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.item.application.ItemService;
+import com.maple.api.item.application.dto.ItemDetailDto;
 import com.maple.api.item.application.dto.ItemSearchRequestDto;
 import com.maple.api.item.application.dto.ItemSummaryDto;
 import jakarta.validation.Valid;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,5 +31,11 @@ public class ItemController {
         
         Page<ItemSummaryDto> results = itemService.searchItems(searchRequest, pageable);
         return ResponseEntity.ok(ResponseTemplate.success(results));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ResponseTemplate<ItemDetailDto>> getItemDetail(@PathVariable Integer id) {
+        ItemDetailDto itemDetail = itemService.getItemDetail(id);
+        return ResponseEntity.ok(ResponseTemplate.success(itemDetail));
     }
 }
