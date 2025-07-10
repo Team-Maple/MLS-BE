@@ -14,8 +14,10 @@ public class JwtTokenProvider {
   @Value("${jwt.secret}")
   private String secret;
 
-  private static final long ACCESS_TOKEN_EXPIRY = 1000 * 60 * 15;  // 15분
-  private static final long REFRESH_TOKEN_EXPIRY = 1000 * 60 * 60 * 24 * 7; // 7일
+//  private static final long ACCESS_TOKEN_EXPIRY = 1000L * 60 * 60;  // 1시간
+  private static final long ACCESS_TOKEN_EXPIRY = 1000L * 60 * 60 * 24 * 365 * 10;  // 10년
+//  private static final long REFRESH_TOKEN_EXPIRY = 1000L * 60 * 60 * 24 * 7; // 7일
+  private static final long REFRESH_TOKEN_EXPIRY = 1000L * 60 * 60 * 24 * 365 * 10; // 10년
 
   public String createAccessToken(String userId) {
     return createToken(userId, ACCESS_TOKEN_EXPIRY);
