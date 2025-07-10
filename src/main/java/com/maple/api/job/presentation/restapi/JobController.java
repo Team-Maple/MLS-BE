@@ -19,7 +19,7 @@ public class JobController {
     private final JobService jobService;
 
     @GetMapping
-    public ResponseEntity<ResponseTemplate<List<JobDto>>> getAllJobs() {
+    public ResponseEntity<ResponseTemplate<List<JobDto>>> findAllJobs() {
         return ResponseEntity.ok(ResponseTemplate.success(jobService.findAll()));
     }
 }

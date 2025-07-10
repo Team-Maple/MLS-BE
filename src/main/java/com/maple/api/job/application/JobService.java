@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,11 +36,11 @@ public class JobService {
     }
 
     public List<JobDto> findAll() {
-        return jobRepository.findAll().stream()
+        return jobCache.values().stream()
                 .filter(job -> !job.getJobId().equals(Job.COMMON_JOB_ID))
                 .filter(Job::isEnabled)
                 .map(JobDto::toDto)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private Integer findRootJobId(Integer jobId) {
