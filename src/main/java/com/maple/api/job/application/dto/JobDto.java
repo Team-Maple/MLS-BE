@@ -5,7 +5,8 @@ import com.maple.api.job.domain.Job;
 public record JobDto(
         Integer jobId,
         String jobName,
-        Integer jobLevel
+        Integer jobLevel,
+        Integer parentJobId
 ) {
     public static JobDto toDto(Job job) {
         if (job == null) {
@@ -15,7 +16,8 @@ public record JobDto(
         return new JobDto(
                 job.getJobId(),
                 job.getJobName(),
-                job.getJobLevel()
+                job.getJobLevel(),
+                job.getParentJob() != null ? job.getParentJob().getJobId() : null
         );
     }
 }
