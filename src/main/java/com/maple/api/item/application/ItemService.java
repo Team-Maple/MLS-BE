@@ -42,8 +42,8 @@ public class ItemService {
 
         item = loadTypeSpecificData(item);
 
-        Category leafCategory = categoryService.findById(item.getCategoryId()).orElse(null);
-        Category rootCategory = categoryService.findRootCategory(item.getCategoryId()).orElse(null);
+        Category leafCategory = categoryService.findById(item.getCategoryId());
+        Category rootCategory = categoryService.findRootCategory(item.getCategoryId());
 
         List<Job> availableJobs = jobRepository.findByItemId(itemId);
 

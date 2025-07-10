@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -36,16 +35,24 @@ public class CategoryService {
         }
     }
 
-    public Optional<Category> findById(Integer categoryId) {
-        return Optional.ofNullable(categoryCache.get(categoryId));
+    public Category findById(Integer categoryId) {
+        Category category = categoryCache.get(categoryId);
+        if (category == null) {
+            throw new IllegalArgumentException("Category not found id: " + categoryId);
+        }
+        return category;
     }
 
-    public Optional<Category> findRootCategory(Integer categoryId) {
+    public Category findRootCategory(Integer categoryId) {
         Integer rootCategoryId = rootCategoryCache.get(categoryId);
         if (rootCategoryId == null) {
-            return Optional.empty();
+            throw new IllegalArgumentException("Root category not found child id: " + categoryId);
         }
-        return Optional.ofNullable(categoryCache.get(rootCategoryId));
+        Category rootCategory = categoryCache.get(rootCategoryId);
+        if (rootCategory == null) {
+            throw new IllegalArgumentException("Root category not found id: " + rootCategoryId);
+        }
+        return rootCategory;
     }
 
     private Integer findRootCategoryId(Integer categoryId) {
@@ -64,7 +71,7 @@ public class CategoryService {
         return current != null ? current.getCategoryId() : null;
     }
 
-    public List<CategoryDto> findAllCategoryDto() {
+    public List<CategoryDto> getAllCategories() {
         return categoryCache.values().stream()
                 .filter(Category::isEnabled)
                 .map(CategoryDto::toDto)

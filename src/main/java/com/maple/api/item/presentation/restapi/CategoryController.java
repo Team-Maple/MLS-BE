@@ -18,6 +18,6 @@ public class CategoryController {
 
     @GetMapping
     public ResponseEntity<ResponseTemplate<List<CategoryDto>>> getAllCategories() {
-        return ResponseEntity.ok(ResponseTemplate.success(categoryService.findAllCategoryDto()));
+        return ResponseEntity.ok(ResponseTemplate.success(categoryService.getAllCategories()));
     }
 }
