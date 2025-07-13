@@ -38,6 +38,6 @@ public class Job extends BaseEntity {
     @OneToMany(mappedBy = "parentJob")
     private List<Job> childJobs = new ArrayList<>();
 
-    @Column(name = "is_enabled")
-    private boolean isEnabled;
+    @Column(name = "disabled")
+    private boolean disabled;
 }

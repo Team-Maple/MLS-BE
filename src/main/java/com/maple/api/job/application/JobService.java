@@ -38,7 +38,7 @@ public class JobService {
     public List<JobDto> findAll() {
         return jobCache.values().stream()
                 .filter(job -> !job.getJobId().equals(Job.COMMON_JOB_ID))
-                .filter(Job::isEnabled)
+                .filter(job -> !job.isDisabled())
                 .map(JobDto::toDto)
                 .toList();
     }
