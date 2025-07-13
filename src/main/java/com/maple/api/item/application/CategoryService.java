@@ -8,9 +8,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +20,7 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
     private final Map<Integer, Category> categoryCache = new ConcurrentHashMap<>();
     private final Map<Integer, Integer> rootCategoryCache = new ConcurrentHashMap<>();
+    private List<CategoryDto> categoryTreeCache;
 
     @PostConstruct
     public void initializeCache() {
@@ -33,6 +34,8 @@ public class CategoryService {
             Integer rootCategoryId = findRootCategoryId(category.getCategoryId());
             rootCategoryCache.put(category.getCategoryId(), rootCategoryId);
         }
+        
+        this.categoryTreeCache = buildAndCacheCategoryTree();
     }
 
     public Category findById(Integer categoryId) {
@@ -72,9 +75,40 @@ public class CategoryService {
     }
 
     public List<CategoryDto> getAllCategories() {
-        return categoryCache.values().stream()
+        return this.categoryTreeCache;
+    }
+
+    private List<CategoryDto> buildAndCacheCategoryTree() {
+        List<Category> enabledCategories = categoryCache.values().stream()
                 .filter(Category::isEnabled)
-                .map(CategoryDto::toDto)
                 .toList();
+
+        Map<Integer, List<Category>> categoryByParent = enabledCategories.stream()
+                .collect(Collectors.groupingBy(
+                        category -> category.getParentCategoryId() != null ? category.getParentCategoryId() : 0
+                ));
+
+        List<Category> rootCategories = categoryByParent.getOrDefault(0, Collections.emptyList());
+
+        return rootCategories.stream()
+                .map(rootCategory -> buildCategoryTree(rootCategory, categoryByParent, new HashSet<>()))
+                .toList();
+    }
+
+    private CategoryDto buildCategoryTree(Category category, Map<Integer, List<Category>> categoryByParent, Set<Integer> visited) {
+        if (!visited.add(category.getCategoryId())) {
+            log.warn("Circular reference detected for categoryId: {}", category.getCategoryId());
+            return CategoryDto.toDto(category, Collections.emptyList());
+        }
+
+        List<Category> children = categoryByParent.getOrDefault(category.getCategoryId(), Collections.emptyList());
+        
+        List<CategoryDto> childrenDtos = children.stream()
+                .map(child -> buildCategoryTree(child, categoryByParent, visited))
+                .toList();
+
+        visited.remove(category.getCategoryId());
+
+        return CategoryDto.toDto(category, childrenDtos);
     }
 }
