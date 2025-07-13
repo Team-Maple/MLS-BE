@@ -43,6 +43,6 @@ public class Category extends BaseEntity {
     @Column(name = "ui_display_name")
     private String uiDisplayName;
 
-    @Column(name = "is_enabled")
-    private boolean isEnabled;
+    @Column(name = "disabled")
+    private boolean disabled;
 }

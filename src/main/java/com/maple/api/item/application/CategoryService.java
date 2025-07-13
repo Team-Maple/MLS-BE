@@ -80,7 +80,7 @@ public class CategoryService {
 
     private List<CategoryDto> buildAndCacheCategoryTree() {
         List<Category> enabledCategories = categoryCache.values().stream()
-                .filter(Category::isEnabled)
+                .filter(category -> !category.isDisabled())
                 .toList();
 
         Map<Integer, List<Category>> categoryByParent = enabledCategories.stream()
