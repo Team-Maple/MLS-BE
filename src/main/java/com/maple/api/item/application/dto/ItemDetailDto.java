@@ -2,6 +2,7 @@ package com.maple.api.item.application.dto;
 
 import com.maple.api.item.domain.*;
 import com.maple.api.job.domain.Job;
+import com.maple.api.job.application.dto.JobDto;
 import lombok.Builder;
 
 import java.util.List;
