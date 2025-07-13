@@ -1,4 +1,4 @@
-package com.maple.api.item.repository;
+package com.maple.api.job.repository;
 
 import com.maple.api.job.domain.Job;
 import org.springframework.data.jpa.repository.JpaRepository;

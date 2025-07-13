@@ -55,6 +55,7 @@ public class SecurityConfig {
           .requestMatchers("/api/v1/npcs/**").permitAll()
           .requestMatchers("/api/v1/quests/**").permitAll()
           .requestMatchers("/api/v1/categories/**").permitAll()
+          .requestMatchers("/api/v1/jobs/**").permitAll()
           .anyRequest().authenticated()
       )
       .with(jwtSecurityAdapter, Customizer.withDefaults());

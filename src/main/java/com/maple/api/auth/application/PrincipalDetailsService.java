@@ -4,7 +4,6 @@ import com.maple.api.auth.domain.Member;
 import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.auth.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -20,6 +19,6 @@ public class PrincipalDetailsService implements UserDetailsService {
   @Override
   public UserDetails loadUserByUsername(String providerId) throws UsernameNotFoundException {
     Optional<Member> memberOpt = memberRepository.findById(providerId);
-    return memberOpt.map(PrincipalDetails::new).orElse(null);
+    return memberOpt.map(it -> new PrincipalDetails(it.getId())).orElse(null);
   }
 }

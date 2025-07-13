@@ -9,7 +9,7 @@ import com.maple.api.item.domain.Item;
 import com.maple.api.item.domain.ScrollItem;
 import com.maple.api.item.repository.ItemQueryDslRepository;
 import com.maple.api.item.repository.ItemRepository;
-import com.maple.api.item.repository.JobRepository;
+import com.maple.api.job.repository.JobRepository;
 import com.maple.api.job.domain.Job;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
