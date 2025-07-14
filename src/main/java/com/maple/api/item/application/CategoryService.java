@@ -1,7 +1,9 @@
 package com.maple.api.item.application;
 
+import com.maple.api.common.presentation.exception.ApiException;
 import com.maple.api.item.application.dto.CategoryDto;
 import com.maple.api.item.domain.Category;
+import com.maple.api.item.exception.ItemException;
 import com.maple.api.item.repository.CategoryRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +43,7 @@ public class CategoryService {
     public Category findById(Integer categoryId) {
         Category category = categoryCache.get(categoryId);
         if (category == null) {
-            throw new IllegalArgumentException("Category not found id: " + categoryId);
+            throw ApiException.of(ItemException.CATEGORY_NOT_FOUND);
         }
         return category;
     }
@@ -49,11 +51,11 @@ public class CategoryService {
     public Category findRootCategory(Integer categoryId) {
         Integer rootCategoryId = rootCategoryCache.get(categoryId);
         if (rootCategoryId == null) {
-            throw new IllegalArgumentException("Root category not found child id: " + categoryId);
+            throw ApiException.of(ItemException.CATEGORY_NOT_FOUND);
         }
         Category rootCategory = categoryCache.get(rootCategoryId);
         if (rootCategory == null) {
-            throw new IllegalArgumentException("Root category not found id: " + rootCategoryId);
+            throw ApiException.of(ItemException.CATEGORY_NOT_FOUND);
         }
         return rootCategory;
     }
