@@ -1,6 +1,5 @@
 package com.maple.api.job.presentation.restapi;
 
-import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.job.application.JobService;
 import com.maple.api.job.application.dto.JobDto;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +18,7 @@ public class JobController {
     private final JobService jobService;
 
     @GetMapping
-    public ResponseEntity<ResponseTemplate<List<JobDto>>> findAllJobs() {
-        return ResponseEntity.ok(ResponseTemplate.success(jobService.findAll()));
+    public ResponseEntity<List<JobDto>> findAllJobs() {
+        return ResponseEntity.ok(jobService.findAll());
     }
 }

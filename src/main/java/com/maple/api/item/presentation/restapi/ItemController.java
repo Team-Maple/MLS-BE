@@ -1,6 +1,5 @@
 package com.maple.api.item.presentation.restapi;
 
-import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.item.application.ItemService;
 import com.maple.api.item.application.dto.ItemDetailDto;
 import com.maple.api.item.application.dto.ItemSearchRequestDto;
@@ -25,17 +24,17 @@ public class ItemController {
     private final ItemService itemService;
 
     @GetMapping
-    public ResponseEntity<ResponseTemplate<Page<ItemSummaryDto>>> searchItems(
+    public ResponseEntity<Page<ItemSummaryDto>> searchItems(
             @Valid @ParameterObject ItemSearchRequestDto searchRequest,
             @PageableDefault(size = 20, sort = "name") Pageable pageable) {
         
         Page<ItemSummaryDto> results = itemService.searchItems(searchRequest, pageable);
-        return ResponseEntity.ok(ResponseTemplate.success(results));
+        return ResponseEntity.ok(results);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ResponseTemplate<ItemDetailDto>> getItemDetail(@PathVariable Integer id) {
+    public ResponseEntity<ItemDetailDto> getItemDetail(@PathVariable Integer id) {
         ItemDetailDto itemDetail = itemService.getItemDetail(id);
-        return ResponseEntity.ok(ResponseTemplate.success(itemDetail));
+        return ResponseEntity.ok(itemDetail);
     }
 }
