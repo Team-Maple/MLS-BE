@@ -27,16 +27,16 @@ public class CategoryService {
     @PostConstruct
     public void initializeCache() {
         List<Category> categories = categoryRepository.findAll();
-        
+
         for (Category category : categories) {
             categoryCache.put(category.getCategoryId(), category);
         }
-        
+
         for (Category category : categories) {
             Integer rootCategoryId = findRootCategoryId(category.getCategoryId());
             rootCategoryCache.put(category.getCategoryId(), rootCategoryId);
         }
-        
+
         this.categoryTreeCache = buildAndCacheCategoryTree();
     }
 
@@ -63,17 +63,17 @@ public class CategoryService {
     private Integer findRootCategoryId(Integer categoryId) {
         Category current = categoryCache.get(categoryId);
         if (current == null) {
-            return null;
+            throw ApiException.of(ItemException.CATEGORY_NOT_FOUND);
         }
         
         while (current.getParentCategoryId() != null) {
             current = categoryCache.get(current.getParentCategoryId());
             if (current == null) {
-                break;
+                throw ApiException.of(ItemException.PARENT_CATEGORY_NOT_FOUND);
             }
         }
         
-        return current != null ? current.getCategoryId() : null;
+        return current.getCategoryId();
     }
 
     public List<CategoryDto> getAllCategories() {
