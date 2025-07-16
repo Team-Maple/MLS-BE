@@ -4,36 +4,60 @@ import com.maple.api.item.application.ItemService;
 import com.maple.api.item.application.dto.ItemDetailDto;
 import com.maple.api.item.application.dto.ItemSearchRequestDto;
 import com.maple.api.item.application.dto.ItemSummaryDto;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/items")
 @RequiredArgsConstructor
+@Tag(name = "Item", description = "아이템 관련 API")
 public class ItemController {
 
     private final ItemService itemService;
 
     @GetMapping
+    @Operation(
+        summary = "아이템 검색",
+        description = "다양한 조건으로 아이템을 검색합니다. 키워드, 직업, 레벨 범위, 카테고리 등으로 필터링할 수 있으며, 정렬 옵션을 제공합니다.\n\n" +
+                     "**정렬 가능한 필드:**\n" +
+                     "- name: 아이템명\n" +
+                     "- level: 요구레벨\n" +
+                     "- itemId: 아이템ID\n\n" +
+                     "**정렬 사용 예시:**\n" +
+                     "- `sort=name,asc` (아이템명 오름차순)\n" +
+                     "- `sort=level,desc` (레벨 내림차순)\n" +
+                     "- `sort=name,asc,level,desc` (아이템명 오름차순, 레벨 내림차순)"
+    )
     public ResponseEntity<Page<ItemSummaryDto>> searchItems(
             @Valid @ParameterObject ItemSearchRequestDto searchRequest,
-            @PageableDefault(size = 20, sort = "name") Pageable pageable) {
+            @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable) {
         
         Page<ItemSummaryDto> results = itemService.searchItems(searchRequest, pageable);
         return ResponseEntity.ok(results);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ItemDetailDto> getItemDetail(@PathVariable Integer id) {
+    @Operation(
+        summary = "아이템 상세 조회",
+        description = "아이템 ID로 특정 아이템의 상세 정보를 조회합니다.\n\n" +
+                "장비 아이템의 경우 스탯 정보,\n\n" +
+                "주문서 아이템의 경우 스크롤 정보 등을 포함합니다."
+    )
+    public ResponseEntity<ItemDetailDto> getItemDetail(
+            @Parameter(description = "아이템 ID", example = "1302000", required = true)
+            @PathVariable Integer id) {
         ItemDetailDto itemDetail = itemService.getItemDetail(id);
         return ResponseEntity.ok(itemDetail);
     }
