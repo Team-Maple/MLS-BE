@@ -1,8 +1,22 @@
 package com.maple.api.item.application.dto;
 
 import com.maple.api.item.domain.Item;
+import io.swagger.v3.oas.annotations.media.Schema;
 
-public record ItemSummaryDto(Integer itemId, String name, String imageUrl, String type) {
+@Schema(description = "아이템 요약 정보 DTO")
+public record ItemSummaryDto(
+        @Schema(description = "아이템 ID", example = "1002001")
+        Integer itemId,
+        
+        @Schema(description = "아이템명", example = "메탈 기어")
+        String name,
+        
+        @Schema(description = "아이템 이미지 URL", example = "https://maplestory.io/api/gms/62/item/1002001/icon?resize=2")
+        String imageUrl,
+        
+        @Schema(description = "아이템 타입 (고정값: 'item')", example = "item")
+        String type
+) {
     public static ItemSummaryDto toDto(Item entity) {
         return new ItemSummaryDto(
                 entity.getItemId(), 

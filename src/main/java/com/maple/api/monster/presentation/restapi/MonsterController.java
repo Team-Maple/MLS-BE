@@ -3,6 +3,10 @@ package com.maple.api.monster.presentation.restapi;
 import com.maple.api.monster.application.MonsterService;
 import com.maple.api.monster.application.dto.MonsterSearchRequestDto;
 import com.maple.api.monster.application.dto.MonsterSummaryDto;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -17,14 +21,29 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/monsters")
 @RequiredArgsConstructor
+@Tag(name = "Monster", description = "몬스터 관련 API")
 public class MonsterController {
 
     private final MonsterService monsterService;
 
     @GetMapping
+    @Operation(
+        summary = "몬스터 검색",
+        description = "다양한 조건으로 몬스터를 검색합니다. 이름으로 필터링할 수 있습니다.\n\n" +
+                     "**정렬 기준:**\n" +
+                     "- monsterId: 몬스터 ID 순 정렬 (기본값)\n" +
+                     "- name, level, exp 등 다양한 필드로 정렬 가능\n\n" +
+                     "**정렬 사용 예시:**\n" +
+                     "- `sort=name,asc` (몬스터 이름 오름차순)\n"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "몬스터 검색 결과 조회 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
     public ResponseEntity<Page<MonsterSummaryDto>> searchMonsters(
             @Valid @ParameterObject MonsterSearchRequestDto request,
-            @PageableDefault(size = 20, sort = "monsterId") Pageable pageable) {
+            @ParameterObject @PageableDefault(size = 20, sort = "monsterId") Pageable pageable) {
         return ResponseEntity.ok(monsterService.searchMonsters(request, pageable));
     }
 }
