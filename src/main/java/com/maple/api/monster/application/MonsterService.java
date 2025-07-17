@@ -11,6 +11,7 @@ import com.maple.api.monster.domain.Monster;
 import com.maple.api.monster.repository.ItemMonsterDropRepository;
 import com.maple.api.monster.repository.MonsterQueryDslRepository;
 import com.maple.api.monster.repository.MonsterRepository;
+import com.maple.api.monster.repository.MonsterTypeEffectivenessRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +34,7 @@ public class MonsterService {
     private final ItemMonsterDropRepository itemMonsterDropRepository;
     private final MapRepository mapRepository;
     private final ItemRepository itemRepository;
+    private final MonsterTypeEffectivenessRepository monsterTypeEffectivenessRepository;
 
     @Transactional(readOnly = true)
     public Page<MonsterSummaryDto> searchMonsters(MonsterSearchRequestDto request, Pageable pageable) {
@@ -60,10 +62,15 @@ public class MonsterService {
         Map<Integer, Item> itemById = fetchItemsAsMap(itemIds);
 
         // 5. DTO 변환 및 Response 생성
-        List<MonsterSpawnMapInfo> spawnMapInfos = convertToSpawnMapInfos(spawnMaps, mapById);
-        List<MonsterDropItemInfo> dropItemInfos = convertToDropItemInfos(dropItems, itemById);
+        List<MonsterSpawnMapDto> spawnMapDtos = convertToSpawnMapInfos(spawnMaps, mapById);
+        List<MonsterDropItemDto> dropItemDtos = convertToDropItemInfos(dropItems, itemById);
 
-        return MonsterDetailDto.toDto(monster, spawnMapInfos, dropItemInfos);
+        // 6. 속성 효과
+        MonsterTypeEffectivenessDto typeEffectivenessDto = monsterTypeEffectivenessRepository.findByMonsterId(monsterId)
+                .map(MonsterTypeEffectivenessDto::toDto)
+                .orElse(null);
+
+        return MonsterDetailDto.toDto(monster, spawnMapDtos, dropItemDtos, typeEffectivenessDto);
     }
 
     // 추출 메서드들
@@ -99,7 +106,7 @@ public class MonsterService {
     }
 
     // 변환 메서드들
-    private List<MonsterSpawnMapInfo> convertToSpawnMapInfos(
+    private List<MonsterSpawnMapDto> convertToSpawnMapInfos(
             List<MonsterSpawnMap> spawnMaps,
             Map<Integer, com.maple.api.map.domain.Map> mapById
     ) {
@@ -110,12 +117,12 @@ public class MonsterService {
                     // if (map == null) {
                     //     throw ApiException.of(MapException.NOT_FOUND);
                     // }
-                    return MonsterSpawnMapInfo.toDto(spawnMap, map);
+                    return MonsterSpawnMapDto.toDto(spawnMap, map);
                 })
                 .toList();
     }
 
-    private List<MonsterDropItemInfo> convertToDropItemInfos(
+    private List<MonsterDropItemDto> convertToDropItemInfos(
             List<ItemMonsterDrop> dropItems,
             Map<Integer, Item> itemById
     ) {
@@ -126,7 +133,7 @@ public class MonsterService {
                     // if (item == null) {
                     //     throw ApiException.of(MapException.NOT_FOUND);
                     // }
-                    return MonsterDropItemInfo.toDto(dropItem, item);
+                    return MonsterDropItemDto.toDto(dropItem, item);
                 })
                 .toList();
     }

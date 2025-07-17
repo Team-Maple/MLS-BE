@@ -52,15 +52,19 @@ public record MonsterDetailDto(
         Integer mesoDropRate,
         
         @Schema(description = "스폰 맵 정보 목록")
-        List<MonsterSpawnMapInfo> spawnMaps,
+        List<MonsterSpawnMapDto> spawnMaps,
         
         @Schema(description = "드롭 아이템 정보 목록")
-        List<MonsterDropItemInfo> dropItems
+        List<MonsterDropItemDto> dropItems,
+        
+        @Schema(description = "속성 효과 정보")
+        MonsterTypeEffectivenessDto typeEffectiveness
 ) {
     public static MonsterDetailDto toDto(
             Monster monster,
-            List<MonsterSpawnMapInfo> spawnMaps,
-            List<MonsterDropItemInfo> dropItems
+            List<MonsterSpawnMapDto> spawnMaps,
+            List<MonsterDropItemDto> dropItems,
+            MonsterTypeEffectivenessDto typeEffectiveness
     ) {
         return new MonsterDetailDto(
                 monster.getMonsterId(),
@@ -79,7 +83,8 @@ public record MonsterDetailDto(
                 monster.getMesoDropAmount(),
                 monster.getMesoDropRate(),
                 spawnMaps,
-                dropItems
+                dropItems,
+                typeEffectiveness
         );
     }
 }
