@@ -2,7 +2,9 @@ package com.maple.api.job.application;
 
 import com.maple.api.job.application.dto.JobDto;
 import com.maple.api.job.domain.Job;
+import com.maple.api.job.exception.JobException;
 import com.maple.api.job.repository.JobRepository;
+import com.maple.api.common.presentation.exception.ApiException;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,11 +26,11 @@ public class JobService {
     @PostConstruct
     public void initializeCache() {
         List<Job> jobs = jobRepository.findAll();
-        
+
         for (Job job : jobs) {
             jobCache.put(job.getJobId(), job);
         }
-        
+
         for (Job job : jobs) {
             Integer rootJobId = findRootJobId(job.getJobId());
             rootJobCache.put(job.getJobId(), rootJobId);
@@ -46,16 +48,16 @@ public class JobService {
     private Integer findRootJobId(Integer jobId) {
         Job current = jobCache.get(jobId);
         if (current == null) {
-            return null;
+            throw ApiException.of(JobException.JOB_NOT_FOUND);
         }
 
         while (current.getParentJob() != null) {
             current = jobCache.get(current.getParentJob().getJobId());
             if (current == null) {
-                break;
+                throw ApiException.of(JobException.PARENT_JOB_NOT_FOUND);
             }
         }
 
-        return current != null ? current.getJobId() : null;
+        return current.getJobId();
     }
 }
