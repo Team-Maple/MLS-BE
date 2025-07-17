@@ -49,13 +49,13 @@ public class MonsterService {
                 .orElseThrow(() -> new IllegalArgumentException("Monster not found with id: " + monsterId));
                 //.orElseThrow(() -> throw ApiException.of(MapException.NOT_FOUND));
 
-        // 2. 연관 데이터 조회
+        // 2. 연관 엔티티 ID 조회 (커버링 인덱스 최적화)
+        List<Integer> mapIds = monsterSpawnMapRepository.findMapIdsByMonsterId(monsterId);
+        List<Integer> itemIds = itemMonsterDropRepository.findItemIdsByMonsterId(monsterId);
+        
+        // 3. 연관 데이터 조회
         List<MonsterSpawnMap> spawnMaps = monsterSpawnMapRepository.findByMonsterId(monsterId);
         List<ItemMonsterDrop> dropItems = itemMonsterDropRepository.findByMonsterId(monsterId);
-
-        // 3. 연관 엔티티 조회를 위한 ID 추출
-        List<Integer> mapIds = extractMapIds(spawnMaps);
-        List<Integer> itemIds = extractItemIds(dropItems);
 
         // 4. 연관 엔티티 일괄 조회 및 Map으로 변환
         Map<Integer, com.maple.api.map.domain.Map> mapById = fetchMapsAsMap(mapIds);
@@ -75,20 +75,6 @@ public class MonsterService {
         return MonsterDetailDto.toDto(monster, spawnMapDtos, dropItemDtos, typeEffectivenessDto);
     }
 
-    // 추출 메서드들
-    private List<Integer> extractMapIds(List<MonsterSpawnMap> spawnMaps) {
-        return spawnMaps.stream()
-                .map(MonsterSpawnMap::getMapId)
-                .distinct()
-                .toList();
-    }
-
-    private List<Integer> extractItemIds(List<ItemMonsterDrop> dropItems) {
-        return dropItems.stream()
-                .map(ItemMonsterDrop::getItemId)
-                .distinct()
-                .toList();
-    }
 
     // 조회 메서드들
     private Map<Integer, com.maple.api.map.domain.Map> fetchMapsAsMap(List<Integer> mapIds) {
