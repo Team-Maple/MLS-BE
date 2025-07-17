@@ -5,7 +5,7 @@ import com.maple.api.map.domain.MonsterSpawnMap;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "몬스터 스폰 맵 정보")
-public record MonsterSpawnMapInfo(
+public record MonsterSpawnMapDto(
         @Schema(description = "맵 ID", example = "103000000")
         Integer mapId,
         
@@ -27,14 +27,18 @@ public record MonsterSpawnMapInfo(
         @Schema(description = "최대 스폰 수", example = "10")
         Integer maxSpawnCount
 ) {
-    public static MonsterSpawnMapInfo toDto(MonsterSpawnMap spawnMap, Map map) {
-        return new MonsterSpawnMapInfo(
+    public static MonsterSpawnMapDto toDto(MonsterSpawnMap spawnMap, Map map) {
+        if (map == null) {
+            return null;
+        }
+
+        return new MonsterSpawnMapDto(
                 spawnMap.getMapId(),
-                map != null ? map.getNameKr() : null,
-                map != null ? map.getRegionName() : null,
-                map != null ? map.getDetailName() : null,
-                map != null ? map.getTopRegionName() : null,
-                map != null ? map.getIconUrl() : null,
+                map.getNameKr() ,
+                map.getRegionName(),
+                map.getDetailName(),
+                map.getTopRegionName(),
+                map.getIconUrl(),
                 spawnMap.getMaxSpawnCount()
         );
     }

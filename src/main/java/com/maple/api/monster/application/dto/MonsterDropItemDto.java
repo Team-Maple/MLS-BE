@@ -6,7 +6,7 @@ import com.maple.api.monster.domain.ItemMonsterDrop;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "몬스터 드롭 아이템 정보")
-public record MonsterDropItemInfo(
+public record MonsterDropItemDto(
         @Schema(description = "아이템 ID", example = "2000000")
         Integer itemId,
         
@@ -22,12 +22,12 @@ public record MonsterDropItemInfo(
         @Schema(description = "드롭 확률", example = "0.1")
         Double dropRate
 ) {
-    public static MonsterDropItemInfo toDto(ItemMonsterDrop dropItem, Item item) {
+    public static MonsterDropItemDto toDto(ItemMonsterDrop dropItem, Item item) {
         if (item == null) {
             return null;
         }
 
-        return new MonsterDropItemInfo(
+        return new MonsterDropItemDto(
                 dropItem.getItemId(),
                 item.getNameKr(),
                 item instanceof EquipmentItem e ? e.getRequiredStats().getLevel() : 0,
