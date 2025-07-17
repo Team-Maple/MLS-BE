@@ -69,6 +69,8 @@ public class MonsterService {
         MonsterTypeEffectivenessDto typeEffectivenessDto = monsterTypeEffectivenessRepository.findByMonsterId(monsterId)
                 .map(MonsterTypeEffectivenessDto::toDto)
                 .orElse(null);
+                // TODO: Domain Exception 병합 후 수정
+                //.orElseThrow(() -> throw ApiException.of(MapException.NOT_FOUND));
 
         return MonsterDetailDto.toDto(monster, spawnMapDtos, dropItemDtos, typeEffectivenessDto);
     }
