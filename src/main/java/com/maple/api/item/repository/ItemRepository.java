@@ -6,6 +6,7 @@ import com.maple.api.item.domain.ScrollItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ItemRepository extends JpaRepository<Item, Integer> {
@@ -14,4 +15,6 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
 
     @Query("SELECT i FROM ScrollItem i JOIN FETCH i.scrollDetail WHERE i.itemId = :id")
     Optional<ScrollItem> findScrollDetailById(Integer id);
+    
+    List<Item> findByItemIdIn(List<Integer> itemIds);
 }

@@ -1,9 +1,13 @@
 package com.maple.api.monster.presentation.restapi;
 
 import com.maple.api.monster.application.MonsterService;
+import com.maple.api.monster.application.dto.MonsterDetailDto;
 import com.maple.api.monster.application.dto.MonsterSearchRequestDto;
 import com.maple.api.monster.application.dto.MonsterSummaryDto;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,9 +19,11 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Monster", description = "몬스터 관련 API")
 @RestController
 @RequestMapping("/api/v1/monsters")
 @RequiredArgsConstructor
@@ -45,5 +51,22 @@ public class MonsterController {
             @Valid @ParameterObject MonsterSearchRequestDto request,
             @ParameterObject @PageableDefault(size = 20, sort = "monsterId") Pageable pageable) {
         return ResponseEntity.ok(monsterService.searchMonsters(request, pageable));
+    }
+
+    @Operation(summary = "몬스터 상세 조회", description = "특정 몬스터의 상세 정보를 조회합니다. 스폰 맵과 드롭 아이템 정보가 포함됩니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "성공적으로 조회됨", 
+                    content = @Content(schema = @Schema(implementation = MonsterDetailDto.class))),
+            @ApiResponse(responseCode = "404", description = "몬스터를 찾을 수 없음",
+                    // TODO: Schema 추가
+                    content = @Content),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류", 
+                    content = @Content)
+    })
+    @GetMapping("/{monsterId}")
+    public ResponseEntity<MonsterDetailDto> getMonsterDetail(
+            @Parameter(description = "몬스터 ID", required = true, example = "100100")
+            @PathVariable Integer monsterId) {
+        return ResponseEntity.ok(monsterService.getMonsterDetail(monsterId));
     }
 }
