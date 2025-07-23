@@ -1,5 +1,6 @@
 package com.maple.api.item.repository;
 
+import com.maple.api.item.application.dto.ItemMonsterDropDto;
 import com.maple.api.item.application.dto.ItemSearchRequestDto;
 import com.maple.api.item.domain.Item;
 import com.maple.api.job.domain.Job;
@@ -8,11 +9,13 @@ import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Path;
+import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
@@ -24,6 +27,8 @@ import java.util.Map;
 import static com.maple.api.item.domain.QEquipmentItem.equipmentItem;
 import static com.maple.api.item.domain.QItem.item;
 import static com.maple.api.item.domain.QItemJob.itemJob;
+import static com.maple.api.monster.domain.QItemMonsterDrop.itemMonsterDrop;
+import static com.maple.api.monster.domain.QMonster.monster;
 
 @Repository
 @RequiredArgsConstructor
@@ -34,6 +39,12 @@ public class ItemQueryDslRepositoryImpl implements ItemQueryDslRepository {
             "name", item.nameKr,
             "level", equipmentItem.requiredStats.level,
             "itemId", item.itemId
+    );
+    
+    private final Map<String, Path<?>> monsterDropSortableProperties = Map.of(
+            "dropRate", itemMonsterDrop.dropRate,
+            "level", monster.level,
+            "monsterId", monster.monsterId
     );
 
     @Override
@@ -137,5 +148,44 @@ public class ItemQueryDslRepositoryImpl implements ItemQueryDslRepository {
                 .leftJoin(equipmentItem).on(item.itemId.eq(equipmentItem.itemId))
                 .leftJoin(itemJob).on(item.itemId.eq(itemJob.itemId))
                 .where(where);
+    }
+
+    @Override
+    public List<ItemMonsterDropDto> findItemDropMonstersByItemId(Integer itemId, Sort sort) {
+        List<OrderSpecifier<?>> orderSpecifiers = createMonsterDropOrderClause(sort);
+        
+        return queryFactory
+                .select(Projections.constructor(ItemMonsterDropDto.class,
+                        monster.monsterId,
+                        monster.nameKr,
+                        monster.level,
+                        itemMonsterDrop.dropRate,
+                        monster.imageUrl))
+                .from(itemMonsterDrop)
+                .join(monster).on(itemMonsterDrop.monsterId.eq(monster.monsterId))
+                .where(itemMonsterDrop.itemId.eq(itemId))
+                .orderBy(orderSpecifiers.toArray(new OrderSpecifier[0]))
+                .fetch();
+    }
+    
+    private List<OrderSpecifier<?>> createMonsterDropOrderClause(Sort sort) {
+        if (sort.isUnsorted()) {
+            return List.of(itemMonsterDrop.dropRate.desc());
+        }
+
+        List<OrderSpecifier<?>> orderSpecifiers = new ArrayList<>();
+
+        sort.forEach(order -> {
+            Path<?> path = monsterDropSortableProperties.get(order.getProperty());
+            if (path != null) {
+                orderSpecifiers.add(new OrderSpecifier(order.isAscending() ? Order.ASC : Order.DESC, path));
+            }
+        });
+
+        if (orderSpecifiers.isEmpty()) {
+            orderSpecifiers.add(itemMonsterDrop.dropRate.desc());
+        }
+        
+        return orderSpecifiers;
     }
 }

@@ -2,6 +2,7 @@ package com.maple.api.item.application;
 
 import com.maple.api.common.presentation.exception.ApiException;
 import com.maple.api.item.application.dto.ItemDetailDto;
+import com.maple.api.item.application.dto.ItemMonsterDropDto;
 import com.maple.api.item.application.dto.ItemSearchRequestDto;
 import com.maple.api.item.application.dto.ItemSummaryDto;
 import com.maple.api.item.domain.Category;
@@ -16,6 +17,7 @@ import com.maple.api.job.repository.JobRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +64,15 @@ public class ItemService {
         } else {
             return item;
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<ItemMonsterDropDto> getItemDropMonsters(Integer itemId, Sort sort) {
+        if (!itemRepository.existsById(itemId)) {
+            throw ApiException.of(ItemException.ITEM_NOT_FOUND);
+        }
+
+        return itemQueryDslRepository.findItemDropMonstersByItemId(itemId, sort);
     }
 
 }
