@@ -2,7 +2,6 @@ package com.maple.api.monster.application.dto;
 
 import com.maple.api.monster.domain.Monster;
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.util.List;
 
 @Schema(description = "몬스터 상세 정보 응답")
 public record MonsterDetailDto(
@@ -51,19 +50,11 @@ public record MonsterDetailDto(
         @Schema(description = "메소 드롭 확률", example = "65")
         Integer mesoDropRate,
         
-        @Schema(description = "스폰 맵 정보 목록")
-        List<MonsterSpawnMapDto> spawnMaps,
-        
-        @Schema(description = "드롭 아이템 정보 목록")
-        List<MonsterDropItemDto> dropItems,
-        
         @Schema(description = "속성 효과 정보")
         MonsterTypeEffectivenessDto typeEffectiveness
 ) {
     public static MonsterDetailDto toDto(
             Monster monster,
-            List<MonsterSpawnMapDto> spawnMaps,
-            List<MonsterDropItemDto> dropItems,
             MonsterTypeEffectivenessDto typeEffectiveness
     ) {
         return new MonsterDetailDto(
@@ -82,8 +73,6 @@ public record MonsterDetailDto(
                 monster.getEvasionRate(),
                 monster.getMesoDropAmount(),
                 monster.getMesoDropRate(),
-                spawnMaps,
-                dropItems,
                 typeEffectiveness
         );
     }

@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface MonsterRepository extends JpaRepository<Monster, Integer> {
     Optional<Monster> findByMonsterId(Integer monsterId);
+    boolean existsByMonsterId(Integer monsterId);
 }

@@ -1,10 +1,8 @@
 package com.maple.api.monster.application.dto;
 
-import com.maple.api.map.domain.Map;
-import com.maple.api.map.domain.MonsterSpawnMap;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(description = "몬스터 스폰 맵 정보")
+@Schema(description = "몬스터 출현 맵 정보")
 public record MonsterSpawnMapDto(
         @Schema(description = "맵 ID", example = "103000000")
         Integer mapId,
@@ -27,19 +25,4 @@ public record MonsterSpawnMapDto(
         @Schema(description = "최대 스폰 수", example = "10")
         Integer maxSpawnCount
 ) {
-    public static MonsterSpawnMapDto toDto(MonsterSpawnMap spawnMap, Map map) {
-        if (map == null) {
-            return null;
-        }
-
-        return new MonsterSpawnMapDto(
-                spawnMap.getMapId(),
-                map.getNameKr() ,
-                map.getRegionName(),
-                map.getDetailName(),
-                map.getTopRegionName(),
-                map.getIconUrl(),
-                spawnMap.getMaxSpawnCount()
-        );
-    }
 }
