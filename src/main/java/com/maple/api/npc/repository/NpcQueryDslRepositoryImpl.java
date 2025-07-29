@@ -1,26 +1,43 @@
 package com.maple.api.npc.repository;
 
+import com.maple.api.npc.application.dto.NpcQuestDto;
 import com.maple.api.npc.application.dto.NpcSearchRequestDto;
+import com.maple.api.npc.application.dto.NpcSpawnMapDto;
 import com.maple.api.npc.domain.Npc;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.core.types.Path;
+import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import static com.maple.api.map.domain.QMap.map;
+import static com.maple.api.map.domain.QMapNpc.mapNpc;
 import static com.maple.api.npc.domain.QNpc.npc;
+import static com.maple.api.quest.domain.QNpcQuest.npcQuest;
+import static com.maple.api.quest.domain.QQuest.quest;
 
 @Repository
 @RequiredArgsConstructor
 public class NpcQueryDslRepositoryImpl implements NpcQueryDslRepository {
     private final JPAQueryFactory queryFactory;
+    
+    private final Map<String, Path<?>> questSortableProperties = Map.of(
+            "minLevel", quest.minLevel,
+            "maxLevel", quest.maxLevel
+    );
 
     @Override
     public Page<Npc> searchNpcs(NpcSearchRequestDto request, Pageable pageable) {
@@ -78,5 +95,61 @@ public class NpcQueryDslRepositoryImpl implements NpcQueryDslRepository {
                 .select(npc.count())
                 .from(npc)
                 .where(where);
+    }
+
+    @Override
+    public List<NpcSpawnMapDto> findNpcSpawnMapsByNpcId(Integer npcId) {
+        return queryFactory
+                .select(Projections.constructor(NpcSpawnMapDto.class,
+                        map.mapId,
+                        map.nameKr,
+                        map.regionName,
+                        map.detailName,
+                        map.topRegionName,
+                        map.iconUrl
+                ))
+                .from(mapNpc)
+                .join(map).on(mapNpc.mapId.eq(map.mapId))
+                .where(mapNpc.npcId.eq(npcId))
+                .fetch();
+    }
+
+    @Override
+    public List<NpcQuestDto> findNpcQuestsByNpcId(Integer npcId, Sort sort) {
+        List<OrderSpecifier<?>> orderSpecifiers = createOrderSpecifiers(sort, questSortableProperties, quest.minLevel.asc());
+        
+        return queryFactory
+                .select(Projections.constructor(NpcQuestDto.class,
+                        quest.questId,
+                        quest.nameKr,
+                        npcQuest.questIconUrl,
+                        quest.minLevel,
+                        quest.maxLevel
+                ))
+                .from(npcQuest)
+                .join(quest).on(npcQuest.questId.eq(quest.questId))
+                .where(npcQuest.npcId.eq(npcId))
+                .orderBy(orderSpecifiers.toArray(new OrderSpecifier[0]))
+                .fetch();
+    }
+    
+    private List<OrderSpecifier<?>> createOrderSpecifiers(Sort sort, Map<String, Path<?>> sortableProperties, OrderSpecifier<?> defaultOrder) {
+        if (sort == null || sort.isUnsorted()) {
+            return List.of(defaultOrder);
+        }
+
+        List<OrderSpecifier<?>> orderSpecifiers = new ArrayList<>();
+        sort.forEach(order -> {
+            Path<?> path = sortableProperties.get(order.getProperty());
+            if (path != null) {
+                orderSpecifiers.add(new OrderSpecifier(order.isAscending() ? Order.ASC : Order.DESC, path));
+            }
+        });
+
+        if (orderSpecifiers.isEmpty()) {
+            orderSpecifiers.add(defaultOrder);
+        }
+        
+        return orderSpecifiers;
     }
 }
