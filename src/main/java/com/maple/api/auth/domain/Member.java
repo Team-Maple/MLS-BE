@@ -11,6 +11,7 @@ import java.util.Random;
 
 @Entity
 @Getter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 public class Member {
@@ -38,10 +39,16 @@ public class Member {
   private String fcmToken;
 
   @Setter
+  @Builder.Default
   private Boolean marketingAgreement = false;
 
+  @Builder.Default
   private Boolean noticeAgreement = false;
+
+  @Builder.Default
   private Boolean patchNoteAgreement = false;
+
+  @Builder.Default
   private Boolean eventAgreement = false;
 
   // private String role;
@@ -51,9 +58,11 @@ public class Member {
 
 
   @CreatedDate
+  @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();
 
   @LastModifiedDate
+  @Builder.Default
   private LocalDateTime updatedAt = LocalDateTime.now();
 
   public Member(
