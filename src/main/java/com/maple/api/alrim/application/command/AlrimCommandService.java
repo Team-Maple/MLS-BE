@@ -13,13 +13,13 @@ import org.springframework.stereotype.Service;
 public class AlrimCommandService {
   private final AlrimReadRepository alrimReadRepository;
 
-  public void readAlrim(
+  public void setReadAlrim(
     String memberId,
     String alrimLink
   ) {
     val alrimRead = new AlrimRead(
-      memberId,
-      alrimLink
+      alrimLink,
+      memberId
     );
 
     alrimReadRepository.save(alrimRead);

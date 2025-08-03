@@ -28,12 +28,12 @@ public class AlrimController {
     summary = "알림 읽기 처리",
     description = "각 멤버의 알림 읽음 처리"
   )
-  @PostMapping("/read")
-  public void readAlrim(
+  @PostMapping("/set-read")
+  public void setReadAlrim(
     @AuthenticationPrincipal PrincipalDetails principalDetails,
     String alrimLink
   ) {
-    commandService.readAlrim(
+    commandService.setReadAlrim(
       principalDetails.getProviderId(),
       alrimLink
     );

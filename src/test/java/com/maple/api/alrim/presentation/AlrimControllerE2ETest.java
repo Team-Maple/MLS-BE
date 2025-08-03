@@ -10,9 +10,11 @@ import com.maple.api.alrim.domain.AlrimType;
 import com.maple.api.alrim.repository.AlrimReadRepository;
 import com.maple.api.alrim.repository.AlrimRepository;
 import com.maple.api.auth.domain.PrincipalDetails;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -50,6 +52,12 @@ public class AlrimControllerE2ETest {
   @MockitoBean
   private AlrimReadRepository alrimReadRepository;
 
+  @AfterEach
+  void reset() {
+    Mockito.reset(alrimReadRepository);
+    alrimRepository.deleteAll();
+  }
+
   @Nested
   @DisplayName("GET /api/v1/alrim/all")
   class CursorPaginationTest {
@@ -75,19 +83,14 @@ public class AlrimControllerE2ETest {
       int size = 5;
 
       // when: 요청 1
-      MvcResult result = mockMvc.perform(get("/api/v1/alrim/all")
-          .param("pageSize", String.valueOf(size))
-          .with(user(LoginedUser))
-          .accept(MediaType.APPLICATION_JSON))
-        .andExpect(status().isOk())
-        .andReturn();
-
-      String json = result.getResponse().getContentAsString();
-
       CursorPage<AlrimDTOWithReadInfo> response = objectMapper.readValue(
-        json,
-        new TypeReference<CursorPage<AlrimDTOWithReadInfo>>() {
-        }
+        mockMvc.perform(get("/api/v1/alrim/all")
+            .param("pageSize", String.valueOf(size))
+            .with(user(LoginedUser))
+            .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andReturn().getResponse().getContentAsString(),
+        new TypeReference<>() {}
       );
 
       // then: 기대값 검증 1
@@ -98,20 +101,16 @@ public class AlrimControllerE2ETest {
 
       LocalDateTime cursorDate = content.getLast().alrim().date();
 
-      // when: 요청 2
-      MvcResult resultTwo = mockMvc.perform(get("/api/v1/alrim/all")
-          .with(user(LoginedUser))
-          .param("pageSize", String.valueOf(size))
-          .param("cursor", cursorDate.toString())
-          .accept(MediaType.APPLICATION_JSON))
-        .andExpect(status().isOk())
-        .andReturn();
-
-      String json2 = resultTwo.getResponse().getContentAsString();
-
+      // MockMVC 요청 2
       CursorPage<AlrimDTOWithReadInfo> response2 = objectMapper.readValue(
-        json2,
-        new TypeReference<CursorPage<AlrimDTOWithReadInfo>>() {
+        mockMvc.perform(get("/api/v1/alrim/all")
+            .with(user(LoginedUser))
+            .param("pageSize", String.valueOf(size))
+            .param("cursor", cursorDate.toString())
+            .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andReturn().getResponse().getContentAsString(),
+        new TypeReference<>() {
         }
       );
 
@@ -120,7 +119,7 @@ public class AlrimControllerE2ETest {
     }
 
     @Test
-    @DisplayName("성공: GET /api/v1/alrim/read 알림 읽기를 했다면 반영하기")
+    @DisplayName("성공: GET /api/v1/alrim/set-read 알림 읽기를 했다면 반영하기")
     void cursorWithAlreadyReadTest() throws Exception {
       // given: Test Auth
       UserDetails LoginedUser = createTestPrincipal("TESTUSER");
