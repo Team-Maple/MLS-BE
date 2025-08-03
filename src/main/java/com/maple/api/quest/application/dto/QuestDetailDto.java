@@ -37,8 +37,14 @@ public record QuestDetailDto(
         @Schema(description = "시작 NPC ID", example = "2060005")
         Long startNpcId,
         
+        @Schema(description = "시작 NPC 이름", example = "이벤트 안내")
+        String startNpcName,
+        
         @Schema(description = "완료 NPC ID", example = "2060005")
         Long endNpcId,
+        
+        @Schema(description = "완료 NPC 이름", example = "이벤트 안내")
+        String endNpcName,
         
         @Schema(description = "퀘스트 보상 정보")
         QuestRewardDto reward,
@@ -53,7 +59,8 @@ public record QuestDetailDto(
         List<QuestJobDto> allowedJobs
 ) {
     public static QuestDetailDto toDto(Quest quest, QuestRewardDto reward, List<QuestRewardItemDto> rewardItems, 
-                                      List<QuestRequirementDto> requirements, List<QuestJobDto> allowedJobs) {
+                                      List<QuestRequirementDto> requirements, List<QuestJobDto> allowedJobs,
+                                      String startNpcName, String endNpcName) {
         return new QuestDetailDto(
                 quest.getQuestId(),
                 quest.getTitlePrefix(),
@@ -65,7 +72,9 @@ public record QuestDetailDto(
                 quest.getMaxLevel(),
                 quest.getRequiredMesoStart(),
                 quest.getStartNpcId(),
+                startNpcName,
                 quest.getEndNpcId(),
+                endNpcName,
                 reward,
                 rewardItems,
                 requirements,

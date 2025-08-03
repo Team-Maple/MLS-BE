@@ -6,6 +6,9 @@ import com.maple.api.job.domain.Job;
 import com.maple.api.job.repository.JobRepository;
 import com.maple.api.monster.domain.Monster;
 import com.maple.api.monster.repository.MonsterRepository;
+import com.maple.api.npc.domain.Npc;
+import com.maple.api.npc.exception.NpcException;
+import com.maple.api.npc.repository.NpcRepository;
 import com.maple.api.quest.application.dto.*;
 import com.maple.api.quest.domain.*;
 import com.maple.api.common.presentation.exception.ApiException;
@@ -37,6 +40,7 @@ public class QuestService {
     private final ItemRepository itemRepository;
     private final MonsterRepository monsterRepository;
     private final JobRepository jobRepository;
+    private final NpcRepository npcRepository;
 
     @Transactional(readOnly = true)
     public Page<QuestSummaryDto> searchQuests(QuestSearchRequestDto request, Pageable pageable) {
@@ -56,9 +60,11 @@ public class QuestService {
         Map<Integer, String> itemNameMap = fetchItemNames(rewardItems, requirements);
         Map<Integer, String> monsterNameMap = fetchMonsterNames(requirements);
         Map<Integer, String> jobNameMap = fetchJobNames(allowedJobs);
+        String startNpcName = fetchNpcName(quest.getStartNpcId());
+        String endNpcName = fetchNpcName(quest.getEndNpcId());
 
         return buildQuestDetailDto(quest, reward, rewardItems, requirements, allowedJobs, 
-                                 itemNameMap, monsterNameMap, jobNameMap);
+                                 itemNameMap, monsterNameMap, jobNameMap, startNpcName, endNpcName);
     }
 
     private Quest findQuest(Integer questId) {
@@ -104,7 +110,7 @@ public class QuestService {
     private Map<Integer, String> fetchMonsterNames(List<QuestRequirement> requirements) {
         List<Integer> monsterIds = requirements.stream()
                 .map(QuestRequirement::getMonsterId)
-                .filter(monsterId -> monsterId != null)
+                .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
         
@@ -124,27 +130,37 @@ public class QuestService {
                 .collect(Collectors.toMap(Job::getJobId, Job::getJobName));
     }
 
+    private String fetchNpcName(Long npcId) {
+        if (npcId == null) {
+            throw ApiException.of(NpcException.NPC_NOT_FOUND);
+        }
+        return npcRepository.findByNpcId(npcId.intValue())
+                .map(Npc::getNameKr)
+                .orElseThrow(() -> ApiException.of(NpcException.NPC_NOT_FOUND));
+    }
+
     private QuestDetailDto buildQuestDetailDto(Quest quest, QuestReward reward, 
                                              List<QuestRewardItem> rewardItems, List<QuestRequirement> requirements,
                                              List<QuestAllowedJob> allowedJobs, Map<Integer, String> itemNameMap,
-                                             Map<Integer, String> monsterNameMap, Map<Integer, String> jobNameMap) {
+                                             Map<Integer, String> monsterNameMap, Map<Integer, String> jobNameMap,
+                                             String startNpcName, String endNpcName) {
         QuestRewardDto rewardDto = reward != null ? QuestRewardDto.toDto(reward) : null;
 
         List<QuestRewardItemDto> rewardItemDtos = rewardItems.stream()
                 .map(item -> QuestRewardItemDto.toDto(item, itemNameMap.get(item.getItemId())))
-                .collect(Collectors.toList());
+                .toList();
 
         List<QuestRequirementDto> requirementDtos = requirements.stream()
                 .map(req -> QuestRequirementDto.toDto(req, 
                         req.getItemId() != null ? itemNameMap.get(req.getItemId()) : null,
                         req.getMonsterId() != null ? monsterNameMap.get(req.getMonsterId()) : null))
-                .collect(Collectors.toList());
+                .toList();
 
         List<QuestJobDto> allowedJobDtos = allowedJobs.stream()
                 .map(job -> new QuestJobDto(job.getJobId(), jobNameMap.get(job.getJobId())))
-                .collect(Collectors.toList());
+                .toList();
 
-        return QuestDetailDto.toDto(quest, rewardDto, rewardItemDtos, requirementDtos, allowedJobDtos);
+        return QuestDetailDto.toDto(quest, rewardDto, rewardItemDtos, requirementDtos, allowedJobDtos, startNpcName, endNpcName);
     }
 
     @Transactional(readOnly = true)
