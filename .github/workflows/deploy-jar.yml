@@ -15,7 +15,8 @@ jobs:
 
       - name: Restore FCM key file
         run: |
-          echo "${{ secrets.FIREBASE_KEY }}" | base64 --decode > src/main/resources/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json
+          mkdir -p src/main/resources/firebase
+          echo '${{ secrets.FIREBASE_KEY }}' > src/main/resources/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
