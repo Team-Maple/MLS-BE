@@ -13,13 +13,11 @@ public class QuestChainMember extends BaseEntity {
     @Id
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "chain_id")
-    private QuestChain chain;
+    @Column(name = "chain_id")
+    private Integer chainId;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "quest_id")
-    private Quest quest;
+    @Column(name = "quest_id")
+    private Integer questId;
 
     @Column(name = "sequence_order")
     private Integer sequenceOrder;
