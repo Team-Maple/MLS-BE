@@ -10,5 +10,5 @@ import java.util.Optional;
 @Repository
 public interface QuestChainMemberRepository extends JpaRepository<QuestChainMember, Integer> {
     Optional<QuestChainMember> findByQuestId(Integer questId);
-    List<QuestChainMember> findByChainIdOrderBySequenceOrder(Integer chainId);
+    List<QuestChainMember> findByChainId(Integer chainId);
 }
