@@ -2,12 +2,15 @@ package com.maple.api.auth.application.dto;
 
 import com.maple.api.auth.domain.Provider;
 import jakarta.validation.constraints.Size;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.lang.Nullable;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CreateMemberRequestDto {
   private Provider provider;
   private String providerId;
