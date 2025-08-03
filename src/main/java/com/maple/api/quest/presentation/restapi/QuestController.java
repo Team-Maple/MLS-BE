@@ -1,6 +1,7 @@
 package com.maple.api.quest.presentation.restapi;
 
 import com.maple.api.quest.application.QuestService;
+import com.maple.api.quest.application.dto.QuestDetailDto;
 import com.maple.api.quest.application.dto.QuestSearchRequestDto;
 import com.maple.api.quest.application.dto.QuestSummaryDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -43,5 +45,20 @@ public class QuestController {
             @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
         Page<QuestSummaryDto> quests = questService.searchQuests(request, pageable);
         return ResponseEntity.ok(quests);
+    }
+
+    @GetMapping("/{questId}")
+    @Operation(
+        summary = "퀘스트 상세 조회",
+        description = "퀘스트의 상세 정보를 조회합니다. 퀘스트 기본 정보, 보상, 완료 조건, 허용 직업 등의 정보를 포함합니다."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "퀘스트 상세 정보 조회 성공"),
+        @ApiResponse(responseCode = "404", description = "퀘스트를 찾을 수 없음"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<QuestDetailDto> getQuestDetail(@PathVariable Integer questId) {
+        QuestDetailDto questDetail = questService.getQuestDetail(questId);
+        return ResponseEntity.ok(questDetail);
     }
 }
