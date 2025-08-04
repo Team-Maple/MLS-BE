@@ -9,39 +9,38 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class UpdateCommand {
-  @Data
-  @AllArgsConstructor
-  public static class NickName {
+  public record NickName(
     @Size(min = 2, max = 15, message = "닉네임은 2자 이상 15자 이하로 입력해야 합니다.")
-    String nickname;
+    String nickname
+  ) {
   }
 
-  @Data
-  @AllArgsConstructor
-  public static class MarketingAgreement {
-    Boolean marketingAgreement;
+  public record MarketingAgreement(
+    Boolean marketingAgreement
+  ) {
   }
 
-  @Data
-  @AllArgsConstructor
-  public static class Agreements {
-    Boolean noticeAgreement;
-    Boolean patchNoteAgreement;
-    Boolean eventAgreement;
+  public record Agreements(
+    Boolean noticeAgreement,
+    Boolean patchNoteAgreement,
+    Boolean eventAgreement
+  ) {
   }
 
-  @Data
-  @AllArgsConstructor
-  public static class FcmToken {
-    String fcmToken;
+
+  public record FcmToken(
+    String fcmToken
+  ) {
   }
 
-  @Data
-  @AllArgsConstructor
-  public static class Profile {
+  //  @Data
+//  @AllArgsConstructor
+//  @NoArgsConstructor(access = AccessLevel.PROTECTED)
+  public record Profile(
     @Min(value = 1, message = "레벨은 1 이상의 값을 입력해야 합니다.")
     @Max(value = 200, message = "레벨은 200 이하의 값을 입력해야 합니다.")
-    Integer level;
-    Integer jobId;
+    Integer level,
+    Integer jobId
+  ) {
   }
 }

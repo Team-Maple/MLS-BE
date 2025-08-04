@@ -83,9 +83,9 @@ public class MemberService {
     return memberRepository.findById(memberId)
       .map(m -> {
         m.setAlertAgreements(
-          updateAlertAgreement.getNoticeAgreement(),
-          updateAlertAgreement.getPatchNoteAgreement(),
-          updateAlertAgreement.getEventAgreement()
+          updateAlertAgreement.noticeAgreement(),
+          updateAlertAgreement.patchNoteAgreement(),
+          updateAlertAgreement.eventAgreement()
         );
         return m;
       })

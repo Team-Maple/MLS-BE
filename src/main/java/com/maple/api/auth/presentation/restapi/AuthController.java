@@ -161,7 +161,7 @@ public class AuthController {
     @AuthenticationPrincipal PrincipalDetails principalDetails,
     @Valid @RequestBody UpdateCommand.NickName request
   ) {
-    memberService.updateNickname(principalDetails.getProviderId(), request.getNickname());
+    memberService.updateNickname(principalDetails.getProviderId(), request.nickname());
     return ResponseEntity.ok(ResponseTemplate.success(null));
   }
 
@@ -171,7 +171,7 @@ public class AuthController {
     @RequestBody UpdateCommand.FcmToken request
   ) {
 
-    memberService.updateFcmToken(principalDetails.getProviderId(), request.getFcmToken());
+    memberService.updateFcmToken(principalDetails.getProviderId(), request.fcmToken());
     return ResponseEntity.ok(ResponseTemplate.success(null));
   }
 
@@ -180,7 +180,7 @@ public class AuthController {
     @AuthenticationPrincipal PrincipalDetails principalDetails,
     @RequestBody UpdateCommand.MarketingAgreement request
   ) {
-    memberService.updateMarketingAgreement(principalDetails.getProviderId(), request.getMarketingAgreement());
+    memberService.updateMarketingAgreement(principalDetails.getProviderId(), request.marketingAgreement());
     return ResponseEntity.ok(ResponseTemplate.success(null));
   }
 
@@ -205,7 +205,7 @@ public class AuthController {
     @AuthenticationPrincipal PrincipalDetails principalDetails,
     @Valid @RequestBody UpdateCommand.Profile request
   ) {
-    memberService.updateProfile(principalDetails.getProviderId(), request.getLevel(), request.getJobId());
+    memberService.updateProfile(principalDetails.getProviderId(), request.level(), request.jobId());
     return ResponseEntity.ok(ResponseTemplate.success(null));
   }
 

@@ -11,7 +11,10 @@ public record MemberDto(
   Boolean marketingAgreement,
   Boolean noticeAgreement,
   Boolean patchNoteAgreement,
-  Boolean eventAgreement
+  Boolean eventAgreement,
+  //
+  Integer jobId,
+  Integer level
 ) {
   public static MemberDto toDto(Member member) {
     return new MemberDto(
@@ -22,7 +25,10 @@ public record MemberDto(
       member.getMarketingAgreement(),
       member.getNoticeAgreement(),
       member.getPatchNoteAgreement(),
-      member.getEventAgreement()
+      member.getEventAgreement(),
+      //
+      member.getJobId(),
+      member.getLevel()
     );
   }
 }
