@@ -51,6 +51,12 @@ public class Member {
   @Builder.Default
   private Boolean eventAgreement = false;
 
+  @Setter
+  private Integer level;
+
+  @Setter
+  private Integer jobId;
+
   // private String role;
   public String getRole() {
     return "ROLE_MEMBER";

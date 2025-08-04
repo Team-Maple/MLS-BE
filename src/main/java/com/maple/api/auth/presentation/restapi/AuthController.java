@@ -194,6 +194,22 @@ public class AuthController {
   }
 
   @Operation(
+    summary = "회원 프로필 업데이트",
+    description = "회원의 레벨과 직업을 업데이트합니다.\n\n" +
+                  "**Request Body:**\n" +
+                  "- `level`: 1~200 범위의 레벨\n" +
+                  "- `jobId`: 직업 ID\n\n"
+  )
+  @PutMapping("/member/profile")
+  public ResponseEntity<ResponseTemplate<Void>> updateProfile(
+    @AuthenticationPrincipal PrincipalDetails principalDetails,
+    @Valid @RequestBody UpdateCommand.Profile request
+  ) {
+    memberService.updateProfile(principalDetails.getProviderId(), request.getLevel(), request.getJobId());
+    return ResponseEntity.ok(ResponseTemplate.success(null));
+  }
+
+  @Operation(
     summary = "탈퇴하기"
   )
   @DeleteMapping("/member")

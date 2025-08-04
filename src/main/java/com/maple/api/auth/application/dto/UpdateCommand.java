@@ -1,5 +1,7 @@
 package com.maple.api.auth.application.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -32,5 +34,14 @@ public class UpdateCommand {
   @AllArgsConstructor
   public static class FcmToken {
     String fcmToken;
+  }
+
+  @Data
+  @AllArgsConstructor
+  public static class Profile {
+    @Min(value = 1, message = "레벨은 1 이상의 값을 입력해야 합니다.")
+    @Max(value = 200, message = "레벨은 200 이하의 값을 입력해야 합니다.")
+    Integer level;
+    Integer jobId;
   }
 }
