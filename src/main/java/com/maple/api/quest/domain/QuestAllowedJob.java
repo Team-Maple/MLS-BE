@@ -13,10 +13,9 @@ public class QuestAllowedJob extends BaseEntity {
     @Id
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "quest_id")
-    private Quest quest;
+    @Column(name = "quest_id")
+    private Integer questId;
 
-    @Column(name = "job_name")
-    private String jobName;
+    @Column(name = "job_id")
+    private Integer jobId;
 }
