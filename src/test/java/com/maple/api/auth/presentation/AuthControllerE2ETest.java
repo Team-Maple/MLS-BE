@@ -4,10 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maple.api.auth.application.KakaoUserInfoClient;
 import com.maple.api.auth.application.MemberService;
-import com.maple.api.auth.application.dto.CreateMemberRequestDto;
-import com.maple.api.auth.application.dto.KakaoUserInfo;
-import com.maple.api.auth.application.dto.LoginResponseDto;
-import com.maple.api.auth.application.dto.UpdateCommand;
+import com.maple.api.auth.application.dto.*;
 import com.maple.api.auth.domain.Member;
 import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.auth.domain.Provider;
@@ -23,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -49,10 +47,10 @@ public class AuthControllerE2ETest {
 
   @MockitoBean
   private MemberRepository memberRepository;
-
-  @MockitoBean
-  private MemberService memberService; // MemberService는 실제 빈으로 동작
   // MemberService와 AuthService는 실제 빈으로 동작
+
+  @MockitoSpyBean
+  private MemberService memberService;
 
   @Nested
   @DisplayName("POST /api/v1/auth/login/kakao")
@@ -232,6 +230,8 @@ public class AuthControllerE2ETest {
       int level = 120;
       int jobId = 5;
       UpdateCommand.Profile requestDto = new UpdateCommand.Profile(level, jobId);
+      doReturn(Optional.of(mock(MemberDto.class)))
+        .when(memberService).updateProfile(providerId, level, jobId);
 
       // then
       mockMvc.perform(put("/api/v1/auth/member/profile")
@@ -241,8 +241,7 @@ public class AuthControllerE2ETest {
           .with(user(new PrincipalDetails(providerId)))
         )
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data").doesNotExist());
+        .andExpect(jsonPath("$.success").value(true));
 
       // verify
       verify(memberService).updateProfile(providerId, level, jobId);
