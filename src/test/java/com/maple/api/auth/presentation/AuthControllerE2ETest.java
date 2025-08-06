@@ -3,10 +3,10 @@ package com.maple.api.auth.presentation;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maple.api.auth.application.KakaoUserInfoClient;
-import com.maple.api.auth.application.dto.CreateMemberRequestDto;
-import com.maple.api.auth.application.dto.KakaoUserInfo;
-import com.maple.api.auth.application.dto.LoginResponseDto;
+import com.maple.api.auth.application.MemberService;
+import com.maple.api.auth.application.dto.*;
 import com.maple.api.auth.domain.Member;
+import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.auth.domain.Provider;
 import com.maple.api.auth.repository.MemberRepository;
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
@@ -20,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -27,10 +28,9 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -47,8 +47,10 @@ public class AuthControllerE2ETest {
 
   @MockitoBean
   private MemberRepository memberRepository;
-
   // MemberService와 AuthService는 실제 빈으로 동작
+
+  @MockitoSpyBean
+  private MemberService memberService;
 
   @Nested
   @DisplayName("POST /api/v1/auth/login/kakao")
@@ -135,7 +137,6 @@ public class AuthControllerE2ETest {
       System.out.println(result.getResponse().getContentAsString());
     }
 
-
     @Test
     @DisplayName("성공: 가입된 사용자일 때 JWT 토큰 반환")
     void loginSuccess() throws Exception {
@@ -215,6 +216,35 @@ public class AuthControllerE2ETest {
 
       // verify: 회원 정보 삭제 확인
       verify(memberRepository).deleteById(kakaoUserInfo.getId().toString());
+    }
+  }
+
+  @Nested
+  @DisplayName("PUT /api/v1/auth/member/profile")
+  class UpdateMemberProfileTest {
+    @DisplayName("성공: 회원 프로필 업데이트")
+    @Test
+    void updateProfileSuccess() throws Exception {
+      // given
+      String providerId = "kakao:12345678";
+      int level = 120;
+      int jobId = 5;
+      UpdateCommand.Profile requestDto = new UpdateCommand.Profile(level, jobId);
+      doReturn(Optional.of(mock(MemberDto.class)))
+        .when(memberService).updateProfile(providerId, level, jobId);
+
+      // then
+      mockMvc.perform(put("/api/v1/auth/member/profile")
+          .contentType(MediaType.APPLICATION_JSON)
+          .accept(MediaType.APPLICATION_JSON)
+          .content(new ObjectMapper().writeValueAsString(requestDto))
+          .with(user(new PrincipalDetails(providerId)))
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true));
+
+      // verify
+      verify(memberService).updateProfile(providerId, level, jobId);
     }
   }
 

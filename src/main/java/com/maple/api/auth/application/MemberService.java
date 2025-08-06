@@ -5,6 +5,10 @@ import com.maple.api.auth.application.dto.MemberDto;
 import com.maple.api.auth.application.dto.UpdateCommand;
 import com.maple.api.auth.domain.Member;
 import com.maple.api.auth.repository.MemberRepository;
+import com.maple.api.common.presentation.exception.ApiException;
+import com.maple.api.job.domain.Job;
+import com.maple.api.job.exception.JobException;
+import com.maple.api.job.repository.JobRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +21,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class MemberService {
   private final MemberRepository memberRepository;
+  private final JobRepository jobRepository;
 
   @Transactional
   public Optional<MemberDto> findMember(String memberId) {
@@ -78,10 +83,26 @@ public class MemberService {
     return memberRepository.findById(memberId)
       .map(m -> {
         m.setAlertAgreements(
-          updateAlertAgreement.getNoticeAgreement(),
-          updateAlertAgreement.getPatchNoteAgreement(),
-          updateAlertAgreement.getEventAgreement()
+          updateAlertAgreement.noticeAgreement(),
+          updateAlertAgreement.patchNoteAgreement(),
+          updateAlertAgreement.eventAgreement()
         );
+        return m;
+      })
+      .map(MemberDto::toDto);
+  }
+
+  @Transactional
+  public Optional<MemberDto> updateProfile(String memberId, Integer level, Integer jobId) {
+    Optional<Job> jobOpt = jobRepository.findById(jobId);
+    if (jobOpt.isEmpty()) {
+      throw ApiException.of(JobException.JOB_NOT_FOUND);
+    }
+
+    return memberRepository.findById(memberId)
+      .map(m -> {
+        m.setLevel(level);
+        m.setJobId(jobId);
         return m;
       })
       .map(MemberDto::toDto);

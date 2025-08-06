@@ -161,7 +161,7 @@ public class AuthController {
     @AuthenticationPrincipal PrincipalDetails principalDetails,
     @Valid @RequestBody UpdateCommand.NickName request
   ) {
-    memberService.updateNickname(principalDetails.getProviderId(), request.getNickname());
+    memberService.updateNickname(principalDetails.getProviderId(), request.nickname());
     return ResponseEntity.ok(ResponseTemplate.success(null));
   }
 
@@ -171,7 +171,7 @@ public class AuthController {
     @RequestBody UpdateCommand.FcmToken request
   ) {
 
-    memberService.updateFcmToken(principalDetails.getProviderId(), request.getFcmToken());
+    memberService.updateFcmToken(principalDetails.getProviderId(), request.fcmToken());
     return ResponseEntity.ok(ResponseTemplate.success(null));
   }
 
@@ -180,7 +180,7 @@ public class AuthController {
     @AuthenticationPrincipal PrincipalDetails principalDetails,
     @RequestBody UpdateCommand.MarketingAgreement request
   ) {
-    memberService.updateMarketingAgreement(principalDetails.getProviderId(), request.getMarketingAgreement());
+    memberService.updateMarketingAgreement(principalDetails.getProviderId(), request.marketingAgreement());
     return ResponseEntity.ok(ResponseTemplate.success(null));
   }
 
@@ -190,6 +190,22 @@ public class AuthController {
     @RequestBody UpdateCommand.Agreements request
   ) {
     memberService.updateAlertAgreement(principalDetails.getProviderId(), request);
+    return ResponseEntity.ok(ResponseTemplate.success(null));
+  }
+
+  @Operation(
+    summary = "회원 프로필 업데이트",
+    description = "회원의 레벨과 직업을 업데이트합니다.\n\n" +
+                  "**Request Body:**\n" +
+                  "- `level`: 1~200 범위의 레벨\n" +
+                  "- `jobId`: 직업 ID\n\n"
+  )
+  @PutMapping("/member/profile")
+  public ResponseEntity<ResponseTemplate<Void>> updateProfile(
+    @AuthenticationPrincipal PrincipalDetails principalDetails,
+    @Valid @RequestBody UpdateCommand.Profile request
+  ) {
+    memberService.updateProfile(principalDetails.getProviderId(), request.level(), request.jobId());
     return ResponseEntity.ok(ResponseTemplate.success(null));
   }
 
