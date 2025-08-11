@@ -16,7 +16,7 @@ public class CollectionService {
     private final CollectionRepository collectionRepository;
 
     public CollectionResponseDto createCollection(String memberId, CreateCollectionRequestDto request) {
-        Collection collection = new Collection(memberId, request.getName());
+        Collection collection = new Collection(memberId, request.name());
 
         return CollectionResponseDto.toDto(collectionRepository.save(collection));
     }

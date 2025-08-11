@@ -18,11 +18,11 @@ public class BookmarkService {
     private final BookmarkRepository bookmarkRepository;
 
     public BookmarkResponseDto createBookmark(String memberId, CreateBookmarkRequestDto request) {
-        if (bookmarkRepository.existsByMemberIdAndBookmarkTypeAndResourceId(memberId, request.getBookmarkType(), request.getResourceId())) {
+        if (bookmarkRepository.existsByMemberIdAndBookmarkTypeAndResourceId(memberId, request.bookmarkType(), request.resourceId())) {
             throw new ApiException(BookmarkException.DUPLICATE_BOOKMARK);
         }
 
-        Bookmark bookmark = new Bookmark(memberId, request.getBookmarkType(), request.getResourceId());
+        Bookmark bookmark = new Bookmark(memberId, request.bookmarkType(), request.resourceId());
 
         return BookmarkResponseDto.toDto(bookmarkRepository.save(bookmark));
     }
