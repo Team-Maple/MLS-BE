@@ -8,7 +8,7 @@ import org.hibernate.validator.constraints.UniqueElements;
 import java.util.List;
 
 @Schema(description = "컬렉션에 북마크 추가 요청")
-public record AddBookmarksToCollectionRequestDto(
+public record CollectionAddBookmarksRequestDto(
         @NotNull(message = "북마크 ID 리스트는 필수입니다.")
         @NotEmpty(message = "최소 1개 이상의 북마크 ID가 필요합니다.")
         @UniqueElements(message = "중복된 북마크 ID가 있습니다.")
