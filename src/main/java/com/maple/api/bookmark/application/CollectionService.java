@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
@@ -63,15 +62,9 @@ public class CollectionService {
             throw new ApiException(BookmarkException.DUPLICATE_BOOKMARK_IN_COLLECTION);
         }
 
-        // 4. sortOrder 계산
-        Integer maxSortOrder = bookmarkCollectionRepository.findMaxSortOrderByCollectionId(collectionId).orElse(0);
-
-        // 5. BookmarkCollection 엔티티 생성 및 저장
-        List<BookmarkCollection> bookmarkCollections = IntStream.range(0, request.bookmarkIds().size())
-                .mapToObj(i -> new BookmarkCollection(
-                        request.bookmarkIds().get(i), 
-                        collectionId, 
-                        maxSortOrder + i + 1))
+        // 4. BookmarkCollection 엔티티 생성 및 저장
+        List<BookmarkCollection> bookmarkCollections = request.bookmarkIds().stream()
+                .map(bookmarkId -> new BookmarkCollection(bookmarkId, collectionId))
                 .toList();
 
         bookmarkCollectionRepository.saveAll(bookmarkCollections);
@@ -107,13 +100,9 @@ public class CollectionService {
             throw new ApiException(BookmarkException.DUPLICATE_BOOKMARK_IN_COLLECTION);
         }
 
-        // 4. 각 컬렉션별 sortOrder 계산 및 BookmarkCollection 엔티티 생성
+        // 4. BookmarkCollection 엔티티 생성
         List<BookmarkCollection> bookmarkCollections = request.collectionIds().stream()
-                .map(collectionId -> {
-                    Integer maxSortOrder = bookmarkCollectionRepository
-                            .findMaxSortOrderByCollectionId(collectionId).orElse(0);
-                    return new BookmarkCollection(bookmarkId, collectionId, maxSortOrder + 1);
-                })
+                .map(collectionId -> new BookmarkCollection(bookmarkId, collectionId))
                 .toList();
 
         // 5. 저장

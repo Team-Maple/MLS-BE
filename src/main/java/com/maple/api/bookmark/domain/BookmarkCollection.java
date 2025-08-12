@@ -25,12 +25,8 @@ public class BookmarkCollection extends BaseEntity {
     @Column(name = "collection_id", nullable = false)
     private Integer collectionId;
 
-    @Column(name = "sort_order", nullable = false)
-    private Integer sortOrder = 0;
-
-    public BookmarkCollection(Integer bookmarkId, Integer collectionId, Integer sortOrder) {
+    public BookmarkCollection(Integer bookmarkId, Integer collectionId) {
         this.bookmarkId = bookmarkId;
         this.collectionId = collectionId;
-        this.sortOrder = sortOrder;
     }
 }
