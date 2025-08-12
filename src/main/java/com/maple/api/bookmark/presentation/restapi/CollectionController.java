@@ -2,8 +2,8 @@ package com.maple.api.bookmark.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.bookmark.application.CollectionService;
-import com.maple.api.bookmark.application.dto.AddBookmarksToCollectionRequestDto;
-import com.maple.api.bookmark.application.dto.AddBookmarksToCollectionResponseDto;
+import com.maple.api.bookmark.application.dto.CollectionAddBookmarksRequestDto;
+import com.maple.api.bookmark.application.dto.CollectionAddBookmarksResponseDto;
 import com.maple.api.bookmark.application.dto.CollectionResponseDto;
 import com.maple.api.bookmark.application.dto.CreateCollectionRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -59,12 +59,12 @@ public class CollectionController {
             @ApiResponse(responseCode = "404", description = "컬렉션 또는 북마크를 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<AddBookmarksToCollectionResponseDto> addBookmarksToCollection(
+    public ResponseEntity<CollectionAddBookmarksResponseDto> addBookmarksToCollection(
             @Parameter(description = "컬렉션 ID") @PathVariable Integer collectionId,
             @AuthenticationPrincipal PrincipalDetails principalDetails,
-            @Valid @RequestBody AddBookmarksToCollectionRequestDto request) {
+            @Valid @RequestBody CollectionAddBookmarksRequestDto request) {
 
-        AddBookmarksToCollectionResponseDto response = collectionService.addBookmarksToCollection(
+        CollectionAddBookmarksResponseDto response = collectionService.addBookmarksToCollection(
                 principalDetails.getProviderId(), collectionId, request);
 
         return ResponseEntity.ok(response);

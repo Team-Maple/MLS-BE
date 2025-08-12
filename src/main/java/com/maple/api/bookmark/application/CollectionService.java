@@ -1,7 +1,9 @@
 package com.maple.api.bookmark.application;
 
-import com.maple.api.bookmark.application.dto.AddBookmarksToCollectionRequestDto;
-import com.maple.api.bookmark.application.dto.AddBookmarksToCollectionResponseDto;
+import com.maple.api.bookmark.application.dto.BookmarkAddToCollectionsRequestDto;
+import com.maple.api.bookmark.application.dto.BookmarkAddToCollectionsResponseDto;
+import com.maple.api.bookmark.application.dto.CollectionAddBookmarksRequestDto;
+import com.maple.api.bookmark.application.dto.CollectionAddBookmarksResponseDto;
 import com.maple.api.bookmark.application.dto.CollectionResponseDto;
 import com.maple.api.bookmark.application.dto.CreateCollectionRequestDto;
 import com.maple.api.bookmark.domain.Bookmark;
@@ -34,7 +36,7 @@ public class CollectionService {
         return CollectionResponseDto.toDto(collectionRepository.save(collection));
     }
 
-    public AddBookmarksToCollectionResponseDto addBookmarksToCollection(String memberId, Integer collectionId, AddBookmarksToCollectionRequestDto request) {
+    public CollectionAddBookmarksResponseDto addBookmarksToCollection(String memberId, Integer collectionId, CollectionAddBookmarksRequestDto request) {
         // 1. 컬렉션 존재 및 소유권 검증
         Collection collection = collectionRepository.findById(collectionId)
                 .orElseThrow(() -> new ApiException(BookmarkException.COLLECTION_NOT_FOUND));
@@ -74,6 +76,49 @@ public class CollectionService {
 
         bookmarkCollectionRepository.saveAll(bookmarkCollections);
 
-        return AddBookmarksToCollectionResponseDto.of(request.bookmarkIds().size());
+        return CollectionAddBookmarksResponseDto.of(request.bookmarkIds().size());
+    }
+
+    public BookmarkAddToCollectionsResponseDto addBookmarkToCollections(String memberId, Integer bookmarkId, BookmarkAddToCollectionsRequestDto request) {
+        // 1. 북마크 존재 및 소유권 검증
+        Bookmark bookmark = bookmarkRepository.findById(bookmarkId)
+                .orElseThrow(() -> new ApiException(BookmarkException.BOOKMARK_NOT_FOUND));
+        
+        if (!bookmark.getMemberId().equals(memberId)) {
+            throw new ApiException(BookmarkException.ACCESS_DENIED);
+        }
+
+        // 2. 컬렉션들의 존재 및 소유권 검증
+        List<Collection> collections = collectionRepository.findAllById(request.collectionIds());
+        if (collections.size() != request.collectionIds().size()) {
+            throw new ApiException(BookmarkException.COLLECTION_NOT_FOUND);
+        }
+        
+        boolean allCollectionsOwnedByUser = collections.stream()
+                .allMatch(collection -> collection.getMemberId().equals(memberId));
+        if (!allCollectionsOwnedByUser) {
+            throw new ApiException(BookmarkException.ACCESS_DENIED);
+        }
+
+        // 3. 이미 북마크가 있는 컬렉션 체크
+        List<Integer> existingCollectionIds = bookmarkCollectionRepository
+                .findExistingCollectionIds(bookmarkId, request.collectionIds());
+        if (!existingCollectionIds.isEmpty()) {
+            throw new ApiException(BookmarkException.DUPLICATE_BOOKMARK_IN_COLLECTION);
+        }
+
+        // 4. 각 컬렉션별 sortOrder 계산 및 BookmarkCollection 엔티티 생성
+        List<BookmarkCollection> bookmarkCollections = request.collectionIds().stream()
+                .map(collectionId -> {
+                    Integer maxSortOrder = bookmarkCollectionRepository
+                            .findMaxSortOrderByCollectionId(collectionId).orElse(0);
+                    return new BookmarkCollection(bookmarkId, collectionId, maxSortOrder + 1);
+                })
+                .toList();
+
+        // 5. 저장
+        bookmarkCollectionRepository.saveAll(bookmarkCollections);
+
+        return BookmarkAddToCollectionsResponseDto.of(request.collectionIds().size());
     }
 }
