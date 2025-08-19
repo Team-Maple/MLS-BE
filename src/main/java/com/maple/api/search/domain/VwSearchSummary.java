@@ -25,4 +25,7 @@ public class VwSearchSummary {
 
     @Column(name = "type")
     private String type;
+
+    @Column(name = "level")
+    private Integer level;
 }

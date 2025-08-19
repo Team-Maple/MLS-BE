@@ -15,9 +15,12 @@ public record SearchSummaryDto(
         String imageUrl,
         
         @Schema(description = "타입 (ITEM, MONSTER, QUEST, NPC, MAP)", example = "ITEM")
-        String type
+        String type,
+
+        @Schema(description = "레벨", example = "0")
+        Integer level
 ) {
     public static SearchSummaryDto toDto(VwSearchSummary entity) {
-        return new SearchSummaryDto(entity.getOriginalId(), entity.getName(), entity.getImageUrl(), entity.getType());
+        return new SearchSummaryDto(entity.getOriginalId(), entity.getName(), entity.getImageUrl(), entity.getType(), entity.getLevel());
     }
 }
