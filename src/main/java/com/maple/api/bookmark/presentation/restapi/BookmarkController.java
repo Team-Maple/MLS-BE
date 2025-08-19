@@ -1,11 +1,14 @@
 package com.maple.api.bookmark.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
+import com.maple.api.bookmark.application.BookmarkQueryService;
 import com.maple.api.bookmark.application.BookmarkService;
 import com.maple.api.bookmark.application.CollectionService;
 import com.maple.api.bookmark.application.dto.BookmarkAddToCollectionsRequestDto;
 import com.maple.api.bookmark.application.dto.BookmarkAddToCollectionsResponseDto;
 import com.maple.api.bookmark.application.dto.BookmarkResponseDto;
+import org.springdoc.core.annotations.ParameterObject;
+import com.maple.api.bookmark.application.dto.BookmarkSummaryDto;
 import com.maple.api.bookmark.application.dto.CreateBookmarkRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,6 +17,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -25,7 +32,34 @@ import org.springframework.web.bind.annotation.*;
 public class BookmarkController {
 
     private final BookmarkService bookmarkService;
+    private final BookmarkQueryService bookmarkQueryService;
     private final CollectionService collectionService;
+
+    @GetMapping
+    @Operation(
+            summary = "북마크 전체 조회",
+            description = "사용자가 소지하고 있는 북마크 전체를 조회합니다.\n\n" +
+                    "**페이징:**\n" +
+                    "- 기본 사이즈: 200개\n\n" +
+                    "**정렬 기준:**\n" +
+                    "- createdAt: 북마크 생성순 정렬 (최신순 기본값)\n" +
+                    "- name: 이름순 정렬\n" +
+                    "- 페이지 크기: 20개 (기본값)"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "북마크 조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<Page<BookmarkSummaryDto>> getBookmarks(
+            @AuthenticationPrincipal PrincipalDetails principalDetails,
+            @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
+
+        Page<BookmarkSummaryDto> bookmarks = bookmarkQueryService.getBookmarks(
+                principalDetails.getProviderId(), pageable);
+
+        return ResponseEntity.ok(bookmarks);
+    }
 
     @PostMapping
     @Operation(
