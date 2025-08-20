@@ -2,6 +2,7 @@ package com.maple.api.bookmark.application;
 
 import com.maple.api.bookmark.application.dto.BookmarkSummaryDto;
 import com.maple.api.bookmark.application.dto.ItemBookmarkSearchRequestDto;
+import com.maple.api.bookmark.application.dto.MonsterBookmarkSearchRequestDto;
 import com.maple.api.bookmark.repository.BookmarkQueryDslRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,5 +24,10 @@ public class BookmarkQueryService {
     @Transactional(readOnly = true)
     public Page<BookmarkSummaryDto> getItemBookmarks(String memberId, ItemBookmarkSearchRequestDto request, Pageable pageable) {
         return bookmarkQueryDslRepository.searchItemBookmarks(memberId, request, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<BookmarkSummaryDto> getMonsterBookmarks(String memberId, MonsterBookmarkSearchRequestDto request, Pageable pageable) {
+        return bookmarkQueryDslRepository.searchMonsterBookmarks(memberId, request, pageable);
     }
 }
