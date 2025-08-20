@@ -30,6 +30,7 @@ import static com.maple.api.item.domain.QItemJob.itemJob;
 import static com.maple.api.map.domain.QMap.map;
 import static com.maple.api.monster.domain.QMonster.monster;
 import static com.maple.api.npc.domain.QNpc.npc;
+import static com.maple.api.quest.domain.QQuest.quest;
 import static com.maple.api.search.domain.QVwSearchSummary.vwSearchSummary;
 
 @Repository
@@ -514,6 +515,99 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
     private List<OrderSpecifier<?>> createNpcOrderClause(Pageable pageable) {
         Map<String, Path<?>> sortableProperties = Map.of(
                 "name", npc.nameKr,
+                "createdAt", bookmark.createdAt
+        );
+
+        if (pageable.getSort().isUnsorted()) {
+            return List.of(bookmark.createdAt.desc());
+        }
+
+        List<OrderSpecifier<?>> orderSpecifiers = new ArrayList<>();
+
+        pageable.getSort().forEach(order -> {
+            Path<?> path = sortableProperties.get(order.getProperty());
+            if (path != null) {
+                orderSpecifiers.add(new OrderSpecifier(order.isAscending() ? Order.ASC : Order.DESC, path));
+            }
+        });
+
+        if (orderSpecifiers.isEmpty()) {
+            orderSpecifiers.add(bookmark.createdAt.desc());
+        }
+
+        return orderSpecifiers;
+    }
+
+    /**
+     * 북마크 퀘스트 조회
+     * @param memberId 멤버 ID
+     * @param pageable 페이징 데이터
+     * @return 북마크 응답 DTO
+     */
+    @Override
+    public Page<BookmarkSummaryDto> searchQuestBookmarks(String memberId, Pageable pageable) {
+        BooleanBuilder whereClause = createQuestBookmarkWhereClause(memberId);
+        List<OrderSpecifier<?>> orderClause = createQuestOrderClause(pageable);
+
+        List<Integer> bookmarkIds = fetchQuestBookmarkIds(whereClause, orderClause, pageable);
+        if (bookmarkIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        List<BookmarkSummaryDto> content = fetchQuestContent(bookmarkIds, orderClause);
+        JPAQuery<Long> countQuery = createQuestBookmarkCountQuery(whereClause);
+
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
+    }
+
+    private BooleanBuilder createQuestBookmarkWhereClause(String memberId) {
+        BooleanBuilder builder = new BooleanBuilder();
+
+        builder.and(bookmark.memberId.eq(memberId))
+                .and(bookmark.bookmarkType.eq(BookmarkType.QUEST));
+
+        return builder;
+    }
+
+    private List<Integer> fetchQuestBookmarkIds(BooleanBuilder where, List<OrderSpecifier<?>> order, Pageable pageable) {
+        return queryFactory
+                .select(bookmark.bookmarkId)
+                .from(bookmark)
+                .join(quest).on(bookmark.resourceId.eq(quest.questId))
+                .where(where)
+                .orderBy(order.toArray(new OrderSpecifier[0]))
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+    }
+
+    private List<BookmarkSummaryDto> fetchQuestContent(List<Integer> bookmarkIds, List<OrderSpecifier<?>> order) {
+        return queryFactory
+                .select(Projections.constructor(BookmarkSummaryDto.class,
+                        bookmark.bookmarkId,
+                        quest.questId,
+                        quest.nameKr,
+                        quest.iconUrl,
+                        Expressions.constant("QUEST"),
+                        Expressions.nullExpression(Integer.class)))
+                .from(bookmark)
+                .join(quest).on(bookmark.resourceId.eq(quest.questId))
+                .where(bookmark.bookmarkId.in(bookmarkIds))
+                .orderBy(order.toArray(new OrderSpecifier[0]))
+                .fetch();
+    }
+
+    private JPAQuery<Long> createQuestBookmarkCountQuery(BooleanBuilder where) {
+        return queryFactory
+                .select(bookmark.count())
+                .from(bookmark)
+                .join(quest).on(bookmark.resourceId.eq(quest.questId))
+                .where(where);
+    }
+
+    private List<OrderSpecifier<?>> createQuestOrderClause(Pageable pageable) {
+        Map<String, Path<?>> sortableProperties = Map.of(
+                "name", quest.nameKr,
                 "createdAt", bookmark.createdAt
         );
 
