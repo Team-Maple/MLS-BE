@@ -10,4 +10,5 @@ public interface BookmarkQueryDslRepository {
     Page<BookmarkSummaryDto> searchBookmarks(String memberId, Pageable pageable);
     Page<BookmarkSummaryDto> searchItemBookmarks(String memberId, ItemBookmarkSearchRequestDto request, Pageable pageable);
     Page<BookmarkSummaryDto> searchMonsterBookmarks(String memberId, MonsterBookmarkSearchRequestDto request, Pageable pageable);
+    Page<BookmarkSummaryDto> searchMapBookmarks(String memberId, Pageable pageable);
 }

@@ -27,6 +27,7 @@ import static com.maple.api.bookmark.domain.QBookmark.bookmark;
 import static com.maple.api.item.domain.QEquipmentItem.equipmentItem;
 import static com.maple.api.item.domain.QItem.item;
 import static com.maple.api.item.domain.QItemJob.itemJob;
+import static com.maple.api.map.domain.QMap.map;
 import static com.maple.api.monster.domain.QMonster.monster;
 import static com.maple.api.search.domain.QVwSearchSummary.vwSearchSummary;
 
@@ -326,6 +327,99 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
     private List<OrderSpecifier<?>> createMonsterOrderClause(Pageable pageable) {
         Map<String, Path<?>> sortableProperties = Map.of(
                 "name", monster.nameKr,
+                "createdAt", bookmark.createdAt
+        );
+
+        if (pageable.getSort().isUnsorted()) {
+            return List.of(bookmark.createdAt.desc());
+        }
+
+        List<OrderSpecifier<?>> orderSpecifiers = new ArrayList<>();
+
+        pageable.getSort().forEach(order -> {
+            Path<?> path = sortableProperties.get(order.getProperty());
+            if (path != null) {
+                orderSpecifiers.add(new OrderSpecifier(order.isAscending() ? Order.ASC : Order.DESC, path));
+            }
+        });
+
+        if (orderSpecifiers.isEmpty()) {
+            orderSpecifiers.add(bookmark.createdAt.desc());
+        }
+
+        return orderSpecifiers;
+    }
+
+    /**
+     * 북마크 맵 조회
+     * @param memberId 멤버 ID
+     * @param pageable 페이징 데이터
+     * @return 북마크 응답 DTO
+     */
+    @Override
+    public Page<BookmarkSummaryDto> searchMapBookmarks(String memberId, Pageable pageable) {
+        BooleanBuilder whereClause = createMapBookmarkWhereClause(memberId);
+        List<OrderSpecifier<?>> orderClause = createMapOrderClause(pageable);
+
+        List<Integer> bookmarkIds = fetchMapBookmarkIds(whereClause, orderClause, pageable);
+        if (bookmarkIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        List<BookmarkSummaryDto> content = fetchMapContent(bookmarkIds, orderClause);
+        JPAQuery<Long> countQuery = createMapBookmarkCountQuery(whereClause);
+
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
+    }
+
+    private BooleanBuilder createMapBookmarkWhereClause(String memberId) {
+        BooleanBuilder builder = new BooleanBuilder();
+
+        builder.and(bookmark.memberId.eq(memberId))
+                .and(bookmark.bookmarkType.eq(BookmarkType.MAP));
+
+        return builder;
+    }
+
+    private List<Integer> fetchMapBookmarkIds(BooleanBuilder where, List<OrderSpecifier<?>> order, Pageable pageable) {
+        return queryFactory
+                .select(bookmark.bookmarkId)
+                .from(bookmark)
+                .join(map).on(bookmark.resourceId.eq(map.mapId))
+                .where(where)
+                .orderBy(order.toArray(new OrderSpecifier[0]))
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+    }
+
+    private List<BookmarkSummaryDto> fetchMapContent(List<Integer> bookmarkIds, List<OrderSpecifier<?>> order) {
+        return queryFactory
+                .select(Projections.constructor(BookmarkSummaryDto.class,
+                        bookmark.bookmarkId,
+                        map.mapId,
+                        map.nameKr,
+                        map.iconUrl,
+                        Expressions.constant("MAP"),
+                        Expressions.nullExpression(Integer.class)))
+                .from(bookmark)
+                .join(map).on(bookmark.resourceId.eq(map.mapId))
+                .where(bookmark.bookmarkId.in(bookmarkIds))
+                .orderBy(order.toArray(new OrderSpecifier[0]))
+                .fetch();
+    }
+
+    private JPAQuery<Long> createMapBookmarkCountQuery(BooleanBuilder where) {
+        return queryFactory
+                .select(bookmark.count())
+                .from(bookmark)
+                .join(map).on(bookmark.resourceId.eq(map.mapId))
+                .where(where);
+    }
+
+    private List<OrderSpecifier<?>> createMapOrderClause(Pageable pageable) {
+        Map<String, Path<?>> sortableProperties = Map.of(
+                "name", map.nameKr,
                 "createdAt", bookmark.createdAt
         );
 

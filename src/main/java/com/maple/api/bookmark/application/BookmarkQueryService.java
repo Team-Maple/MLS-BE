@@ -30,4 +30,9 @@ public class BookmarkQueryService {
     public Page<BookmarkSummaryDto> getMonsterBookmarks(String memberId, MonsterBookmarkSearchRequestDto request, Pageable pageable) {
         return bookmarkQueryDslRepository.searchMonsterBookmarks(memberId, request, pageable);
     }
+
+    @Transactional(readOnly = true)
+    public Page<BookmarkSummaryDto> getMapBookmarks(String memberId, Pageable pageable) {
+        return bookmarkQueryDslRepository.searchMapBookmarks(memberId, pageable);
+    }
 }
