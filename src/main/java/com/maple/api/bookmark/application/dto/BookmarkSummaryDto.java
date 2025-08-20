@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "북마크 요약 정보")
 public record BookmarkSummaryDto(
+        Integer bookmarkId,
+
         @Schema(description = "원본 ID (각 타입별 고유 ID)", example = "1002001")
         Integer originalId,
         

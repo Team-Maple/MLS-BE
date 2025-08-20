@@ -4,12 +4,7 @@ import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.bookmark.application.BookmarkQueryService;
 import com.maple.api.bookmark.application.BookmarkService;
 import com.maple.api.bookmark.application.CollectionService;
-import com.maple.api.bookmark.application.dto.BookmarkAddToCollectionsRequestDto;
-import com.maple.api.bookmark.application.dto.BookmarkAddToCollectionsResponseDto;
-import com.maple.api.bookmark.application.dto.BookmarkResponseDto;
-import org.springdoc.core.annotations.ParameterObject;
-import com.maple.api.bookmark.application.dto.BookmarkSummaryDto;
-import com.maple.api.bookmark.application.dto.CreateBookmarkRequestDto;
+import com.maple.api.bookmark.application.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -17,8 +12,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -112,5 +107,37 @@ public class BookmarkController {
                 principalDetails.getProviderId(), bookmarkId, request);
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/items")
+    @Operation(
+            summary = "아이템 북마크 조회",
+            description = "사용자가 북마크한 아이템들을 조회합니다. 다양한 필터링과 정렬 옵션을 제공합니다.\n\n" +
+                    "**필터링 옵션:**\n" +
+                    "- `jobIds`: 직업 ID 목록 (특정 직업이 착용 가능한 아이템만 검색)\n" +
+                    "- `minLevel`, `maxLevel`: 요구 레벨 범위\n" +
+                    "- `categoryIds`: 카테고리 ID 목록\n\n" +
+                    "**정렬 옵션:**\n" +
+                    "- `createdAt`: 북마크 생성순 (최신순/오래된순)\n" +
+                    "- `name`: 아이템명 가나다순\n\n" +
+                    "**정렬 사용 예시:**\n" +
+                    "- `sort=createdAt,desc`: 최신 북마크순\n" +
+                    "- `sort=name,asc`: 가나다순\n" +
+                    "- 기본값: 최신 북마크순"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "아이템 북마크 조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<Page<BookmarkSummaryDto>> getItemBookmarks(
+            @AuthenticationPrincipal PrincipalDetails principalDetails,
+            @Valid @ParameterObject ItemBookmarkSearchRequestDto searchRequest,
+            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+
+        Page<BookmarkSummaryDto> itemBookmarks = bookmarkQueryService.getItemBookmarks(
+                principalDetails.getProviderId(), searchRequest, pageable);
+
+        return ResponseEntity.ok(itemBookmarks);
     }
 }

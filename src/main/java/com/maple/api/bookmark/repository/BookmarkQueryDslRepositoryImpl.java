@@ -1,10 +1,15 @@
 package com.maple.api.bookmark.repository;
 
 import com.maple.api.bookmark.application.dto.BookmarkSummaryDto;
+import com.maple.api.bookmark.application.dto.ItemBookmarkSearchRequestDto;
+import com.maple.api.bookmark.domain.BookmarkType;
+import com.maple.api.job.domain.Job;
+import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Path;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +23,9 @@ import java.util.List;
 import java.util.Map;
 
 import static com.maple.api.bookmark.domain.QBookmark.bookmark;
+import static com.maple.api.item.domain.QEquipmentItem.equipmentItem;
+import static com.maple.api.item.domain.QItem.item;
+import static com.maple.api.item.domain.QItemJob.itemJob;
 import static com.maple.api.search.domain.QVwSearchSummary.vwSearchSummary;
 
 @Repository
@@ -26,10 +34,6 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
 
     private final JPAQueryFactory queryFactory;
 
-    private final Map<String, Path<?>> sortableProperties = Map.of(
-            "name", vwSearchSummary.name,
-            "createdAt", bookmark.createdAt
-    );
 
     @Override
     public Page<BookmarkSummaryDto> searchBookmarks(String memberId, Pageable pageable) {
@@ -53,6 +57,11 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
     }
 
     private List<OrderSpecifier<?>> createOrderClause(Pageable pageable) {
+        Map<String, Path<?>> sortableProperties = Map.of(
+                "name", vwSearchSummary.name,
+                "createdAt", bookmark.createdAt
+        );
+
         if (pageable.getSort().isUnsorted()) {
             return List.of(bookmark.createdAt.desc());
         }
@@ -91,6 +100,7 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
     private List<BookmarkSummaryDto> fetchContent(List<Integer> bookmarkIds, List<OrderSpecifier<?>> order) {
         return queryFactory
                 .select(Projections.constructor(BookmarkSummaryDto.class,
+                        bookmark.bookmarkId,
                         vwSearchSummary.originalId,
                         vwSearchSummary.name,
                         vwSearchSummary.imageUrl,
@@ -112,5 +122,115 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
                 .select(bookmark.count())
                 .from(bookmark)
                 .where(bookmark.memberId.eq(memberId));
+    }
+
+    @Override
+    public Page<BookmarkSummaryDto> searchItemBookmarks(String memberId, ItemBookmarkSearchRequestDto request, Pageable pageable) {
+        BooleanBuilder whereClause = createItemBookmarkWhereClause(memberId, request);
+        List<OrderSpecifier<?>> orderClause = createItemOrderClause(pageable);
+
+        List<Integer> bookmarkIds = fetchItemBookmarkIds(whereClause, orderClause, pageable);
+        if (bookmarkIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        List<BookmarkSummaryDto> content = fetchItemContent(bookmarkIds, orderClause);
+        JPAQuery<Long> countQuery = createItemBookmarkCountQuery(whereClause);
+
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
+    }
+
+    private BooleanBuilder createItemBookmarkWhereClause(String memberId, ItemBookmarkSearchRequestDto request) {
+        BooleanBuilder builder = new BooleanBuilder();
+
+        builder.and(bookmark.memberId.eq(memberId))
+                .and(bookmark.bookmarkType.eq(BookmarkType.ITEM));
+
+        if (request.jobIds() != null && !request.jobIds().isEmpty()) {
+            builder.and(
+                    new BooleanBuilder()
+                            .or(itemJob.jobId.in(request.jobIds()))
+                            .or(itemJob.jobId.eq(Job.COMMON_JOB_ID))
+            );
+        }
+        if (request.minLevel() != null) {
+            builder.and(equipmentItem.requiredStats.level.goe(request.minLevel()));
+        }
+        if (request.maxLevel() != null) {
+            builder.and(equipmentItem.requiredStats.level.loe(request.maxLevel()));
+        }
+        if (request.categoryIds() != null && !request.categoryIds().isEmpty()) {
+            builder.and(item.categoryId.in(request.categoryIds()));
+        }
+
+        return builder;
+    }
+
+    private List<Integer> fetchItemBookmarkIds(BooleanBuilder where, List<OrderSpecifier<?>> order, Pageable pageable) {
+        return queryFactory
+                .select(bookmark.bookmarkId)
+                .from(bookmark)
+                .join(item).on(bookmark.resourceId.eq(item.itemId))
+                .leftJoin(equipmentItem).on(item.itemId.eq(equipmentItem.itemId))
+                .leftJoin(itemJob).on(item.itemId.eq(itemJob.itemId))
+                .where(where)
+                .groupBy(bookmark.bookmarkId)
+                .orderBy(order.toArray(new OrderSpecifier[0]))
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+    }
+
+    private List<BookmarkSummaryDto> fetchItemContent(List<Integer> bookmarkIds, List<OrderSpecifier<?>> order) {
+        return queryFactory
+                .select(Projections.constructor(BookmarkSummaryDto.class,
+                        bookmark.bookmarkId,
+                        item.itemId,
+                        item.nameKr,
+                        item.itemImageUrl,
+                        Expressions.constant("ITEM"),
+                        equipmentItem.requiredStats.level))
+                .from(bookmark)
+                .join(item).on(bookmark.resourceId.eq(item.itemId))
+                .leftJoin(equipmentItem).on(item.itemId.eq(equipmentItem.itemId))
+                .where(bookmark.bookmarkId.in(bookmarkIds))
+                .orderBy(order.toArray(new OrderSpecifier[0]))
+                .fetch();
+    }
+
+    private JPAQuery<Long> createItemBookmarkCountQuery(BooleanBuilder where) {
+        return queryFactory
+                .select(bookmark.countDistinct())
+                .from(bookmark)
+                .join(item).on(bookmark.resourceId.eq(item.itemId))
+                .leftJoin(equipmentItem).on(item.itemId.eq(equipmentItem.itemId))
+                .leftJoin(itemJob).on(item.itemId.eq(itemJob.itemId))
+                .where(where);
+    }
+
+    private List<OrderSpecifier<?>> createItemOrderClause(Pageable pageable) {
+        Map<String, Path<?>> sortableProperties = Map.of(
+                "name", item.nameKr,
+                "createdAt", bookmark.createdAt
+        );
+
+        if (pageable.getSort().isUnsorted()) {
+            return List.of(bookmark.createdAt.desc());
+        }
+
+        List<OrderSpecifier<?>> orderSpecifiers = new ArrayList<>();
+
+        pageable.getSort().forEach(order -> {
+            Path<?> path = sortableProperties.get(order.getProperty());
+            if (path != null) {
+                orderSpecifiers.add(new OrderSpecifier(order.isAscending() ? Order.ASC : Order.DESC, path));
+            }
+        });
+
+        if (orderSpecifiers.isEmpty()) {
+            orderSpecifiers.add(bookmark.createdAt.desc());
+        }
+
+        return orderSpecifiers;
     }
 }
