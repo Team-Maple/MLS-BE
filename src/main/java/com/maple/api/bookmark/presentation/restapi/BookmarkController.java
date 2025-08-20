@@ -197,4 +197,31 @@ public class BookmarkController {
 
         return ResponseEntity.ok(mapBookmarks);
     }
+
+    @GetMapping("/npcs")
+    @Operation(
+            summary = "NPC 북마크 조회",
+            description = "사용자가 북마크한 NPC들을 조회합니다. 정렬과 페이징 옵션을 제공합니다.\n\n" +
+                    "**정렬 옵션:**\n" +
+                    "- `createdAt`: 북마크 생성순 (최신순/오래된순)\n" +
+                    "- `name`: NPC명 가나다순\n\n" +
+                    "**정렬 사용 예시:**\n" +
+                    "- `sort=createdAt,desc`: 최신 북마크순\n" +
+                    "- `sort=name,asc`: 가나다순\n" +
+                    "- 기본값: 최신 북마크순"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "NPC 북마크 조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<Page<BookmarkSummaryDto>> getNpcBookmarks(
+            @AuthenticationPrincipal PrincipalDetails principalDetails,
+            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+
+        Page<BookmarkSummaryDto> npcBookmarks = bookmarkQueryService.getNpcBookmarks(
+                principalDetails.getProviderId(), pageable);
+
+        return ResponseEntity.ok(npcBookmarks);
+    }
 }

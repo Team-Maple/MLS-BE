@@ -35,4 +35,9 @@ public class BookmarkQueryService {
     public Page<BookmarkSummaryDto> getMapBookmarks(String memberId, Pageable pageable) {
         return bookmarkQueryDslRepository.searchMapBookmarks(memberId, pageable);
     }
+
+    @Transactional(readOnly = true)
+    public Page<BookmarkSummaryDto> getNpcBookmarks(String memberId, Pageable pageable) {
+        return bookmarkQueryDslRepository.searchNpcBookmarks(memberId, pageable);
+    }
 }
