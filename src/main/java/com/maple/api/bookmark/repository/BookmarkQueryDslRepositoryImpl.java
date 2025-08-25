@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.maple.api.bookmark.domain.QBookmark.bookmark;
+import static com.maple.api.bookmark.domain.QBookmarkCollection.bookmarkCollection;
 import static com.maple.api.item.domain.QEquipmentItem.equipmentItem;
 import static com.maple.api.item.domain.QItem.item;
 import static com.maple.api.item.domain.QItemJob.itemJob;
@@ -629,5 +630,59 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
         }
 
         return orderSpecifiers;
+    }
+
+    /**
+     * 컬렉션별 북마크 조회
+     * @param memberId 멤버 ID
+     * @param collectionId 컬렉션 ID
+     * @param pageable 페이징, 정렬
+     * @return 북마크 응답 DTO
+     */
+    @Override
+    public Page<BookmarkSummaryDto> searchCollectionBookmarks(String memberId, Integer collectionId, Pageable pageable) {
+        // 1. ORDER BY 절 생성
+        List<OrderSpecifier<?>> orderClause = createOrderClause(pageable);
+
+        // 2. 최적화된 ID 목록 조회
+        List<Integer> bookmarkIds = fetchCollectionBookmarkIds(memberId, collectionId, orderClause, pageable);
+        if (bookmarkIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        // 3. ID 목록으로 실제 컨텐츠 조회
+        List<BookmarkSummaryDto> content = fetchContent(bookmarkIds, orderClause);
+
+        // 4. 전체 카운트 쿼리 생성
+        JPAQuery<Long> countQuery = createCollectionBookmarkCountQuery(memberId, collectionId);
+
+        // 5. Page 객체로 변환하여 반환
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
+    }
+
+    private List<Integer> fetchCollectionBookmarkIds(String memberId, Integer collectionId, List<OrderSpecifier<?>> order, Pageable pageable) {
+        return queryFactory
+                .select(bookmark.bookmarkId)
+                .from(bookmark)
+                .join(bookmarkCollection).on(bookmark.bookmarkId.eq(bookmarkCollection.bookmarkId))
+                .join(vwSearchSummary).on(
+                        bookmark.resourceId.eq(vwSearchSummary.originalId)
+                                .and(bookmark.bookmarkType.stringValue().eq(vwSearchSummary.type))
+                )
+                .where(bookmark.memberId.eq(memberId)
+                        .and(bookmarkCollection.collectionId.eq(collectionId)))
+                .orderBy(order.toArray(new OrderSpecifier[0]))
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+    }
+
+    private JPAQuery<Long> createCollectionBookmarkCountQuery(String memberId, Integer collectionId) {
+        return queryFactory
+                .select(bookmark.count())
+                .from(bookmark)
+                .join(bookmarkCollection).on(bookmark.bookmarkId.eq(bookmarkCollection.bookmarkId))
+                .where(bookmark.memberId.eq(memberId)
+                        .and(bookmarkCollection.collectionId.eq(collectionId)));
     }
 }

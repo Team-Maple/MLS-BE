@@ -45,4 +45,9 @@ public class BookmarkQueryService {
     public Page<BookmarkSummaryDto> getQuestBookmarks(String memberId, Pageable pageable) {
         return bookmarkQueryDslRepository.searchQuestBookmarks(memberId, pageable);
     }
+
+    @Transactional(readOnly = true)
+    public Page<BookmarkSummaryDto> getCollectionBookmarks(String memberId, Integer collectionId, Pageable pageable) {
+        return bookmarkQueryDslRepository.searchCollectionBookmarks(memberId, collectionId, pageable);
+    }
 }

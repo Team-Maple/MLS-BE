@@ -110,4 +110,13 @@ public class CollectionService {
 
         return BookmarkAddToCollectionsResponseDto.of(request.collectionIds().size());
     }
+
+    public void validateCollectionOwnership(String memberId, Integer collectionId) {
+        Collection collection = collectionRepository.findById(collectionId)
+                .orElseThrow(() -> new ApiException(BookmarkException.COLLECTION_NOT_FOUND));
+        
+        if (!collection.getMemberId().equals(memberId)) {
+            throw new ApiException(BookmarkException.ACCESS_DENIED);
+        }
+    }
 }

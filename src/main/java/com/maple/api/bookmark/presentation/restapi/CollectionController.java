@@ -1,7 +1,9 @@
 package com.maple.api.bookmark.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
+import com.maple.api.bookmark.application.BookmarkQueryService;
 import com.maple.api.bookmark.application.CollectionService;
+import com.maple.api.bookmark.application.dto.BookmarkSummaryDto;
 import com.maple.api.bookmark.application.dto.CollectionAddBookmarksRequestDto;
 import com.maple.api.bookmark.application.dto.CollectionAddBookmarksResponseDto;
 import com.maple.api.bookmark.application.dto.CollectionResponseDto;
@@ -13,6 +15,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 public class CollectionController {
 
     private final CollectionService collectionService;
+    private final BookmarkQueryService bookmarkQueryService;
 
     @PostMapping
     @Operation(
@@ -68,5 +75,39 @@ public class CollectionController {
                 principalDetails.getProviderId(), collectionId, request);
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{collectionId}/bookmarks")
+    @Operation(
+            summary = "컬렉션별 북마크 조회",
+            description = "특정 컬렉션에 포함된 북마크들을 조회합니다. 정렬과 페이징 옵션을 제공합니다.\\n\\n" +
+                    "**정렬 옵션:**\\n" +
+                    "- `createdAt`: 북마크 생성순 (최신순/오래된순)\\n" +
+                    "- `name`: 북마크명 가나다순\\n\\n" +
+                    "**정렬 사용 예시:**\\n" +
+                    "- `sort=createdAt,desc`: 최신 북마크순\\n" +
+                    "- `sort=name,asc`: 가나다순\\n" +
+                    "- 기본값: 최신 북마크순"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "컬렉션별 북마크 조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "권한 없음 (컬렉션 소유자가 아님)"),
+            @ApiResponse(responseCode = "404", description = "컬렉션을 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<Page<BookmarkSummaryDto>> getCollectionBookmarks(
+            @Parameter(description = "컬렉션 ID") @PathVariable Integer collectionId,
+            @AuthenticationPrincipal PrincipalDetails principalDetails,
+            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+
+        // 컬렉션 소유권 검증
+        collectionService.validateCollectionOwnership(principalDetails.getProviderId(), collectionId);
+
+        // 컬렉션별 북마크 조회
+        Page<BookmarkSummaryDto> collectionBookmarks = bookmarkQueryService.getCollectionBookmarks(
+                principalDetails.getProviderId(), collectionId, pageable);
+
+        return ResponseEntity.ok(collectionBookmarks);
     }
 }
