@@ -26,4 +26,15 @@ public class BookmarkService {
 
         return BookmarkResponseDto.toDto(bookmarkRepository.save(bookmark));
     }
+
+    public void deleteBookmark(String memberId, Integer bookmarkId) {
+        Bookmark bookmark = bookmarkRepository.findById(bookmarkId)
+                .orElseThrow(() -> new ApiException(BookmarkException.BOOKMARK_NOT_FOUND));
+        
+        if (!bookmark.getMemberId().equals(memberId)) {
+            throw new ApiException(BookmarkException.ACCESS_DENIED);
+        }
+
+        bookmarkRepository.delete(bookmark);
+    }
 }

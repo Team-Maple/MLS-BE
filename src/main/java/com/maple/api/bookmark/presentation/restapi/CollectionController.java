@@ -10,6 +10,7 @@ import com.maple.api.bookmark.application.dto.CollectionAddBookmarksResponseDto;
 import com.maple.api.bookmark.application.dto.CollectionResponseDto;
 import com.maple.api.bookmark.application.dto.CollectionWithBookmarksDto;
 import com.maple.api.bookmark.application.dto.CreateCollectionRequestDto;
+import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -78,6 +79,27 @@ public class CollectionController {
                 principalDetails.getProviderId(), collectionId, request);
 
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{collectionId}")
+    @Operation(
+            summary = "컬렉션 삭제",
+            description = "특정 컬렉션과 해당 컬렉션에 포함된 북마크 관계를 삭제합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "컬렉션 삭제 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "컬렉션을 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<ResponseTemplate<Void>> deleteCollection(
+            @Parameter(description = "컬렉션 ID") @PathVariable Integer collectionId,
+            @AuthenticationPrincipal PrincipalDetails principalDetails) {
+
+        collectionService.deleteCollection(principalDetails.getProviderId(), collectionId);
+
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{collectionId}/bookmarks")

@@ -16,4 +16,6 @@ public interface BookmarkCollectionRepository extends JpaRepository<BookmarkColl
     
     @Query("SELECT bc.collectionId FROM BookmarkCollection bc WHERE bc.bookmarkId = :bookmarkId AND bc.collectionId IN :collectionIds")
     List<Integer> findExistingCollectionIds(@Param("bookmarkId") Integer bookmarkId, @Param("collectionIds") List<Integer> collectionIds);
+    
+    void deleteByCollectionId(Integer collectionId);
 }

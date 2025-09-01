@@ -119,4 +119,16 @@ public class CollectionService {
             throw new ApiException(BookmarkException.ACCESS_DENIED);
         }
     }
+
+    public void deleteCollection(String memberId, Integer collectionId) {
+        Collection collection = collectionRepository.findById(collectionId)
+                .orElseThrow(() -> new ApiException(BookmarkException.COLLECTION_NOT_FOUND));
+        
+        if (!collection.getMemberId().equals(memberId)) {
+            throw new ApiException(BookmarkException.ACCESS_DENIED);
+        }
+
+        bookmarkCollectionRepository.deleteByCollectionId(collectionId);
+        collectionRepository.delete(collection);
+    }
 }
