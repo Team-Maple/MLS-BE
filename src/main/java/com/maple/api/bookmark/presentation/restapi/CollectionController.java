@@ -2,11 +2,13 @@ package com.maple.api.bookmark.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.bookmark.application.BookmarkQueryService;
+import com.maple.api.bookmark.application.CollectionQueryService;
 import com.maple.api.bookmark.application.CollectionService;
 import com.maple.api.bookmark.application.dto.BookmarkSummaryDto;
 import com.maple.api.bookmark.application.dto.CollectionAddBookmarksRequestDto;
 import com.maple.api.bookmark.application.dto.CollectionAddBookmarksResponseDto;
 import com.maple.api.bookmark.application.dto.CollectionResponseDto;
+import com.maple.api.bookmark.application.dto.CollectionWithBookmarksDto;
 import com.maple.api.bookmark.application.dto.CreateCollectionRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.*;
 public class CollectionController {
 
     private final CollectionService collectionService;
+    private final CollectionQueryService collectionQueryService;
     private final BookmarkQueryService bookmarkQueryService;
 
     @PostMapping
@@ -109,5 +112,32 @@ public class CollectionController {
                 principalDetails.getProviderId(), collectionId, pageable);
 
         return ResponseEntity.ok(collectionBookmarks);
+    }
+
+    @GetMapping
+    @Operation(
+            summary = "컬렉션 목록 조회",
+            description = "사용자의 컬렉션 목록을 조회합니다. 각 컬렉션마다 최신 4개의 북마크 정보를 포함합니다.\\n\\n" +
+                    "**정렬 옵션:**\\n" +
+                    "- `createdAt`: 컬렉션 생성순 (최신순/오래된순)\\n" +
+                    "- `name`: 컬렉션명 가나다순\\n\\n" +
+                    "**정렬 사용 예시:**\\n" +
+                    "- `sort=createdAt,desc`: 최신 컬렉션순 (기본값)\\n" +
+                    "- `sort=name,asc`: 가나다순\\n" +
+                    "- `sort=createdAt,asc`: 오래된 컬렉션순"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "컬렉션 목록 조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<Page<CollectionWithBookmarksDto>> getCollections(
+            @AuthenticationPrincipal PrincipalDetails principalDetails,
+            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+
+        Page<CollectionWithBookmarksDto> collections = collectionQueryService.getCollectionsWithRecentBookmarks(
+                principalDetails.getProviderId(), pageable);
+
+        return ResponseEntity.ok(collections);
     }
 }
