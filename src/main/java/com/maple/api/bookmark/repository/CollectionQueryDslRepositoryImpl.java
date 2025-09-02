@@ -3,10 +3,11 @@ package com.maple.api.bookmark.repository;
 import com.maple.api.bookmark.application.dto.BookmarkSummaryDto;
 import com.maple.api.bookmark.application.dto.CollectionWithBookmarksDto;
 import com.maple.api.bookmark.domain.Collection;
+import com.maple.api.bookmark.repository.BookmarkCollectionRepository.CollectionBookmarkRow;
+import com.maple.api.bookmark.repository.BookmarkCollectionRepository;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Path;
-import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -16,20 +17,19 @@ import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.maple.api.bookmark.domain.QBookmark.bookmark;
-import static com.maple.api.bookmark.domain.QBookmarkCollection.bookmarkCollection;
 import static com.maple.api.bookmark.domain.QCollection.collection;
-import static com.maple.api.search.domain.QVwSearchSummary.vwSearchSummary;
 
 @Repository
 @RequiredArgsConstructor
 public class CollectionQueryDslRepositoryImpl implements CollectionQueryDslRepository {
 
     private final JPAQueryFactory queryFactory;
+    private final BookmarkCollectionRepository bookmarkCollectionRepository;
 
     @Override
     public Page<CollectionWithBookmarksDto> findCollectionsWithRecentBookmarks(String memberId, Pageable pageable) {
@@ -44,27 +44,31 @@ public class CollectionQueryDslRepositoryImpl implements CollectionQueryDslRepos
         // 2단계: 컬렉션 상세 정보 조회
         List<Collection> collections = fetchCollectionDetails(collectionIds, orderSpecifiers);
 
-        // 3단계: 해당 컬렉션들의 북마크 일괄 조회
-        List<BookmarkSummaryDto> allBookmarks = fetchRecentBookmarksByCollections(memberId, collectionIds);
+        // 3단계: 윈도우 함수 기반 네이티브 조회로 컬렉션당 상위 4개만 일괄 로드
+        List<CollectionBookmarkRow> rows = bookmarkCollectionRepository
+                .findTopRecentBookmarksByCollections(memberId, collectionIds);
 
-        // 4단계: 메모리에서 컬렉션별로 북마크 그룹핑 및 제한
-        Map<Integer, List<BookmarkSummaryDto>> bookmarksByCollectionId = allBookmarks.stream()
-                .collect(Collectors.groupingBy(
-                        bookmark -> findCollectionIdByBookmarkId(bookmark.bookmarkId(), collectionIds),
-                        Collectors.toList()
-                ));
+        // 4단계: 메모리에서 컬렉션별로 북마크를 조립 (네이티브에서 이미 정렬/상한 보장)
+        Map<Integer, List<BookmarkSummaryDto>> bookmarksByCollectionId = new LinkedHashMap<>();
+        for (CollectionBookmarkRow r : rows) {
+            bookmarksByCollectionId
+                    .computeIfAbsent(r.getCollectionId(), k -> new ArrayList<>(4))
+                    .add(new BookmarkSummaryDto(
+                            r.getBookmarkId(),
+                            r.getOriginalId(),
+                            r.getName(),
+                            r.getImageUrl(),
+                            r.getType(),
+                            r.getLevel()
+                    ));
+        }
 
         // 5단계: 최종 DTO 조합
         List<CollectionWithBookmarksDto> content = collections.stream()
-                .map(coll -> {
-                    List<BookmarkSummaryDto> recentBookmarks = bookmarksByCollectionId
-                            .getOrDefault(coll.getCollectionId(), new ArrayList<>())
-                            .stream()
-                            .limit(4)
-                            .collect(Collectors.toList());
-                    
-                    return CollectionWithBookmarksDto.of(coll, recentBookmarks);
-                })
+                .map(coll -> CollectionWithBookmarksDto.of(
+                        coll,
+                        bookmarksByCollectionId.getOrDefault(coll.getCollectionId(), new ArrayList<>())
+                ))
                 .collect(Collectors.toList());
 
         // 6단계: 전체 카운트 쿼리
@@ -120,36 +124,7 @@ public class CollectionQueryDslRepositoryImpl implements CollectionQueryDslRepos
                 .fetch();
     }
 
-    private List<BookmarkSummaryDto> fetchRecentBookmarksByCollections(String memberId, List<Integer> collectionIds) {
-        return queryFactory
-                .select(Projections.constructor(BookmarkSummaryDto.class,
-                        bookmark.bookmarkId,
-                        vwSearchSummary.originalId,
-                        vwSearchSummary.name,
-                        vwSearchSummary.imageUrl,
-                        vwSearchSummary.type,
-                        vwSearchSummary.level
-                ))
-                .from(bookmarkCollection)
-                .join(bookmark).on(bookmarkCollection.bookmarkId.eq(bookmark.bookmarkId))
-                .join(vwSearchSummary).on(
-                        bookmark.resourceId.eq(vwSearchSummary.originalId)
-                                .and(bookmark.bookmarkType.stringValue().eq(vwSearchSummary.type))
-                )
-                .where(bookmarkCollection.collectionId.in(collectionIds)
-                        .and(bookmark.memberId.eq(memberId)))
-                .orderBy(bookmarkCollection.collectionId.asc(), bookmark.createdAt.desc())
-                .fetch();
-    }
-
-    private Integer findCollectionIdByBookmarkId(Integer bookmarkId, List<Integer> collectionIds) {
-        return queryFactory
-                .select(bookmarkCollection.collectionId)
-                .from(bookmarkCollection)
-                .where(bookmarkCollection.bookmarkId.eq(bookmarkId)
-                        .and(bookmarkCollection.collectionId.in(collectionIds)))
-                .fetchFirst();
-    }
+    // 이전 QueryDSL 기반 조립/중복제거 로직은 네이티브 윈도우 함수로 대체되었습니다.
 
     private JPAQuery<Long> createCountQuery(String memberId) {
         return queryFactory

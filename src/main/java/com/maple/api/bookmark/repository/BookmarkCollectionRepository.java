@@ -18,4 +18,39 @@ public interface BookmarkCollectionRepository extends JpaRepository<BookmarkColl
     List<Integer> findExistingCollectionIds(@Param("bookmarkId") Integer bookmarkId, @Param("collectionIds") List<Integer> collectionIds);
     
     void deleteByCollectionId(Integer collectionId);
+
+    @Query(value = "WITH ranked AS (\n" +
+            "  SELECT\n" +
+            "    bc.collection_id       AS collectionId,\n" +
+            "    b.bookmark_id          AS bookmarkId,\n" +
+            "    v.original_id          AS originalId,\n" +
+            "    v.name                 AS name,\n" +
+            "    v.image_url            AS imageUrl,\n" +
+            "    v.type                 AS type,\n" +
+            "    v.level                AS level,\n" +
+            "    ROW_NUMBER() OVER (PARTITION BY bc.collection_id ORDER BY bc.created_at DESC, bc.bookmark_collection_id DESC) AS rn\n" +
+            "  FROM bookmark_collections bc\n" +
+            "  JOIN bookmarks b ON b.bookmark_id = bc.bookmark_id AND b.member_id = :memberId\n" +
+            "  JOIN vw_search_summary v ON v.original_id = b.resource_id AND v.type = b.bookmark_type\n" +
+            "  WHERE bc.collection_id IN (:collectionIds)\n" +
+            ")\n" +
+            "SELECT collectionId, bookmarkId, originalId, name, imageUrl, type, level\n" +
+            "FROM ranked\n" +
+            "WHERE rn <= 4\n" +
+            "ORDER BY collectionId ASC, rn ASC",
+            nativeQuery = true)
+    List<CollectionBookmarkRow> findTopRecentBookmarksByCollections(
+            @Param("memberId") String memberId,
+            @Param("collectionIds") List<Integer> collectionIds
+    );
+
+    interface CollectionBookmarkRow {
+        Integer getCollectionId();
+        Integer getBookmarkId();
+        Integer getOriginalId();
+        String getName();
+        String getImageUrl();
+        String getType();
+        Integer getLevel();
+    }
 }
