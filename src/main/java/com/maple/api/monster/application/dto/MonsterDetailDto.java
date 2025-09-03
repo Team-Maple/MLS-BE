@@ -51,7 +51,10 @@ public record MonsterDetailDto(
         Integer mesoDropRate,
         
         @Schema(description = "속성 효과 정보")
-        MonsterTypeEffectivenessDto typeEffectiveness
+        MonsterTypeEffectivenessDto typeEffectiveness,
+        
+        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
+        boolean isBookmarked
 ) {
     public static MonsterDetailDto toDto(
             Monster monster,
@@ -73,7 +76,34 @@ public record MonsterDetailDto(
                 monster.getEvasionRate(),
                 monster.getMesoDropAmount(),
                 monster.getMesoDropRate(),
-                typeEffectiveness
+                typeEffectiveness,
+                false
+        );
+    }
+
+    public static MonsterDetailDto toDto(
+            Monster monster,
+            MonsterTypeEffectivenessDto typeEffectiveness,
+            boolean isBookmarked
+    ) {
+        return new MonsterDetailDto(
+                monster.getMonsterId(),
+                monster.getNameKr(),
+                monster.getNameEn(),
+                monster.getImageUrl(),
+                monster.getLevel(),
+                monster.getExp(),
+                monster.getHp(),
+                monster.getMp(),
+                monster.getPhysicalDefense(),
+                monster.getMagicDefense(),
+                monster.getRequiredAccuracy(),
+                monster.getBonusAccuracyPerLevelLower(),
+                monster.getEvasionRate(),
+                monster.getMesoDropAmount(),
+                monster.getMesoDropRate(),
+                typeEffectiveness,
+                isBookmarked
         );
     }
 }

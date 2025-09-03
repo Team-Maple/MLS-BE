@@ -1,5 +1,6 @@
 package com.maple.api.search.presentation.restapi;
 
+import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.search.application.SearchService;
 import com.maple.api.search.application.dto.SearchSummaryDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,15 +10,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springdoc.core.annotations.ParameterObject;
 
 @RestController
 @RequestMapping("/api/v1/search")
@@ -50,8 +52,10 @@ public class SearchController {
     public ResponseEntity<Page<SearchSummaryDto>> search(
             @Parameter(description = "검색할 키워드 (최대 100자)", example = "슬라임")
             @RequestParam(required = false) @Size(max = 100) String keyword,
-            @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable) {
-        Page<SearchSummaryDto> results = searchService.search(keyword, pageable);
+            @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable,
+            @AuthenticationPrincipal PrincipalDetails principalDetails) {
+        String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
+        Page<SearchSummaryDto> results = searchService.search(memberId, keyword, pageable);
         return ResponseEntity.ok(results);
     }
 }

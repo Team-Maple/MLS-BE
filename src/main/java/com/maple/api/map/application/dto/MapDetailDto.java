@@ -27,9 +27,16 @@ public record MapDetailDto(
         String mapUrl,
         
         @Schema(description = "아이콘 URL")
-        String iconUrl
+        String iconUrl,
+        
+        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
+        boolean isBookmarked
 ) {
     public static MapDetailDto toDto(Map map) {
+        return toDto(map, false);
+    }
+
+    public static MapDetailDto toDto(Map map, boolean isBookmarked) {
         return new MapDetailDto(
                 map.getMapId(),
                 map.getNameKr(),
@@ -38,7 +45,8 @@ public record MapDetailDto(
                 map.getDetailName(),
                 map.getTopRegionName(),
                 map.getMapUrl(),
-                map.getIconUrl()
+                map.getIconUrl(),
+                isBookmarked
         );
     }
 }

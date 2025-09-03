@@ -1,5 +1,7 @@
 package com.maple.api.map.application;
 
+import com.maple.api.bookmark.application.BookmarkFlagService;
+import com.maple.api.bookmark.domain.BookmarkType;
 import com.maple.api.common.presentation.exception.ApiException;
 import com.maple.api.map.application.dto.*;
 import com.maple.api.map.exception.MapException;
@@ -21,18 +23,23 @@ public class MapService {
     private final MapRepository mapRepository;
     private final MapMonsterQueryDslRepository mapMonsterQueryDslRepository;
     private final MapNpcQueryDslRepository mapNpcQueryDslRepository;
+    private final BookmarkFlagService bookmarkFlagService;
 
     @Transactional(readOnly = true)
-    public Page<MapSummaryDto> searchMaps(MapSearchRequestDto request, Pageable pageable) {
-        return mapQueryDslRepository.searchMaps(request, pageable).map(MapSummaryDto::toDto);
+    public Page<MapSummaryDto> searchMaps(String memberId, MapSearchRequestDto request, Pageable pageable) {
+        var page = mapQueryDslRepository.searchMaps(request, pageable);
+        var ids = page.getContent().stream().map(com.maple.api.map.domain.Map::getMapId).toList();
+        var bookmarked = bookmarkFlagService.findBookmarkedIds(memberId, BookmarkType.MAP, ids);
+        return page.map(m -> MapSummaryDto.toDto(m, bookmarked.contains(m.getMapId())));
     }
 
     @Transactional(readOnly = true)
-    public MapDetailDto getMapDetail(Integer mapId) {
+    public MapDetailDto getMapDetail(String memberId, Integer mapId) {
         com.maple.api.map.domain.Map map = mapRepository.findById(mapId)
                 .orElseThrow(() -> ApiException.of(MapException.MAP_NOT_FOUND));
 
-        return MapDetailDto.toDto(map);
+        boolean isBookmarked = bookmarkFlagService.isBookmarked(memberId, BookmarkType.MAP, mapId);
+        return MapDetailDto.toDto(map, isBookmarked);
     }
 
     @Transactional(readOnly = true)

@@ -1,12 +1,9 @@
 package com.maple.api.monster.presentation.restapi;
 
+import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.common.presentation.exception.ExceptionResponse;
 import com.maple.api.monster.application.MonsterService;
-import com.maple.api.monster.application.dto.MonsterDetailDto;
-import com.maple.api.monster.application.dto.MonsterDropItemDto;
-import com.maple.api.monster.application.dto.MonsterSearchRequestDto;
-import com.maple.api.monster.application.dto.MonsterSpawnMapDto;
-import com.maple.api.monster.application.dto.MonsterSummaryDto;
+import com.maple.api.monster.application.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,13 +13,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,8 +53,10 @@ public class MonsterController {
     })
     public ResponseEntity<Page<MonsterSummaryDto>> searchMonsters(
             @Valid @ParameterObject MonsterSearchRequestDto request,
-            @ParameterObject @PageableDefault(size = 20, sort = "monsterId") Pageable pageable) {
-        return ResponseEntity.ok(monsterService.searchMonsters(request, pageable));
+            @ParameterObject @PageableDefault(size = 20, sort = "monsterId") Pageable pageable,
+            @AuthenticationPrincipal PrincipalDetails principalDetails) {
+        String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
+        return ResponseEntity.ok(monsterService.searchMonsters(memberId, request, pageable));
     }
 
     @GetMapping("/{monsterId}")
@@ -79,8 +79,10 @@ public class MonsterController {
     })
     public ResponseEntity<MonsterDetailDto> getMonsterDetail(
             @Parameter(description = "몬스터 ID", required = true, example = "100100")
-            @PathVariable Integer monsterId) {
-        return ResponseEntity.ok(monsterService.getMonsterDetail(monsterId));
+            @PathVariable Integer monsterId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal PrincipalDetails principalDetails) {
+        String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
+        return ResponseEntity.ok(monsterService.getMonsterDetail(memberId, monsterId));
     }
 
     @GetMapping("/{monsterId}/maps")

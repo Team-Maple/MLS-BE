@@ -1,19 +1,24 @@
 package com.maple.api.map.presentation.restapi;
 
+import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.map.application.MapService;
 import com.maple.api.map.application.dto.*;
-import org.springframework.data.domain.Sort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -40,8 +45,10 @@ public class MapController {
     })
     public ResponseEntity<Page<MapSummaryDto>> searchMaps(
             @ParameterObject MapSearchRequestDto request,
-            @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
-        Page<MapSummaryDto> maps = mapService.searchMaps(request, pageable);
+            @ParameterObject @PageableDefault(size = 20) Pageable pageable,
+            @AuthenticationPrincipal PrincipalDetails principalDetails) {
+        String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
+        Page<MapSummaryDto> maps = mapService.searchMaps(memberId, request, pageable);
         return ResponseEntity.ok(maps);
     }
 
@@ -55,8 +62,10 @@ public class MapController {
         @ApiResponse(responseCode = "404", description = "존재하지 않는 맵"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<MapDetailDto> getMapDetail(@PathVariable Integer mapId) {
-        MapDetailDto mapDetail = mapService.getMapDetail(mapId);
+    public ResponseEntity<MapDetailDto> getMapDetail(@PathVariable Integer mapId,
+                                                     @org.springframework.security.core.annotation.AuthenticationPrincipal PrincipalDetails principalDetails) {
+        String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
+        MapDetailDto mapDetail = mapService.getMapDetail(memberId, mapId);
         return ResponseEntity.ok(mapDetail);
     }
 

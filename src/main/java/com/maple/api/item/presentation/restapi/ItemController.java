@@ -1,5 +1,6 @@
 package com.maple.api.item.presentation.restapi;
 
+import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.item.application.ItemService;
 import com.maple.api.item.application.dto.ItemDetailDto;
 import com.maple.api.item.application.dto.ItemMonsterDropDto;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,9 +50,10 @@ public class ItemController {
     )
     public ResponseEntity<Page<ItemSummaryDto>> searchItems(
             @Valid @ParameterObject ItemSearchRequestDto searchRequest,
-            @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable) {
-        
-        Page<ItemSummaryDto> results = itemService.searchItems(searchRequest, pageable);
+            @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable,
+            @AuthenticationPrincipal PrincipalDetails principalDetails) {
+        String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
+        Page<ItemSummaryDto> results = itemService.searchItems(memberId, searchRequest, pageable);
         return ResponseEntity.ok(results);
     }
 
@@ -63,8 +66,10 @@ public class ItemController {
     )
     public ResponseEntity<ItemDetailDto> getItemDetail(
             @Parameter(description = "아이템 ID", example = "1302000", required = true)
-            @PathVariable Integer id) {
-        ItemDetailDto itemDetail = itemService.getItemDetail(id);
+            @PathVariable Integer id,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal PrincipalDetails principalDetails) {
+        String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
+        ItemDetailDto itemDetail = itemService.getItemDetail(memberId, id);
         return ResponseEntity.ok(itemDetail);
     }
 

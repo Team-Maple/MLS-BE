@@ -15,9 +15,16 @@ public record QuestSummaryDto(
         String imageUrl,
         
         @Schema(description = "데이터 타입 (고정값: 'quest')", example = "quest")
-        String type
+        String type,
+        
+        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
+        boolean isBookmarked
 ) {
     public static QuestSummaryDto toDto(Quest entity) {
-        return new QuestSummaryDto(entity.getQuestId(), entity.getNameKr(), entity.getIconUrl(), "quest");
+        return toDto(entity, false);
+    }
+
+    public static QuestSummaryDto toDto(Quest entity, boolean isBookmarked) {
+        return new QuestSummaryDto(entity.getQuestId(), entity.getNameKr(), entity.getIconUrl(), "quest", isBookmarked);
     }
 }
