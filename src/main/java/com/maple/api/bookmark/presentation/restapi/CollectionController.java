@@ -10,6 +10,7 @@ import com.maple.api.bookmark.application.dto.CollectionAddBookmarksResponseDto;
 import com.maple.api.bookmark.application.dto.CollectionResponseDto;
 import com.maple.api.bookmark.application.dto.CollectionWithBookmarksDto;
 import com.maple.api.bookmark.application.dto.CreateCollectionRequestDto;
+import com.maple.api.bookmark.application.dto.UpdateCollectionRequestDto;
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -161,5 +162,29 @@ public class CollectionController {
                 principalDetails.getProviderId(), pageable);
 
         return ResponseEntity.ok(collections);
+    }
+
+    @PutMapping("/{collectionId}")
+    @Operation(
+            summary = "컬렉션 수정",
+            description = "특정 컬렉션의 이름을 수정합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "컬렉션 수정 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "컬렉션을 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<CollectionResponseDto> updateCollectionName(
+            @Parameter(description = "컬렉션 ID") @PathVariable Integer collectionId,
+            @AuthenticationPrincipal PrincipalDetails principalDetails,
+            @Valid @RequestBody UpdateCollectionRequestDto request) {
+
+        CollectionResponseDto response = collectionService.updateCollectionName(
+                principalDetails.getProviderId(), collectionId, request);
+
+        return ResponseEntity.ok(response);
     }
 }
