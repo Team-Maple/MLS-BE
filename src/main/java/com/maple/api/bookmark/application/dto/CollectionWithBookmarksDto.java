@@ -23,15 +23,11 @@ public record CollectionWithBookmarksDto(
 ) {
     
     public static CollectionWithBookmarksDto of(Collection collection, List<BookmarkSummaryDto> bookmarks) {
-        List<BookmarkSummaryDto> limitedBookmarks = bookmarks.stream()
-                .limit(4)
-                .collect(Collectors.toList());
-        
         return new CollectionWithBookmarksDto(
                 collection.getCollectionId(),
                 collection.getName(),
                 collection.getCreatedAt(),
-                limitedBookmarks
+                bookmarks
         );
     }
 }
