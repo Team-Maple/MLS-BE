@@ -94,7 +94,7 @@ public class CollectionController {
             @ApiResponse(responseCode = "404", description = "컬렉션을 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<ResponseTemplate<Void>> deleteCollection(
+    public ResponseEntity<Void> deleteCollection(
             @Parameter(description = "컬렉션 ID") @PathVariable Integer collectionId,
             @AuthenticationPrincipal PrincipalDetails principalDetails) {
 
