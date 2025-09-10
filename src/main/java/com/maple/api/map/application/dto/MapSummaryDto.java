@@ -15,9 +15,16 @@ public record MapSummaryDto(
         String imageUrl,
         
         @Schema(description = "데이터 타입 (고정값: 'map')", example = "map")
-        String type
+        String type,
+        
+        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
+        boolean isBookmarked
 ) {
     public static MapSummaryDto toDto(Map entity) {
-        return new MapSummaryDto(entity.getMapId(), entity.getNameKr(), entity.getIconUrl(), "map");
+        return toDto(entity, false);
+    }
+
+    public static MapSummaryDto toDto(Map entity, boolean isBookmarked) {
+        return new MapSummaryDto(entity.getMapId(), entity.getNameKr(), entity.getIconUrl(), "map", isBookmarked);
     }
 }

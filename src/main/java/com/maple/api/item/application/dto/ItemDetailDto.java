@@ -45,10 +45,17 @@ public record ItemDetailDto(
         ItemEquipmentStatsDto equipmentStats,
         
         @Schema(description = "스크롤 상세 정보 (스크롤 아이템의 경우)")
-        ItemScrollDetailDto scrollDetail
+        ItemScrollDetailDto scrollDetail,
+        
+        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
+        boolean isBookmarked
 ) {
     
     public static ItemDetailDto toDto(Item item, Category rootCategory, Category leafCategory, List<Job> availableJobs) {
+        return toDto(item, rootCategory, leafCategory, availableJobs, false);
+    }
+
+    public static ItemDetailDto toDto(Item item, Category rootCategory, Category leafCategory, List<Job> availableJobs, boolean isBookmarked) {
         String itemType = getItemType(item);
         
         return ItemDetailDto.builder()
@@ -64,6 +71,7 @@ public record ItemDetailDto(
                 .requiredStats(getRequiredStats(item))
                 .equipmentStats(getEquipmentStats(item))
                 .scrollDetail(getScrollDetail(item))
+                .isBookmarked(isBookmarked)
                 .build();
     }
     

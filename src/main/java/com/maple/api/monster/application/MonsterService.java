@@ -1,5 +1,7 @@
 package com.maple.api.monster.application;
 
+import com.maple.api.bookmark.application.BookmarkFlagService;
+import com.maple.api.bookmark.domain.BookmarkType;
 import com.maple.api.common.presentation.exception.ApiException;
 import com.maple.api.monster.application.dto.*;
 import com.maple.api.monster.domain.Monster;
@@ -23,14 +25,18 @@ public class MonsterService {
     private final MonsterQueryDslRepository monsterQueryDslRepository;
     private final MonsterRepository monsterRepository;
     private final MonsterTypeEffectivenessRepository monsterTypeEffectivenessRepository;
+    private final BookmarkFlagService bookmarkFlagService;
 
     @Transactional(readOnly = true)
-    public Page<MonsterSummaryDto> searchMonsters(MonsterSearchRequestDto request, Pageable pageable) {
-        return monsterQueryDslRepository.searchMonsters(request, pageable).map(MonsterSummaryDto::toDto);
+    public Page<MonsterSummaryDto> searchMonsters(String memberId, MonsterSearchRequestDto request, Pageable pageable) {
+        var page = monsterQueryDslRepository.searchMonsters(request, pageable);
+        var ids = page.getContent().stream().map(Monster::getMonsterId).toList();
+        var bookmarked = bookmarkFlagService.findBookmarkedIds(memberId, BookmarkType.MONSTER, ids);
+        return page.map(m -> MonsterSummaryDto.toDto(m, bookmarked.contains(m.getMonsterId())));
     }
 
     @Transactional(readOnly = true)
-    public MonsterDetailDto getMonsterDetail(Integer monsterId) {
+    public MonsterDetailDto getMonsterDetail(String memberId, Integer monsterId) {
         // 1. Monster 조회
         Monster monster = monsterRepository.findByMonsterId(monsterId)
                 .orElseThrow(() -> ApiException.of(MonsterException.MONSTER_NOT_FOUND));
@@ -40,7 +46,8 @@ public class MonsterService {
                 .map(MonsterTypeEffectivenessDto::toDto)
                 .orElse(null);
 
-        return MonsterDetailDto.toDto(monster, typeEffectivenessDto);
+        boolean isBookmarked = bookmarkFlagService.isBookmarked(memberId, BookmarkType.MONSTER, monsterId);
+        return MonsterDetailDto.toDto(monster, typeEffectivenessDto, isBookmarked);
     }
 
     @Transactional(readOnly = true)

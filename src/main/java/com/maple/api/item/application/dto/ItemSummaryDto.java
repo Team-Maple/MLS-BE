@@ -15,14 +15,22 @@ public record ItemSummaryDto(
         String imageUrl,
         
         @Schema(description = "아이템 타입 (고정값: 'item')", example = "item")
-        String type
+        String type,
+
+        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
+        boolean isBookmarked
 ) {
     public static ItemSummaryDto toDto(Item entity) {
+        return toDto(entity, false);
+    }
+
+    public static ItemSummaryDto toDto(Item entity, boolean isBookmarked) {
         return new ItemSummaryDto(
-                entity.getItemId(), 
-                entity.getNameKr(), 
+                entity.getItemId(),
+                entity.getNameKr(),
                 entity.getItemImageUrl(),
-                "item"
+                "item",
+                isBookmarked
         );
     }
 }

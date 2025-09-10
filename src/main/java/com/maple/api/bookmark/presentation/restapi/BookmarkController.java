@@ -5,6 +5,7 @@ import com.maple.api.bookmark.application.BookmarkQueryService;
 import com.maple.api.bookmark.application.BookmarkService;
 import com.maple.api.bookmark.application.CollectionService;
 import com.maple.api.bookmark.application.dto.*;
+import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -107,6 +108,27 @@ public class BookmarkController {
                 principalDetails.getProviderId(), bookmarkId, request);
 
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{bookmarkId}")
+    @Operation(
+            summary = "북마크 삭제",
+            description = "특정 북마크를 삭제합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "북마크 삭제 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "북마크를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<Void> deleteBookmark(
+            @Parameter(description = "북마크 ID") @PathVariable Integer bookmarkId,
+            @AuthenticationPrincipal PrincipalDetails principalDetails) {
+
+        bookmarkService.deleteBookmark(principalDetails.getProviderId(), bookmarkId);
+
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/items")

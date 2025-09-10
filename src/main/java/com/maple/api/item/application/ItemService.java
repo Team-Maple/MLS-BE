@@ -1,5 +1,7 @@
 package com.maple.api.item.application;
 
+import com.maple.api.bookmark.application.BookmarkFlagService;
+import com.maple.api.bookmark.domain.BookmarkType;
 import com.maple.api.common.presentation.exception.ApiException;
 import com.maple.api.item.application.dto.ItemDetailDto;
 import com.maple.api.item.application.dto.ItemMonsterDropDto;
@@ -30,17 +32,20 @@ public class ItemService {
     private final ItemRepository itemRepository;
     private final ItemQueryDslRepository itemQueryDslRepository;
     private final JobRepository jobRepository;
+    private final BookmarkFlagService bookmarkFlagService;
 
     private final CategoryService categoryService;
 
     @Transactional(readOnly = true)
-    public Page<ItemSummaryDto> searchItems(ItemSearchRequestDto searchRequest, Pageable pageable) {
-        return itemQueryDslRepository.searchItems(searchRequest, pageable)
-                .map(ItemSummaryDto::toDto);
+    public Page<ItemSummaryDto> searchItems(String memberId, ItemSearchRequestDto searchRequest, Pageable pageable) {
+        var page = itemQueryDslRepository.searchItems(searchRequest, pageable);
+        var ids = page.getContent().stream().map(Item::getItemId).toList();
+        var bookmarked = bookmarkFlagService.findBookmarkedIds(memberId, BookmarkType.ITEM, ids);
+        return page.map(item -> ItemSummaryDto.toDto(item, bookmarked.contains(item.getItemId())));
     }
 
     @Transactional(readOnly = true)
-    public ItemDetailDto getItemDetail(Integer itemId) {
+    public ItemDetailDto getItemDetail(String memberId, Integer itemId) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> ApiException.of(ItemException.ITEM_NOT_FOUND));
 
@@ -51,7 +56,8 @@ public class ItemService {
 
         List<Job> availableJobs = jobRepository.findByItemId(itemId);
 
-        return ItemDetailDto.toDto(item, rootCategory, leafCategory, availableJobs);
+        boolean isBookmarked = bookmarkFlagService.isBookmarked(memberId, BookmarkType.ITEM, itemId);
+        return ItemDetailDto.toDto(item, rootCategory, leafCategory, availableJobs, isBookmarked);
     }
 
     private Item loadTypeSpecificData(Item item) {

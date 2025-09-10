@@ -29,4 +29,8 @@ public class Collection extends BaseEntity {
         this.memberId = memberId;
         this.name = name;
     }
+
+    public void rename(String name) {
+        this.name = name;
+    }
 }
