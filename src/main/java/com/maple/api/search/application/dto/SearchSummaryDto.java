@@ -28,6 +28,13 @@ public record SearchSummaryDto(
     }
 
     public static SearchSummaryDto toDto(VwSearchSummary entity, boolean isBookmarked) {
-        return new SearchSummaryDto(entity.getOriginalId(), entity.getName(), entity.getImageUrl(), entity.getType(), entity.getLevel(), isBookmarked);
+        return new SearchSummaryDto(
+                entity.getOriginalId(),
+                entity.getName(),
+                entity.getImageUrl(),
+                entity.getType() != null ? entity.getType().name() : null,
+                entity.getLevel(),
+                isBookmarked
+        );
     }
 }

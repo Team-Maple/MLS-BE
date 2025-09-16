@@ -34,27 +34,16 @@ public class SearchService {
     private Map<Integer, Boolean> buildBookmarkFlagMap(String memberId, List<VwSearchSummary> content) {
         if (memberId == null || content.isEmpty()) return Collections.emptyMap();
 
-        Map<String, List<Integer>> idsByType = content.stream()
+        Map<BookmarkType, List<Integer>> idsByType = content.stream()
                 .collect(Collectors.groupingBy(VwSearchSummary::getType,
                         Collectors.mapping(VwSearchSummary::getOriginalId, Collectors.toList())));
 
         Map<Integer, Boolean> result = new HashMap<>();
 
-        idsByType.forEach((typeStr, ids) -> {
-            BookmarkType type = switch (typeStr) {
-                case "ITEM" -> BookmarkType.ITEM;
-                case "MONSTER" -> BookmarkType.MONSTER;
-                case "NPC" -> BookmarkType.NPC;
-                case "QUEST" -> BookmarkType.QUEST;
-                case "MAP" -> BookmarkType.MAP;
-                default -> null;
-            };
-
-            if (type != null) {
-                Set<Integer> bookmarked = bookmarkFlagService.findBookmarkedIds(memberId, type, ids);
-                for (Integer id : ids) {
-                    result.put(id, bookmarked.contains(id));
-                }
+        idsByType.forEach((type, ids) -> {
+            Set<Integer> bookmarked = bookmarkFlagService.findBookmarkedIds(memberId, type, ids);
+            for (Integer id : ids) {
+                result.put(id, bookmarked.contains(id));
             }
         });
 
