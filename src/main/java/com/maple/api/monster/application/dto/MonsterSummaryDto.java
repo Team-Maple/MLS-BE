@@ -15,14 +15,22 @@ public record MonsterSummaryDto(
         String imageUrl,
         
         @Schema(description = "타입 (고정값: monster)", example = "monster")
-        String type
+        String type,
+        
+        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
+        boolean isBookmarked
 ) {
     public static MonsterSummaryDto toDto(Monster entity) {
+        return toDto(entity, false);
+    }
+
+    public static MonsterSummaryDto toDto(Monster entity, boolean isBookmarked) {
         return new MonsterSummaryDto(
                 entity.getMonsterId(),
                 entity.getNameKr(),
                 entity.getImageUrl(),
-                "monster"
+                "monster",
+                isBookmarked
         );
     }
 }

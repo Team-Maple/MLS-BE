@@ -99,7 +99,7 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
                 .from(bookmark)
                 .join(vwSearchSummary).on(
                         bookmark.resourceId.eq(vwSearchSummary.originalId)
-                                .and(bookmark.bookmarkType.stringValue().eq(vwSearchSummary.type))
+                                .and(bookmark.bookmarkType.eq(vwSearchSummary.type))
                 )
                 .where(bookmark.memberId.eq(memberId))
                 .orderBy(order.toArray(new OrderSpecifier[0]))
@@ -121,7 +121,7 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
                 .from(bookmark)
                 .join(vwSearchSummary).on(
                         bookmark.resourceId.eq(vwSearchSummary.originalId)
-                                .and(bookmark.bookmarkType.stringValue().eq(vwSearchSummary.type))
+                                .and(bookmark.bookmarkType.eq(vwSearchSummary.type))
                 )
                 .where(bookmark.bookmarkId.in(bookmarkIds))
                 .orderBy(order.toArray(new OrderSpecifier[0]))
@@ -667,7 +667,7 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
                 .join(bookmarkCollection).on(bookmark.bookmarkId.eq(bookmarkCollection.bookmarkId))
                 .join(vwSearchSummary).on(
                         bookmark.resourceId.eq(vwSearchSummary.originalId)
-                                .and(bookmark.bookmarkType.stringValue().eq(vwSearchSummary.type))
+                                .and(bookmark.bookmarkType.eq(vwSearchSummary.type))
                 )
                 .where(bookmark.memberId.eq(memberId)
                         .and(bookmarkCollection.collectionId.eq(collectionId)))

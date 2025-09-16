@@ -1,12 +1,9 @@
 package com.maple.api.npc.presentation.restapi;
 
+import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.common.presentation.exception.ExceptionResponse;
 import com.maple.api.npc.application.NpcService;
-import com.maple.api.npc.application.dto.NpcDetailDto;
-import com.maple.api.npc.application.dto.NpcQuestDto;
-import com.maple.api.npc.application.dto.NpcSearchRequestDto;
-import com.maple.api.npc.application.dto.NpcSpawnMapDto;
-import com.maple.api.npc.application.dto.NpcSummaryDto;
+import com.maple.api.npc.application.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -15,14 +12,15 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -51,8 +49,10 @@ public class NpcController {
     })
     public ResponseEntity<Page<NpcSummaryDto>> searchNpcs(
             @ParameterObject NpcSearchRequestDto request,
-            @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
-        Page<NpcSummaryDto> npcs = npcService.searchNpcs(request, pageable);
+            @ParameterObject @PageableDefault(size = 20) Pageable pageable,
+            @AuthenticationPrincipal PrincipalDetails principalDetails) {
+        String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
+        Page<NpcSummaryDto> npcs = npcService.searchNpcs(memberId, request, pageable);
         return ResponseEntity.ok(npcs);
     }
 
@@ -71,8 +71,10 @@ public class NpcController {
     })
     public ResponseEntity<NpcDetailDto> getNpcDetail(
             @Parameter(description = "NPC ID", required = true, example = "1010100")
-            @PathVariable Integer npcId) {
-        return ResponseEntity.ok(npcService.getNpcDetail(npcId));
+            @PathVariable Integer npcId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal PrincipalDetails principalDetails) {
+        String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
+        return ResponseEntity.ok(npcService.getNpcDetail(memberId, npcId));
     }
 
     @GetMapping("/{npcId}/maps")

@@ -18,9 +18,23 @@ public record SearchSummaryDto(
         String type,
 
         @Schema(description = "레벨", example = "0")
-        Integer level
+        Integer level,
+
+        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
+        boolean isBookmarked
 ) {
     public static SearchSummaryDto toDto(VwSearchSummary entity) {
-        return new SearchSummaryDto(entity.getOriginalId(), entity.getName(), entity.getImageUrl(), entity.getType(), entity.getLevel());
+        return toDto(entity, false);
+    }
+
+    public static SearchSummaryDto toDto(VwSearchSummary entity, boolean isBookmarked) {
+        return new SearchSummaryDto(
+                entity.getOriginalId(),
+                entity.getName(),
+                entity.getImageUrl(),
+                entity.getType() != null ? entity.getType().name() : null,
+                entity.getLevel(),
+                isBookmarked
+        );
     }
 }

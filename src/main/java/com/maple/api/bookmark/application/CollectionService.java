@@ -6,6 +6,7 @@ import com.maple.api.bookmark.application.dto.CollectionAddBookmarksRequestDto;
 import com.maple.api.bookmark.application.dto.CollectionAddBookmarksResponseDto;
 import com.maple.api.bookmark.application.dto.CollectionResponseDto;
 import com.maple.api.bookmark.application.dto.CreateCollectionRequestDto;
+import com.maple.api.bookmark.application.dto.UpdateCollectionRequestDto;
 import com.maple.api.bookmark.domain.Bookmark;
 import com.maple.api.bookmark.domain.BookmarkCollection;
 import com.maple.api.bookmark.domain.Collection;
@@ -118,5 +119,30 @@ public class CollectionService {
         if (!collection.getMemberId().equals(memberId)) {
             throw new ApiException(BookmarkException.ACCESS_DENIED);
         }
+    }
+
+    public void deleteCollection(String memberId, Integer collectionId) {
+        Collection collection = collectionRepository.findById(collectionId)
+                .orElseThrow(() -> new ApiException(BookmarkException.COLLECTION_NOT_FOUND));
+        
+        if (!collection.getMemberId().equals(memberId)) {
+            throw new ApiException(BookmarkException.ACCESS_DENIED);
+        }
+
+        bookmarkCollectionRepository.deleteByCollectionId(collectionId);
+        collectionRepository.delete(collection);
+    }
+
+    public CollectionResponseDto updateCollectionName(String memberId, Integer collectionId, UpdateCollectionRequestDto request) {
+        Collection collection = collectionRepository.findById(collectionId)
+                .orElseThrow(() -> new ApiException(BookmarkException.COLLECTION_NOT_FOUND));
+
+        if (!collection.getMemberId().equals(memberId)) {
+            throw new ApiException(BookmarkException.ACCESS_DENIED);
+        }
+
+        collection.rename(request.name());
+
+        return CollectionResponseDto.toDto(collection);
     }
 }

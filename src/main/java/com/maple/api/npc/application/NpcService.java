@@ -1,5 +1,7 @@
 package com.maple.api.npc.application;
 
+import com.maple.api.bookmark.application.BookmarkFlagService;
+import com.maple.api.bookmark.domain.BookmarkType;
 import com.maple.api.common.presentation.exception.ApiException;
 import com.maple.api.npc.application.dto.NpcDetailDto;
 import com.maple.api.npc.application.dto.NpcQuestDto;
@@ -25,19 +27,23 @@ public class NpcService {
 
     private final NpcQueryDslRepository npcQueryDslRepository;
     private final NpcRepository npcRepository;
+    private final BookmarkFlagService bookmarkFlagService;
 
     @Transactional(readOnly = true)
-    public Page<NpcSummaryDto> searchNpcs(NpcSearchRequestDto request, Pageable pageable) {
+    public Page<NpcSummaryDto> searchNpcs(String memberId, NpcSearchRequestDto request, Pageable pageable) {
         Page<Npc> npcPage = npcQueryDslRepository.searchNpcs(request, pageable);
-        return npcPage.map(NpcSummaryDto::toDto);
+        var ids = npcPage.getContent().stream().map(Npc::getNpcId).toList();
+        var bookmarked = bookmarkFlagService.findBookmarkedIds(memberId, BookmarkType.NPC, ids);
+        return npcPage.map(n -> NpcSummaryDto.toDto(n, bookmarked.contains(n.getNpcId())));
     }
 
     @Transactional(readOnly = true)
-    public NpcDetailDto getNpcDetail(Integer npcId) {
+    public NpcDetailDto getNpcDetail(String memberId, Integer npcId) {
         Npc npc = npcRepository.findByNpcId(npcId)
                 .orElseThrow(() -> ApiException.of(NpcException.NPC_NOT_FOUND));
         
-        return NpcDetailDto.toDto(npc);
+        boolean isBookmarked = bookmarkFlagService.isBookmarked(memberId, BookmarkType.NPC, npcId);
+        return NpcDetailDto.toDto(npc, isBookmarked);
     }
 
     @Transactional(readOnly = true)

@@ -15,14 +15,22 @@ public record NpcDetailDto(
         String nameEn,
         
         @Schema(description = "NPC 상세 아이콘 URL", example = "https://maplestory.io/api/gms/62/npc/9000000/icon")
-        String iconUrlDetail
+        String iconUrlDetail,
+        
+        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
+        boolean isBookmarked
 ) {
     public static NpcDetailDto toDto(Npc npc) {
+        return toDto(npc, false);
+    }
+
+    public static NpcDetailDto toDto(Npc npc, boolean isBookmarked) {
         return new NpcDetailDto(
                 npc.getNpcId(),
                 npc.getNameKr(),
                 npc.getNameEn(),
-                npc.getIconUrlDetail()
+                npc.getIconUrlDetail(),
+                isBookmarked
         );
     }
 }

@@ -122,6 +122,7 @@ public class NpcQueryDslRepositoryImpl implements NpcQueryDslRepository {
                 .select(Projections.constructor(NpcQuestDto.class,
                         quest.questId,
                         quest.nameKr,
+                        quest.nameEn,
                         npcQuest.questIconUrl,
                         quest.minLevel,
                         quest.maxLevel

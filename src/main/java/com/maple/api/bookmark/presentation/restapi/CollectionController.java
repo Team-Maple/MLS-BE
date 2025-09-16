@@ -2,12 +2,16 @@ package com.maple.api.bookmark.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.bookmark.application.BookmarkQueryService;
+import com.maple.api.bookmark.application.CollectionQueryService;
 import com.maple.api.bookmark.application.CollectionService;
 import com.maple.api.bookmark.application.dto.BookmarkSummaryDto;
 import com.maple.api.bookmark.application.dto.CollectionAddBookmarksRequestDto;
 import com.maple.api.bookmark.application.dto.CollectionAddBookmarksResponseDto;
 import com.maple.api.bookmark.application.dto.CollectionResponseDto;
+import com.maple.api.bookmark.application.dto.CollectionWithBookmarksDto;
 import com.maple.api.bookmark.application.dto.CreateCollectionRequestDto;
+import com.maple.api.bookmark.application.dto.UpdateCollectionRequestDto;
+import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -30,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 public class CollectionController {
 
     private final CollectionService collectionService;
+    private final CollectionQueryService collectionQueryService;
     private final BookmarkQueryService bookmarkQueryService;
 
     @PostMapping
@@ -77,6 +82,27 @@ public class CollectionController {
         return ResponseEntity.ok(response);
     }
 
+    @DeleteMapping("/{collectionId}")
+    @Operation(
+            summary = "컬렉션 삭제",
+            description = "특정 컬렉션과 해당 컬렉션에 포함된 북마크 관계를 삭제합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "컬렉션 삭제 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "컬렉션을 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<Void> deleteCollection(
+            @Parameter(description = "컬렉션 ID") @PathVariable Integer collectionId,
+            @AuthenticationPrincipal PrincipalDetails principalDetails) {
+
+        collectionService.deleteCollection(principalDetails.getProviderId(), collectionId);
+
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{collectionId}/bookmarks")
     @Operation(
             summary = "컬렉션별 북마크 조회",
@@ -109,5 +135,56 @@ public class CollectionController {
                 principalDetails.getProviderId(), collectionId, pageable);
 
         return ResponseEntity.ok(collectionBookmarks);
+    }
+
+    @GetMapping
+    @Operation(
+            summary = "컬렉션 목록 조회",
+            description = "사용자의 컬렉션 목록을 조회합니다. 각 컬렉션마다 최신 4개의 북마크 정보를 포함합니다.\\n\\n" +
+                    "**정렬 옵션:**\\n" +
+                    "- `createdAt`: 컬렉션 생성순 (최신순/오래된순)\\n" +
+                    "- `name`: 컬렉션명 가나다순\\n\\n" +
+                    "**정렬 사용 예시:**\\n" +
+                    "- `sort=createdAt,desc`: 최신 컬렉션순 (기본값)\\n" +
+                    "- `sort=name,asc`: 가나다순\\n" +
+                    "- `sort=createdAt,asc`: 오래된 컬렉션순"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "컬렉션 목록 조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<Page<CollectionWithBookmarksDto>> getCollections(
+            @AuthenticationPrincipal PrincipalDetails principalDetails,
+            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+
+        Page<CollectionWithBookmarksDto> collections = collectionQueryService.getCollectionsWithRecentBookmarks(
+                principalDetails.getProviderId(), pageable);
+
+        return ResponseEntity.ok(collections);
+    }
+
+    @PutMapping("/{collectionId}")
+    @Operation(
+            summary = "컬렉션 수정",
+            description = "특정 컬렉션의 이름을 수정합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "컬렉션 수정 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "컬렉션을 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<CollectionResponseDto> updateCollectionName(
+            @Parameter(description = "컬렉션 ID") @PathVariable Integer collectionId,
+            @AuthenticationPrincipal PrincipalDetails principalDetails,
+            @Valid @RequestBody UpdateCollectionRequestDto request) {
+
+        CollectionResponseDto response = collectionService.updateCollectionName(
+                principalDetails.getProviderId(), collectionId, request);
+
+        return ResponseEntity.ok(response);
     }
 }
