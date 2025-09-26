@@ -2,6 +2,7 @@ package com.maple.api.monster.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.common.presentation.exception.ExceptionResponse;
+import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.monster.application.MonsterService;
 import com.maple.api.monster.application.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
@@ -51,12 +52,12 @@ public class MonsterController {
         @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Page<MonsterSummaryDto>> searchMonsters(
+    public ResponseEntity<ResponseTemplate<Page<MonsterSummaryDto>>> searchMonsters(
             @Valid @ParameterObject MonsterSearchRequestDto request,
             @ParameterObject @PageableDefault(size = 20, sort = "monsterId") Pageable pageable,
             @AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
-        return ResponseEntity.ok(monsterService.searchMonsters(memberId, request, pageable));
+        return ResponseEntity.ok(ResponseTemplate.success(monsterService.searchMonsters(memberId, request, pageable)));
     }
 
     @GetMapping("/{monsterId}")
@@ -77,12 +78,12 @@ public class MonsterController {
             @ApiResponse(responseCode = "500", description = "서버 내부 오류",
                     content = @Content(schema = @Schema(implementation = ExceptionResponse.class)))
     })
-    public ResponseEntity<MonsterDetailDto> getMonsterDetail(
+    public ResponseEntity<ResponseTemplate<MonsterDetailDto>> getMonsterDetail(
             @Parameter(description = "몬스터 ID", required = true, example = "100100")
             @PathVariable Integer monsterId,
             @org.springframework.security.core.annotation.AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
-        return ResponseEntity.ok(monsterService.getMonsterDetail(memberId, monsterId));
+        return ResponseEntity.ok(ResponseTemplate.success(monsterService.getMonsterDetail(memberId, monsterId)));
     }
 
     @GetMapping("/{monsterId}/maps")
@@ -99,12 +100,12 @@ public class MonsterController {
         @ApiResponse(responseCode = "404", description = "존재하지 않는 몬스터"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<List<MonsterSpawnMapDto>> getMonsterSpawnMaps(
+    public ResponseEntity<ResponseTemplate<List<MonsterSpawnMapDto>>> getMonsterSpawnMaps(
             @Parameter(description = "몬스터 ID", required = true, example = "100100")
             @PathVariable Integer monsterId,
             @ParameterObject Sort sort) {
         List<MonsterSpawnMapDto> spawnMaps = monsterService.getMonsterSpawnMaps(monsterId, sort);
-        return ResponseEntity.ok(spawnMaps);
+        return ResponseEntity.ok(ResponseTemplate.success(spawnMaps));
     }
 
     @GetMapping("/{monsterId}/items")
@@ -123,11 +124,11 @@ public class MonsterController {
         @ApiResponse(responseCode = "404", description = "존재하지 않는 몬스터"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<List<MonsterDropItemDto>> getMonsterDropItems(
+    public ResponseEntity<ResponseTemplate<List<MonsterDropItemDto>>> getMonsterDropItems(
             @Parameter(description = "몬스터 ID", required = true, example = "100100")
             @PathVariable Integer monsterId,
             @ParameterObject Sort sort) {
         List<MonsterDropItemDto> dropItems = monsterService.getMonsterDropItems(monsterId, sort);
-        return ResponseEntity.ok(dropItems);
+        return ResponseEntity.ok(ResponseTemplate.success(dropItems));
     }
 }

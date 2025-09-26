@@ -1,6 +1,7 @@
 package com.maple.api.search.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
+import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.search.application.SearchService;
 import com.maple.api.search.application.dto.SearchSummaryDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,13 +50,13 @@ public class SearchController {
         @ApiResponse(responseCode = "400", description = "잘못된 요청 (키워드 길이 초과 등)"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Page<SearchSummaryDto>> search(
+    public ResponseEntity<ResponseTemplate<Page<SearchSummaryDto>>> search(
             @Parameter(description = "검색할 키워드 (최대 100자)", example = "슬라임")
             @RequestParam(required = false) @Size(max = 100) String keyword,
             @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable,
             @AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         Page<SearchSummaryDto> results = searchService.search(memberId, keyword, pageable);
-        return ResponseEntity.ok(results);
+        return ResponseEntity.ok(ResponseTemplate.success(results));
     }
 }

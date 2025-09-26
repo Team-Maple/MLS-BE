@@ -2,6 +2,7 @@ package com.maple.api.npc.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.common.presentation.exception.ExceptionResponse;
+import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.npc.application.NpcService;
 import com.maple.api.npc.application.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
@@ -47,13 +48,13 @@ public class NpcController {
         @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Page<NpcSummaryDto>> searchNpcs(
+    public ResponseEntity<ResponseTemplate<Page<NpcSummaryDto>>> searchNpcs(
             @ParameterObject NpcSearchRequestDto request,
             @ParameterObject @PageableDefault(size = 20) Pageable pageable,
             @AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         Page<NpcSummaryDto> npcs = npcService.searchNpcs(memberId, request, pageable);
-        return ResponseEntity.ok(npcs);
+        return ResponseEntity.ok(ResponseTemplate.success(npcs));
     }
 
     @GetMapping("/{npcId}")
@@ -69,12 +70,12 @@ public class NpcController {
             @ApiResponse(responseCode = "500", description = "서버 내부 오류",
                     content = @Content(schema = @Schema(implementation = ExceptionResponse.class)))
     })
-    public ResponseEntity<NpcDetailDto> getNpcDetail(
+    public ResponseEntity<ResponseTemplate<NpcDetailDto>> getNpcDetail(
             @Parameter(description = "NPC ID", required = true, example = "1010100")
             @PathVariable Integer npcId,
             @org.springframework.security.core.annotation.AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
-        return ResponseEntity.ok(npcService.getNpcDetail(memberId, npcId));
+        return ResponseEntity.ok(ResponseTemplate.success(npcService.getNpcDetail(memberId, npcId)));
     }
 
     @GetMapping("/{npcId}/maps")
@@ -87,11 +88,11 @@ public class NpcController {
         @ApiResponse(responseCode = "404", description = "존재하지 않는 NPC"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<List<NpcSpawnMapDto>> getNpcSpawnMaps(
+    public ResponseEntity<ResponseTemplate<List<NpcSpawnMapDto>>> getNpcSpawnMaps(
             @Parameter(description = "NPC ID", required = true, example = "1010100")
             @PathVariable Integer npcId) {
         List<NpcSpawnMapDto> spawnMaps = npcService.getNpcSpawnMaps(npcId);
-        return ResponseEntity.ok(spawnMaps);
+        return ResponseEntity.ok(ResponseTemplate.success(spawnMaps));
     }
 
     @GetMapping("/{npcId}/quests")
@@ -111,11 +112,11 @@ public class NpcController {
         @ApiResponse(responseCode = "404", description = "존재하지 않는 NPC"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<List<NpcQuestDto>> getNpcQuests(
+    public ResponseEntity<ResponseTemplate<List<NpcQuestDto>>> getNpcQuests(
             @Parameter(description = "NPC ID", required = true, example = "1010100")
             @PathVariable Integer npcId,
             @ParameterObject Sort sort) {
         List<NpcQuestDto> quests = npcService.getNpcQuests(npcId, sort);
-        return ResponseEntity.ok(quests);
+        return ResponseEntity.ok(ResponseTemplate.success(quests));
     }
 }

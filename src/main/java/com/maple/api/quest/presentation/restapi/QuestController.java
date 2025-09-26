@@ -1,6 +1,7 @@
 package com.maple.api.quest.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
+import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.quest.application.QuestService;
 import com.maple.api.quest.application.dto.QuestChainResponseDto;
 import com.maple.api.quest.application.dto.QuestDetailDto;
@@ -43,13 +44,13 @@ public class QuestController {
         @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Page<QuestSummaryDto>> searchQuests(
+    public ResponseEntity<ResponseTemplate<Page<QuestSummaryDto>>> searchQuests(
             @ParameterObject QuestSearchRequestDto request,
             @ParameterObject @PageableDefault(size = 20) Pageable pageable,
             @AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         Page<QuestSummaryDto> quests = questService.searchQuests(memberId, request, pageable);
-        return ResponseEntity.ok(quests);
+        return ResponseEntity.ok(ResponseTemplate.success(quests));
     }
 
     @GetMapping("/{questId}")
@@ -62,11 +63,11 @@ public class QuestController {
         @ApiResponse(responseCode = "404", description = "퀘스트를 찾을 수 없음"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<QuestDetailDto> getQuestDetail(@PathVariable Integer questId,
+    public ResponseEntity<ResponseTemplate<QuestDetailDto>> getQuestDetail(@PathVariable Integer questId,
                                                          @org.springframework.security.core.annotation.AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         QuestDetailDto questDetail = questService.getQuestDetail(memberId, questId);
-        return ResponseEntity.ok(questDetail);
+        return ResponseEntity.ok(ResponseTemplate.success(questDetail));
     }
 
     @GetMapping("/{questId}/chain")
@@ -80,8 +81,8 @@ public class QuestController {
         @ApiResponse(responseCode = "404", description = "퀘스트를 찾을 수 없음"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<QuestChainResponseDto> getQuestChain(@PathVariable Integer questId) {
+    public ResponseEntity<ResponseTemplate<QuestChainResponseDto>> getQuestChain(@PathVariable Integer questId) {
         QuestChainResponseDto questChain = questService.getQuestChain(questId);
-        return ResponseEntity.ok(questChain);
+        return ResponseEntity.ok(ResponseTemplate.success(questChain));
     }
 }

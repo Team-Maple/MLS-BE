@@ -48,14 +48,14 @@ public class CollectionController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<CollectionResponseDto> createCollection(
+    public ResponseEntity<ResponseTemplate<CollectionResponseDto>> createCollection(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @Valid @RequestBody CreateCollectionRequestDto request) {
 
         CollectionResponseDto response = collectionService.createCollection(
                 principalDetails.getProviderId(), request);
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ResponseTemplate.success(response));
     }
 
     @PostMapping("/{collectionId}/bookmarks")
@@ -71,7 +71,7 @@ public class CollectionController {
             @ApiResponse(responseCode = "404", description = "컬렉션 또는 북마크를 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<CollectionAddBookmarksResponseDto> addBookmarksToCollection(
+    public ResponseEntity<ResponseTemplate<CollectionAddBookmarksResponseDto>> addBookmarksToCollection(
             @Parameter(description = "컬렉션 ID") @PathVariable Integer collectionId,
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @Valid @RequestBody CollectionAddBookmarksRequestDto request) {
@@ -79,7 +79,7 @@ public class CollectionController {
         CollectionAddBookmarksResponseDto response = collectionService.addBookmarksToCollection(
                 principalDetails.getProviderId(), collectionId, request);
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ResponseTemplate.success(response));
     }
 
     @DeleteMapping("/{collectionId}")
@@ -88,19 +88,19 @@ public class CollectionController {
             description = "특정 컬렉션과 해당 컬렉션에 포함된 북마크 관계를 삭제합니다."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "204", description = "컬렉션 삭제 성공"),
+            @ApiResponse(responseCode = "200", description = "컬렉션 삭제 성공"),
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "403", description = "권한 없음"),
             @ApiResponse(responseCode = "404", description = "컬렉션을 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Void> deleteCollection(
+    public ResponseEntity<ResponseTemplate<Void>> deleteCollection(
             @Parameter(description = "컬렉션 ID") @PathVariable Integer collectionId,
             @AuthenticationPrincipal PrincipalDetails principalDetails) {
 
         collectionService.deleteCollection(principalDetails.getProviderId(), collectionId);
 
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ResponseTemplate.success(null));
     }
 
     @GetMapping("/{collectionId}/bookmarks")
@@ -122,7 +122,7 @@ public class CollectionController {
             @ApiResponse(responseCode = "404", description = "컬렉션을 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Page<BookmarkSummaryDto>> getCollectionBookmarks(
+    public ResponseEntity<ResponseTemplate<Page<BookmarkSummaryDto>>> getCollectionBookmarks(
             @Parameter(description = "컬렉션 ID") @PathVariable Integer collectionId,
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
@@ -134,7 +134,7 @@ public class CollectionController {
         Page<BookmarkSummaryDto> collectionBookmarks = bookmarkQueryService.getCollectionBookmarks(
                 principalDetails.getProviderId(), collectionId, pageable);
 
-        return ResponseEntity.ok(collectionBookmarks);
+        return ResponseEntity.ok(ResponseTemplate.success(collectionBookmarks));
     }
 
     @GetMapping
@@ -154,14 +154,14 @@ public class CollectionController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Page<CollectionWithBookmarksDto>> getCollections(
+    public ResponseEntity<ResponseTemplate<Page<CollectionWithBookmarksDto>>> getCollections(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
 
         Page<CollectionWithBookmarksDto> collections = collectionQueryService.getCollectionsWithRecentBookmarks(
                 principalDetails.getProviderId(), pageable);
 
-        return ResponseEntity.ok(collections);
+        return ResponseEntity.ok(ResponseTemplate.success(collections));
     }
 
     @PutMapping("/{collectionId}")
@@ -177,7 +177,7 @@ public class CollectionController {
             @ApiResponse(responseCode = "404", description = "컬렉션을 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<CollectionResponseDto> updateCollectionName(
+    public ResponseEntity<ResponseTemplate<CollectionResponseDto>> updateCollectionName(
             @Parameter(description = "컬렉션 ID") @PathVariable Integer collectionId,
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @Valid @RequestBody UpdateCollectionRequestDto request) {
@@ -185,6 +185,6 @@ public class CollectionController {
         CollectionResponseDto response = collectionService.updateCollectionName(
                 principalDetails.getProviderId(), collectionId, request);
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ResponseTemplate.success(response));
     }
 }

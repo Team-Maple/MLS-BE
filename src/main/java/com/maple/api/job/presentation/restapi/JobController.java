@@ -1,5 +1,6 @@
 package com.maple.api.job.presentation.restapi;
 
+import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.job.application.JobService;
 import com.maple.api.job.application.dto.JobDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,7 +32,7 @@ public class JobController {
         @ApiResponse(responseCode = "200", description = "직업 목록 조회 성공"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<List<JobDto>> findAllJobs() {
-        return ResponseEntity.ok(jobService.findAll());
+    public ResponseEntity<ResponseTemplate<List<JobDto>>> findAllJobs() {
+        return ResponseEntity.ok(ResponseTemplate.success(jobService.findAll()));
     }
 }

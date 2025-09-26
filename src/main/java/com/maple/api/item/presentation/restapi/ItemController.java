@@ -1,6 +1,7 @@
 package com.maple.api.item.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
+import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.item.application.ItemService;
 import com.maple.api.item.application.dto.ItemDetailDto;
 import com.maple.api.item.application.dto.ItemMonsterDropDto;
@@ -48,13 +49,13 @@ public class ItemController {
                      "- `sort=level,desc` (레벨 내림차순)\n" +
                      "- `sort=name,asc,level,desc` (아이템명 오름차순, 레벨 내림차순)"
     )
-    public ResponseEntity<Page<ItemSummaryDto>> searchItems(
+    public ResponseEntity<ResponseTemplate<Page<ItemSummaryDto>>> searchItems(
             @Valid @ParameterObject ItemSearchRequestDto searchRequest,
             @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable,
             @AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         Page<ItemSummaryDto> results = itemService.searchItems(memberId, searchRequest, pageable);
-        return ResponseEntity.ok(results);
+        return ResponseEntity.ok(ResponseTemplate.success(results));
     }
 
     @GetMapping("/{id}")
@@ -64,13 +65,13 @@ public class ItemController {
                 "장비 아이템의 경우 스탯 정보,\n\n" +
                 "주문서 아이템의 경우 스크롤 정보 등을 포함합니다."
     )
-    public ResponseEntity<ItemDetailDto> getItemDetail(
+    public ResponseEntity<ResponseTemplate<ItemDetailDto>> getItemDetail(
             @Parameter(description = "아이템 ID", example = "1302000", required = true)
             @PathVariable Integer id,
             @org.springframework.security.core.annotation.AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         ItemDetailDto itemDetail = itemService.getItemDetail(memberId, id);
-        return ResponseEntity.ok(itemDetail);
+        return ResponseEntity.ok(ResponseTemplate.success(itemDetail));
     }
 
     @GetMapping("/{itemId}/monsters")
@@ -91,11 +92,11 @@ public class ItemController {
         @ApiResponse(responseCode = "404", description = "존재하지 않는 아이템"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<List<ItemMonsterDropDto>> getItemDropMonsters(
+    public ResponseEntity<ResponseTemplate<List<ItemMonsterDropDto>>> getItemDropMonsters(
             @Parameter(description = "아이템 ID", example = "2070005", required = true)
             @PathVariable Integer itemId,
             @ParameterObject Sort sort) {
         List<ItemMonsterDropDto> dropMonsters = itemService.getItemDropMonsters(itemId, sort);
-        return ResponseEntity.ok(dropMonsters);
+        return ResponseEntity.ok(ResponseTemplate.success(dropMonsters));
     }
 }

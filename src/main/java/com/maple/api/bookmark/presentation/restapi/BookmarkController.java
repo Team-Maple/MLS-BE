@@ -47,14 +47,14 @@ public class BookmarkController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Page<BookmarkSummaryDto>> getBookmarks(
+    public ResponseEntity<ResponseTemplate<Page<BookmarkSummaryDto>>> getBookmarks(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
 
         Page<BookmarkSummaryDto> bookmarks = bookmarkQueryService.getBookmarks(
                 principalDetails.getProviderId(), pageable);
 
-        return ResponseEntity.ok(bookmarks);
+        return ResponseEntity.ok(ResponseTemplate.success(bookmarks));
     }
 
     @PostMapping
@@ -75,14 +75,14 @@ public class BookmarkController {
             @ApiResponse(responseCode = "409", description = "이미 북마크된 리소스"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<BookmarkResponseDto> createBookmark(
+    public ResponseEntity<ResponseTemplate<BookmarkResponseDto>> createBookmark(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @Valid @RequestBody CreateBookmarkRequestDto request) {
 
         BookmarkResponseDto response = bookmarkService.createBookmark(
                 principalDetails.getProviderId(), request);
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ResponseTemplate.success(response));
     }
 
     @PostMapping("/{bookmarkId}/collections")
@@ -99,7 +99,7 @@ public class BookmarkController {
             @ApiResponse(responseCode = "409", description = "이미 컬렉션에 있는 북마크"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<BookmarkAddToCollectionsResponseDto> addBookmarkToCollections(
+    public ResponseEntity<ResponseTemplate<BookmarkAddToCollectionsResponseDto>> addBookmarkToCollections(
             @Parameter(description = "북마크 ID") @PathVariable Integer bookmarkId,
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @Valid @RequestBody BookmarkAddToCollectionsRequestDto request) {
@@ -107,7 +107,7 @@ public class BookmarkController {
         BookmarkAddToCollectionsResponseDto response = collectionService.addBookmarkToCollections(
                 principalDetails.getProviderId(), bookmarkId, request);
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ResponseTemplate.success(response));
     }
 
     @DeleteMapping("/{bookmarkId}")
@@ -116,19 +116,19 @@ public class BookmarkController {
             description = "특정 북마크를 삭제합니다."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "204", description = "북마크 삭제 성공"),
+            @ApiResponse(responseCode = "200", description = "북마크 삭제 성공"),
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "403", description = "권한 없음"),
             @ApiResponse(responseCode = "404", description = "북마크를 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Void> deleteBookmark(
+    public ResponseEntity<ResponseTemplate<Void>> deleteBookmark(
             @Parameter(description = "북마크 ID") @PathVariable Integer bookmarkId,
             @AuthenticationPrincipal PrincipalDetails principalDetails) {
 
         bookmarkService.deleteBookmark(principalDetails.getProviderId(), bookmarkId);
 
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ResponseTemplate.success(null));
     }
 
     @GetMapping("/items")
@@ -152,7 +152,7 @@ public class BookmarkController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Page<BookmarkSummaryDto>> getItemBookmarks(
+    public ResponseEntity<ResponseTemplate<Page<BookmarkSummaryDto>>> getItemBookmarks(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @Valid @ParameterObject ItemBookmarkSearchRequestDto searchRequest,
             @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
@@ -160,7 +160,7 @@ public class BookmarkController {
         Page<BookmarkSummaryDto> itemBookmarks = bookmarkQueryService.getItemBookmarks(
                 principalDetails.getProviderId(), searchRequest, pageable);
 
-        return ResponseEntity.ok(itemBookmarks);
+        return ResponseEntity.ok(ResponseTemplate.success(itemBookmarks));
     }
 
     @GetMapping("/monsters")
@@ -182,7 +182,7 @@ public class BookmarkController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Page<BookmarkSummaryDto>> getMonsterBookmarks(
+    public ResponseEntity<ResponseTemplate<Page<BookmarkSummaryDto>>> getMonsterBookmarks(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @Valid @ParameterObject MonsterBookmarkSearchRequestDto searchRequest,
             @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
@@ -190,7 +190,7 @@ public class BookmarkController {
         Page<BookmarkSummaryDto> monsterBookmarks = bookmarkQueryService.getMonsterBookmarks(
                 principalDetails.getProviderId(), searchRequest, pageable);
 
-        return ResponseEntity.ok(monsterBookmarks);
+        return ResponseEntity.ok(ResponseTemplate.success(monsterBookmarks));
     }
 
     @GetMapping("/maps")
@@ -210,14 +210,14 @@ public class BookmarkController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Page<BookmarkSummaryDto>> getMapBookmarks(
+    public ResponseEntity<ResponseTemplate<Page<BookmarkSummaryDto>>> getMapBookmarks(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
 
         Page<BookmarkSummaryDto> mapBookmarks = bookmarkQueryService.getMapBookmarks(
                 principalDetails.getProviderId(), pageable);
 
-        return ResponseEntity.ok(mapBookmarks);
+        return ResponseEntity.ok(ResponseTemplate.success(mapBookmarks));
     }
 
     @GetMapping("/npcs")
@@ -237,14 +237,14 @@ public class BookmarkController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Page<BookmarkSummaryDto>> getNpcBookmarks(
+    public ResponseEntity<ResponseTemplate<Page<BookmarkSummaryDto>>> getNpcBookmarks(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
 
         Page<BookmarkSummaryDto> npcBookmarks = bookmarkQueryService.getNpcBookmarks(
                 principalDetails.getProviderId(), pageable);
 
-        return ResponseEntity.ok(npcBookmarks);
+        return ResponseEntity.ok(ResponseTemplate.success(npcBookmarks));
     }
 
     @GetMapping("/quests")
@@ -264,13 +264,13 @@ public class BookmarkController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Page<BookmarkSummaryDto>> getQuestBookmarks(
+    public ResponseEntity<ResponseTemplate<Page<BookmarkSummaryDto>>> getQuestBookmarks(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
 
         Page<BookmarkSummaryDto> questBookmarks = bookmarkQueryService.getQuestBookmarks(
                 principalDetails.getProviderId(), pageable);
 
-        return ResponseEntity.ok(questBookmarks);
+        return ResponseEntity.ok(ResponseTemplate.success(questBookmarks));
     }
 }

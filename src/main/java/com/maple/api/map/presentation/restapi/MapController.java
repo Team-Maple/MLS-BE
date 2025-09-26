@@ -1,6 +1,7 @@
 package com.maple.api.map.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
+import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.map.application.MapService;
 import com.maple.api.map.application.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,13 +44,13 @@ public class MapController {
         @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Page<MapSummaryDto>> searchMaps(
+    public ResponseEntity<ResponseTemplate<Page<MapSummaryDto>>> searchMaps(
             @ParameterObject MapSearchRequestDto request,
             @ParameterObject @PageableDefault(size = 20) Pageable pageable,
             @AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         Page<MapSummaryDto> maps = mapService.searchMaps(memberId, request, pageable);
-        return ResponseEntity.ok(maps);
+        return ResponseEntity.ok(ResponseTemplate.success(maps));
     }
 
     @GetMapping("/{mapId}")
@@ -62,11 +63,11 @@ public class MapController {
         @ApiResponse(responseCode = "404", description = "존재하지 않는 맵"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<MapDetailDto> getMapDetail(@PathVariable Integer mapId,
+    public ResponseEntity<ResponseTemplate<MapDetailDto>> getMapDetail(@PathVariable Integer mapId,
                                                      @org.springframework.security.core.annotation.AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         MapDetailDto mapDetail = mapService.getMapDetail(memberId, mapId);
-        return ResponseEntity.ok(mapDetail);
+        return ResponseEntity.ok(ResponseTemplate.success(mapDetail));
     }
 
     @GetMapping("/{mapId}/monsters")
@@ -85,11 +86,11 @@ public class MapController {
         @ApiResponse(responseCode = "404", description = "존재하지 않는 맵"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<List<MapMonsterDto>> getMapMonsters(
+    public ResponseEntity<ResponseTemplate<List<MapMonsterDto>>> getMapMonsters(
             @PathVariable Integer mapId,
             @ParameterObject Sort sort) {
         List<MapMonsterDto> monsters = mapService.getMapMonsters(mapId, sort);
-        return ResponseEntity.ok(monsters);
+        return ResponseEntity.ok(ResponseTemplate.success(monsters));
     }
 
     @GetMapping("/{mapId}/npcs")
@@ -102,8 +103,8 @@ public class MapController {
         @ApiResponse(responseCode = "404", description = "존재하지 않는 맵"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<List<MapNpcDto>> getMapNpcs(@PathVariable Integer mapId) {
+    public ResponseEntity<ResponseTemplate<List<MapNpcDto>>> getMapNpcs(@PathVariable Integer mapId) {
         List<MapNpcDto> npcs = mapService.getMapNpcs(mapId);
-        return ResponseEntity.ok(npcs);
+        return ResponseEntity.ok(ResponseTemplate.success(npcs));
     }
 }

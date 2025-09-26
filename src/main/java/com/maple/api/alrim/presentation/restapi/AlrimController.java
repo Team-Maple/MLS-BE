@@ -6,8 +6,10 @@ import com.maple.api.alrim.application.query.AlrimDTOWithReadInfo;
 import com.maple.api.alrim.application.query.AlrimQueryService;
 import com.maple.api.alrim.common.CursorPage;
 import com.maple.api.auth.domain.PrincipalDetails;
+import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,7 +31,7 @@ public class AlrimController {
     description = "각 멤버의 알림 읽음 처리"
   )
   @PostMapping("/set-read")
-  public void setReadAlrim(
+  public ResponseEntity<ResponseTemplate<Void>> setReadAlrim(
     @AuthenticationPrincipal PrincipalDetails principalDetails,
     String alrimLink
   ) {
@@ -37,62 +39,68 @@ public class AlrimController {
       principalDetails.getProviderId(),
       alrimLink
     );
+    return ResponseEntity.ok(ResponseTemplate.success(null));
   }
 
   @GetMapping("/all")
-  public CursorPage<AlrimDTOWithReadInfo> getAllAlrim(
+  public ResponseEntity<ResponseTemplate<CursorPage<AlrimDTOWithReadInfo>>> getAllAlrim(
     @AuthenticationPrincipal PrincipalDetails principalDetails,
     @Nullable LocalDateTime cursor,
     int pageSize
   ) {
-    return queryService.findAllForAlrimForMemberWithCursor(
+    CursorPage<AlrimDTOWithReadInfo> result = queryService.findAllForAlrimForMemberWithCursor(
       principalDetails.getProviderId(),
       cursor,
       pageSize
     );
+    return ResponseEntity.ok(ResponseTemplate.success(result));
   }
 
   @GetMapping("/list/notices")
-  public CursorPage<AlrimDTO> getAllNotices(
+  public ResponseEntity<ResponseTemplate<CursorPage<AlrimDTO>>> getAllNotices(
     @Nullable LocalDateTime cursor,
     int pageSize
   ) {
-    return queryService.findAllNotices(
+    CursorPage<AlrimDTO> result = queryService.findAllNotices(
       cursor,
       pageSize
     );
+    return ResponseEntity.ok(ResponseTemplate.success(result));
   }
 
   @GetMapping("/list/patch-notes")
-  public CursorPage<AlrimDTO> getAllPatchNotes(
+  public ResponseEntity<ResponseTemplate<CursorPage<AlrimDTO>>> getAllPatchNotes(
     @Nullable LocalDateTime cursor,
     int pageSize
   ) {
-    return queryService.findAllPatchNotes(
+    CursorPage<AlrimDTO> result = queryService.findAllPatchNotes(
       cursor,
       pageSize
     );
+    return ResponseEntity.ok(ResponseTemplate.success(result));
   }
 
   @GetMapping("/list/events/ongoing")
-  public CursorPage<AlrimDTO> getOngoingEvents(
+  public ResponseEntity<ResponseTemplate<CursorPage<AlrimDTO>>> getOngoingEvents(
     @Nullable LocalDateTime cursor,
     int pageSize
   ) {
-    return queryService.findAllOnGoingEvents(
+    CursorPage<AlrimDTO> result = queryService.findAllOnGoingEvents(
       cursor,
       pageSize
     );
+    return ResponseEntity.ok(ResponseTemplate.success(result));
   }
 
   @GetMapping("/list/events/outdated")
-  public CursorPage<AlrimDTO> getOutdatedEvents(
+  public ResponseEntity<ResponseTemplate<CursorPage<AlrimDTO>>> getOutdatedEvents(
     @Nullable LocalDateTime cursor,
     int pageSize
   ) {
-    return queryService.findAllOutDatedEvents(
+    CursorPage<AlrimDTO> result = queryService.findAllOutDatedEvents(
       cursor,
       pageSize
     );
+    return ResponseEntity.ok(ResponseTemplate.success(result));
   }
 }
