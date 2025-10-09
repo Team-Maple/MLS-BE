@@ -27,6 +27,10 @@ public class UpdateCommand {
   ) {
   }
 
+  public record ProfileImage(
+    String profileImageUrl
+  ) {
+  }
 
   public record FcmToken(
     String fcmToken

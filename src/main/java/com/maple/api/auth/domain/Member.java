@@ -57,11 +57,12 @@ public class Member {
   @Setter
   private Integer jobId;
 
+  private String profileImageUrl = "https://maple-db-team-s3.s3.ap-northeast-2.amazonaws.com/profile-images/profile_1.jpg";
+
   // private String role;
   public String getRole() {
     return "ROLE_MEMBER";
   }
-
 
   @CreatedDate
   @Builder.Default
@@ -93,6 +94,13 @@ public class Member {
     this.noticeAgreement = noticeAgreement;
     this.patchNoteAgreement = patchNoteAgreement;
     this.eventAgreement = eventAgreement;
+    return this;
+  }
+
+  public Member setProfileImageUrl(
+    String profileImageUrl
+  ) {
+    this.profileImageUrl = profileImageUrl;
     return this;
   }
 

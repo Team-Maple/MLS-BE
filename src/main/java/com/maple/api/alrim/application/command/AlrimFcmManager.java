@@ -43,9 +43,9 @@ public class AlrimFcmManager {
     memberRepository.findAllByFcmTokenIsNotNull()
       .stream()
       .filter(it -> switch (alrim.getType()) {
-          case NOTICE -> it.getNoticeAgreement();
-          case PATCH_NOTE -> it.getPatchNoteAgreement();
-          case EVENT -> it.getEventAgreement();
+          case NOTICE -> it.getNoticeAgreement() != null && it.getNoticeAgreement();
+          case PATCH_NOTE -> it.getPatchNoteAgreement() != null && it.getPatchNoteAgreement();
+          case EVENT -> it.getEventAgreement() != null && it.getEventAgreement();
         }
       )
       .forEach(it -> {

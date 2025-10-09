@@ -14,7 +14,8 @@ public record MemberDto(
   Boolean eventAgreement,
   //
   Integer jobId,
-  Integer level
+  Integer level,
+  String profileImageUrl
 ) {
   public static MemberDto toDto(Member member) {
     return new MemberDto(
@@ -28,7 +29,8 @@ public record MemberDto(
       member.getEventAgreement(),
       //
       member.getJobId(),
-      member.getLevel()
+      member.getLevel(),
+      member.getProfileImageUrl()
     );
   }
 }
