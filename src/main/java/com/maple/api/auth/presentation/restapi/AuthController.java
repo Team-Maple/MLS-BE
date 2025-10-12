@@ -11,6 +11,7 @@ import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.val;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,6 +28,14 @@ public class AuthController {
   private final JwtTokenValidator jwtTokenValidator;
   private final KakaoUserInfoClient kakaoUserInfoClient;
   private final AppleUserInfoClient appleUserInfoClient;
+
+  @GetMapping("/me")
+  public ResponseEntity<ResponseTemplate<MemberDto>> me(
+    @AuthenticationPrincipal PrincipalDetails principalDetails
+  ) {
+    val result = memberService.findMe(principalDetails.getProviderId());
+    return ResponseEntity.ok(ResponseTemplate.success(result));
+  }
 
   @PostMapping("/login/kakao")
   public ResponseEntity<ResponseTemplate<LoginResponseDto>> loginWithKakao(
@@ -157,40 +166,56 @@ public class AuthController {
   }
 
   @PutMapping("/member/nickname")
-  public ResponseEntity<ResponseTemplate<Void>> updateNickName(
+  public ResponseEntity<ResponseTemplate<MemberDto>> updateNickName(
     @AuthenticationPrincipal PrincipalDetails principalDetails,
     @Valid @RequestBody UpdateCommand.NickName request
   ) {
-    memberService.updateNickname(principalDetails.getProviderId(), request.nickname());
-    return ResponseEntity.ok(ResponseTemplate.success(null));
+    val result = memberService.updateNickname(principalDetails.getProviderId(), request.nickname());
+    return ResponseEntity.ok(ResponseTemplate.success(result));
   }
 
   @PutMapping("/member/fcm-token")
-  public ResponseEntity<ResponseTemplate<Void>> updateFcmToken(
+  public ResponseEntity<ResponseTemplate<MemberDto>> updateFcmToken(
     @AuthenticationPrincipal PrincipalDetails principalDetails,
     @RequestBody UpdateCommand.FcmToken request
   ) {
 
-    memberService.updateFcmToken(principalDetails.getProviderId(), request.fcmToken());
-    return ResponseEntity.ok(ResponseTemplate.success(null));
+    val result = memberService.updateFcmToken(principalDetails.getProviderId(), request.fcmToken());
+    return ResponseEntity.ok(ResponseTemplate.success(result));
   }
 
   @PutMapping("/member/marketing-agreement")
-  public ResponseEntity<ResponseTemplate<Void>> updateMarketingAgreement(
+  public ResponseEntity<ResponseTemplate<MemberDto>> updateMarketingAgreement(
     @AuthenticationPrincipal PrincipalDetails principalDetails,
     @RequestBody UpdateCommand.MarketingAgreement request
   ) {
-    memberService.updateMarketingAgreement(principalDetails.getProviderId(), request.marketingAgreement());
-    return ResponseEntity.ok(ResponseTemplate.success(null));
+    val result = memberService.updateMarketingAgreement(principalDetails.getProviderId(), request.marketingAgreement());
+    return ResponseEntity.ok(ResponseTemplate.success(result));
   }
 
   @PutMapping("/member/alert-agreement")
-  public ResponseEntity<ResponseTemplate<Void>> updateAlertAgreement(
+  public ResponseEntity<ResponseTemplate<MemberDto>> updateAlertAgreement(
     @AuthenticationPrincipal PrincipalDetails principalDetails,
     @RequestBody UpdateCommand.Agreements request
   ) {
-    memberService.updateAlertAgreement(principalDetails.getProviderId(), request);
-    return ResponseEntity.ok(ResponseTemplate.success(null));
+    val result = memberService.updateAlertAgreement(principalDetails.getProviderId(), request);
+    return ResponseEntity.ok(ResponseTemplate.success(result));
+  }
+
+
+  @Operation(
+    summary = "회원 프로필 이미지 업데이트",
+    description = "회원의 프로필 이미지를 업데이트합니다.\n\n" +
+      "**Request Body:**\n" +
+      "- `profileImageUrl`: https://maple-db-team-s3.s3.ap-northeast-2.amazonaws.com/profile-images/profile_1.jpg ~ profile_9.jpg\n"
+  )
+  @PutMapping("/member/profile-image")
+  public ResponseEntity<ResponseTemplate<MemberDto>> updateProfileImage(
+    @AuthenticationPrincipal PrincipalDetails principalDetails,
+    @RequestBody UpdateCommand.ProfileImage request
+  ) {
+    val result = memberService.updateProfileImageUrl(principalDetails.getProviderId(), request.profileImageUrl());
+    return ResponseEntity.ok(ResponseTemplate.success(result));
   }
 
   @Operation(
@@ -201,12 +226,12 @@ public class AuthController {
                   "- `jobId`: 직업 ID\n\n"
   )
   @PutMapping("/member/profile")
-  public ResponseEntity<ResponseTemplate<Void>> updateProfile(
+  public ResponseEntity<ResponseTemplate<MemberDto>> updateProfile(
     @AuthenticationPrincipal PrincipalDetails principalDetails,
     @Valid @RequestBody UpdateCommand.Profile request
   ) {
-    memberService.updateProfile(principalDetails.getProviderId(), request.level(), request.jobId());
-    return ResponseEntity.ok(ResponseTemplate.success(null));
+    val result = memberService.updateProfile(principalDetails.getProviderId(), request.level(), request.jobId());
+    return ResponseEntity.ok(ResponseTemplate.success(result));
   }
 
   @Operation(

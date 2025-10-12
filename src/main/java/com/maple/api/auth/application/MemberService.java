@@ -3,6 +3,7 @@ package com.maple.api.auth.application;
 import com.maple.api.auth.application.dto.CreateMemberRequestDto;
 import com.maple.api.auth.application.dto.MemberDto;
 import com.maple.api.auth.application.dto.UpdateCommand;
+import com.maple.api.auth.application.exception.AuthException;
 import com.maple.api.auth.domain.Member;
 import com.maple.api.auth.repository.MemberRepository;
 import com.maple.api.common.presentation.exception.ApiException;
@@ -30,6 +31,13 @@ public class MemberService {
   }
 
   @Transactional
+  public MemberDto findMe(String memberId) {
+    return memberRepository.findById(memberId)
+      .map(MemberDto::toDto)
+      .orElseThrow(() -> new ApiException(AuthException.NO_MEMBER));
+  }
+
+  @Transactional
   public MemberDto createMember(CreateMemberRequestDto createMemberRequestDto) {
     log.info("Create member with memberId: {}", createMemberRequestDto.getProviderId());
     Member result = memberRepository.save(new Member(
@@ -43,7 +51,7 @@ public class MemberService {
   }
 
   @Transactional
-  public Optional<MemberDto> updateNickname(String memberId, String nickName) {
+  public MemberDto updateNickname(String memberId, String nickName) {
     log.info("Update member with memberId: {} / nickName: {}", memberId, nickName);
 
     return memberRepository.findById(memberId)
@@ -51,11 +59,12 @@ public class MemberService {
         m.setNickname(nickName);
         return m;
       })
-      .map(MemberDto::toDto);
+      .map(MemberDto::toDto)
+      .orElseThrow(() -> new ApiException(AuthException.NO_MEMBER));
   }
 
   @Transactional
-  public Optional<MemberDto> updateMarketingAgreement(String memberId, Boolean marketingAgreement) {
+  public MemberDto updateMarketingAgreement(String memberId, Boolean marketingAgreement) {
     log.info("Update member with memberId: {} / marketingAgreement: {}", memberId, marketingAgreement);
 
     return memberRepository.findById(memberId)
@@ -63,11 +72,12 @@ public class MemberService {
         m.setMarketingAgreement(marketingAgreement);
         return m;
       })
-      .map(MemberDto::toDto);
+      .map(MemberDto::toDto)
+      .orElseThrow(() -> new ApiException(AuthException.NO_MEMBER));
   }
 
   @Transactional
-  public Optional<MemberDto> updateFcmToken(String memberId, String fcmToken) {
+  public MemberDto updateFcmToken(String memberId, String fcmToken) {
     log.info("Update member with memberId: {} / fcmToken: {}", memberId, fcmToken);
 
     return memberRepository.findById(memberId)
@@ -75,25 +85,32 @@ public class MemberService {
         m.setFcmToken(fcmToken);
         return m;
       })
-      .map(MemberDto::toDto);
+      .map(MemberDto::toDto)
+      .orElseThrow(() -> new ApiException(AuthException.NO_MEMBER));
   }
 
   @Transactional
-  public Optional<MemberDto> updateAlertAgreement(String memberId, UpdateCommand.Agreements updateAlertAgreement) {
+  public MemberDto updateAlertAgreement(String memberId, UpdateCommand.Agreements updateAlertAgreement) {
     return memberRepository.findById(memberId)
-      .map(m -> {
-        m.setAlertAgreements(
-          updateAlertAgreement.noticeAgreement(),
-          updateAlertAgreement.patchNoteAgreement(),
-          updateAlertAgreement.eventAgreement()
-        );
-        return m;
-      })
-      .map(MemberDto::toDto);
+      .map(m -> m.setAlertAgreements(
+        updateAlertAgreement.noticeAgreement(),
+        updateAlertAgreement.patchNoteAgreement(),
+        updateAlertAgreement.eventAgreement()
+      ))
+      .map(MemberDto::toDto)
+      .orElseThrow(() -> new ApiException(AuthException.NO_MEMBER));
   }
 
   @Transactional
-  public Optional<MemberDto> updateProfile(String memberId, Integer level, Integer jobId) {
+  public MemberDto updateProfileImageUrl(String memberId, String profileImageUrl) {
+    return memberRepository.findById(memberId)
+      .map(m -> m.setProfileImageUrl(profileImageUrl))
+      .map(MemberDto::toDto)
+      .orElseThrow(() -> new ApiException(AuthException.NO_MEMBER));
+  }
+
+  @Transactional
+  public MemberDto updateProfile(String memberId, Integer level, Integer jobId) {
     Optional<Job> jobOpt = jobRepository.findById(jobId);
     if (jobOpt.isEmpty()) {
       throw ApiException.of(JobException.JOB_NOT_FOUND);
@@ -105,7 +122,8 @@ public class MemberService {
         m.setJobId(jobId);
         return m;
       })
-      .map(MemberDto::toDto);
+      .map(MemberDto::toDto)
+      .orElseThrow(() -> new ApiException(AuthException.NO_MEMBER));
   }
 
   @Transactional
