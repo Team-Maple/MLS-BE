@@ -91,20 +91,25 @@ public class MonsterQueryDslRepositoryImpl implements MonsterQueryDslRepository 
     }
 
     private List<OrderSpecifier<?>> createOrderClause(Pageable pageable) {
-        if (pageable.getSort().isUnsorted()) {
-            return List.of(monster.monsterId.asc());
-        }
-
         List<OrderSpecifier<?>> orderSpecifiers = new ArrayList<>();
+        boolean nameSortSpecified = false;
 
-        pageable.getSort().forEach(order -> {
+        for (Sort.Order order : pageable.getSort()) {
             Path<?> path = sortableProperties.get(order.getProperty());
             if (path != null) {
                 orderSpecifiers.add(new OrderSpecifier(order.isAscending() ? Order.ASC : Order.DESC, path));
+                if ("name".equals(order.getProperty())) {
+                    nameSortSpecified = true;
+                }
             }
-        });
+        }
 
-        orderSpecifiers.add(monster.monsterId.asc());
+        if (orderSpecifiers.isEmpty()) {
+            orderSpecifiers.add(monster.nameKr.asc());
+        } else if (!nameSortSpecified) {
+            orderSpecifiers.add(monster.nameKr.asc());
+        }
+
         return orderSpecifiers;
     }
 

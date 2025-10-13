@@ -42,8 +42,8 @@ public class MonsterController {
         summary = "몬스터 검색",
         description = "다양한 조건으로 몬스터를 검색합니다. 이름으로 필터링할 수 있습니다.\n\n" +
                      "**정렬 기준:**\n" +
-                     "- monsterId: 몬스터 ID 순 정렬 (기본값)\n" +
-                     "- name, level, exp 등 다양한 필드로 정렬 가능\n\n" +
+                     "- name: 몬스터 이름(가나다 순) 정렬 (기본값)\n" +
+                     "- level, exp 등 다양한 필드로 정렬 가능\n\n" +
                      "**정렬 사용 예시:**\n" +
                      "- `sort=name,asc` (몬스터 이름 오름차순)\n"
     )
@@ -54,7 +54,7 @@ public class MonsterController {
     })
     public ResponseEntity<ResponseTemplate<Page<MonsterSummaryDto>>> searchMonsters(
             @Valid @ParameterObject MonsterSearchRequestDto request,
-            @ParameterObject @PageableDefault(size = 20, sort = "monsterId") Pageable pageable,
+            @ParameterObject @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable,
             @AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         return ResponseEntity.ok(ResponseTemplate.success(monsterService.searchMonsters(memberId, request, pageable)));
