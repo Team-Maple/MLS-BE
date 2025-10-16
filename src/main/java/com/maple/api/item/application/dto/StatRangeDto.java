@@ -11,11 +11,19 @@ public record StatRangeDto(
         if (statRange == null) {
             return null;
         }
-        
-        return new StatRangeDto(
-                statRange.getBase(),
-                statRange.getMin(),
-                statRange.getMax()
-        );
+
+        Integer base = nullIfZero(statRange.getBase());
+        Integer min = nullIfZero(statRange.getMin());
+        Integer max = nullIfZero(statRange.getMax());
+
+        if (base == null && min == null && max == null) {
+            return null;
+        }
+
+        return new StatRangeDto(base, min, max);
+    }
+
+    private static Integer nullIfZero(Integer value) {
+        return value != null && value == 0 ? null : value;
     }
 }

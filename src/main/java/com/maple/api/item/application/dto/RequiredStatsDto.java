@@ -16,12 +16,16 @@ public record RequiredStatsDto(
         }
         
         return new RequiredStatsDto(
-                requiredStats.getLevel(),
-                requiredStats.getStr(),
-                requiredStats.getDex(),
-                requiredStats.getIntelligence(),
-                requiredStats.getLuk(),
-                requiredStats.getPop()
+                nullIfZero(requiredStats.getLevel()),
+                nullIfZero(requiredStats.getStr()),
+                nullIfZero(requiredStats.getDex()),
+                nullIfZero(requiredStats.getIntelligence()),
+                nullIfZero(requiredStats.getLuk()),
+                nullIfZero(requiredStats.getPop())
         );
+    }
+
+    private static Integer nullIfZero(Integer value) {
+        return value != null && value == 0 ? null : value;
     }
 }

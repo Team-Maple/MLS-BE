@@ -26,22 +26,26 @@ public record ItemScrollDetailDto(
         }
         
         return new ItemScrollDetailDto(
-                scrollDetail.getSuccessRatePercent(),
+                nullIfZero(scrollDetail.getSuccessRatePercent()),
                 scrollDetail.getTargetItemTypeText(),
-                scrollDetail.getStrChange(),
-                scrollDetail.getDexChange(),
-                scrollDetail.getIntChange(),
-                scrollDetail.getLukChange(),
-                scrollDetail.getHpChange(),
-                scrollDetail.getMpChange(),
-                scrollDetail.getWeaponAttackChange(),
-                scrollDetail.getMagicAttackChange(),
-                scrollDetail.getPhysicalDefenseChange(),
-                scrollDetail.getMagicDefenseChange(),
-                scrollDetail.getAccuracyChange(),
-                scrollDetail.getEvasionChange(),
-                scrollDetail.getSpeedChange(),
-                scrollDetail.getJumpChange()
+                nullIfZero(scrollDetail.getStrChange()),
+                nullIfZero(scrollDetail.getDexChange()),
+                nullIfZero(scrollDetail.getIntChange()),
+                nullIfZero(scrollDetail.getLukChange()),
+                nullIfZero(scrollDetail.getHpChange()),
+                nullIfZero(scrollDetail.getMpChange()),
+                nullIfZero(scrollDetail.getWeaponAttackChange()),
+                nullIfZero(scrollDetail.getMagicAttackChange()),
+                nullIfZero(scrollDetail.getPhysicalDefenseChange()),
+                nullIfZero(scrollDetail.getMagicDefenseChange()),
+                nullIfZero(scrollDetail.getAccuracyChange()),
+                nullIfZero(scrollDetail.getEvasionChange()),
+                nullIfZero(scrollDetail.getSpeedChange()),
+                nullIfZero(scrollDetail.getJumpChange())
         );
+    }
+
+    private static Integer nullIfZero(Integer value) {
+        return value != null && value == 0 ? null : value;
     }
 }
