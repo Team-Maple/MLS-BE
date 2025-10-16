@@ -22,6 +22,7 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
     private final Map<Integer, Category> categoryCache = new ConcurrentHashMap<>();
     private final Map<Integer, Integer> rootCategoryCache = new ConcurrentHashMap<>();
+    private final Map<Integer, CategoryDto> categoryDtoCache = new ConcurrentHashMap<>();
     private List<CategoryDto> categoryTreeCache;
 
     @PostConstruct
@@ -81,6 +82,8 @@ public class CategoryService {
     }
 
     private List<CategoryDto> buildAndCacheCategoryTree() {
+        categoryDtoCache.clear();
+
         List<Category> enabledCategories = categoryCache.values().stream()
                 .filter(category -> !category.isDisabled())
                 .toList();
@@ -111,6 +114,33 @@ public class CategoryService {
 
         visited.remove(category.getCategoryId());
 
-        return CategoryDto.toDto(category, childrenDtos);
+        CategoryDto dto = CategoryDto.toDto(category, childrenDtos);
+        categoryDtoCache.put(category.getCategoryId(), dto);
+        return dto;
+    }
+
+    public CategoryDto findCategoryDto(Integer categoryId) {
+        CategoryDto cachedDto = categoryDtoCache.get(categoryId);
+        if (cachedDto != null) {
+            return cachedDto;
+        }
+
+        Category category = categoryCache.get(categoryId);
+        if (category == null) {
+            throw ApiException.of(ItemException.CATEGORY_NOT_FOUND);
+        }
+
+        CategoryDto dto = CategoryDto.toDto(category, Collections.emptyList());
+        categoryDtoCache.put(categoryId, dto);
+        return dto;
+    }
+
+    public CategoryDto findRootCategoryDto(Integer categoryId) {
+        Integer rootCategoryId = rootCategoryCache.get(categoryId);
+        if (rootCategoryId == null) {
+            throw ApiException.of(ItemException.CATEGORY_NOT_FOUND);
+        }
+
+        return findCategoryDto(rootCategoryId);
     }
 }

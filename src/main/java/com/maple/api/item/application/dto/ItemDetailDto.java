@@ -51,11 +51,11 @@ public record ItemDetailDto(
         boolean isBookmarked
 ) {
     
-    public static ItemDetailDto toDto(Item item, Category rootCategory, Category leafCategory, List<Job> availableJobs) {
+    public static ItemDetailDto toDto(Item item, CategoryDto rootCategory, CategoryDto leafCategory, List<Job> availableJobs) {
         return toDto(item, rootCategory, leafCategory, availableJobs, false);
     }
 
-    public static ItemDetailDto toDto(Item item, Category rootCategory, Category leafCategory, List<Job> availableJobs, boolean isBookmarked) {
+    public static ItemDetailDto toDto(Item item, CategoryDto rootCategory, CategoryDto leafCategory, List<Job> availableJobs, boolean isBookmarked) {
         String itemType = getItemType(item);
         
         return ItemDetailDto.builder()
@@ -66,7 +66,7 @@ public record ItemDetailDto(
                 .itemImageUrl(item.getItemImageUrl())
                 .npcPrice(item.getNpcPrice())
                 .itemType(itemType)
-                .categoryHierarchy(CategoryHierarchyDto.toDto(rootCategory, leafCategory))
+                .categoryHierarchy(CategoryHierarchyDto.of(rootCategory, leafCategory))
                 .availableJobs(availableJobs.stream().map(JobDto::toDto).toList())
                 .requiredStats(getRequiredStats(item))
                 .equipmentStats(getEquipmentStats(item))
