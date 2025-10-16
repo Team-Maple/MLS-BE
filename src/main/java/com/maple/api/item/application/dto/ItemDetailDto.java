@@ -51,13 +51,13 @@ public record ItemDetailDto(
         boolean isBookmarked
 ) {
     
-    public static ItemDetailDto toDto(Item item, CategoryDto rootCategory, CategoryDto leafCategory, List<Job> availableJobs) {
+    public static ItemDetailDto toDto(Item item, CategorySimpleDto rootCategory, CategorySimpleDto leafCategory, List<Job> availableJobs) {
         return toDto(item, rootCategory, leafCategory, availableJobs, false);
     }
 
-    public static ItemDetailDto toDto(Item item, CategoryDto rootCategory, CategoryDto leafCategory, List<Job> availableJobs, boolean isBookmarked) {
+    public static ItemDetailDto toDto(Item item, CategorySimpleDto rootCategory, CategorySimpleDto leafCategory, List<Job> availableJobs, boolean isBookmarked) {
         String itemType = getItemType(item);
-        
+
         return ItemDetailDto.builder()
                 .itemId(item.getItemId())
                 .nameKr(item.getNameKr())

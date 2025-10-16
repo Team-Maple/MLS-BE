@@ -3,7 +3,7 @@ package com.maple.api.item.application;
 import com.maple.api.bookmark.application.BookmarkFlagService;
 import com.maple.api.bookmark.domain.BookmarkType;
 import com.maple.api.common.presentation.exception.ApiException;
-import com.maple.api.item.application.dto.CategoryDto;
+import com.maple.api.item.application.dto.CategorySimpleDto;
 import com.maple.api.item.application.dto.ItemDetailDto;
 import com.maple.api.item.application.dto.ItemMonsterDropDto;
 import com.maple.api.item.application.dto.ItemSearchRequestDto;
@@ -51,8 +51,8 @@ public class ItemService {
 
         item = loadTypeSpecificData(item);
 
-        CategoryDto leafCategory = categoryService.findCategoryDto(item.getCategoryId());
-        CategoryDto rootCategory = categoryService.findRootCategoryDto(item.getCategoryId());
+        CategorySimpleDto leafCategory = categoryService.findCategorySimpleDto(item.getCategoryId());
+        CategorySimpleDto rootCategory = categoryService.findRootCategorySimpleDto(item.getCategoryId());
 
         List<Job> availableJobs = jobRepository.findByItemId(itemId);
 

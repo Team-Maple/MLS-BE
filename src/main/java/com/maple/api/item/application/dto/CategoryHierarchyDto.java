@@ -1,10 +1,10 @@
 package com.maple.api.item.application.dto;
 
 public record CategoryHierarchyDto(
-        CategoryDto rootCategory,
-        CategoryDto leafCategory
+        CategorySimpleDto rootCategory,
+        CategorySimpleDto leafCategory
 ) {
-    public static CategoryHierarchyDto of(CategoryDto rootCategory, CategoryDto leafCategory) {
+    public static CategoryHierarchyDto of(CategorySimpleDto rootCategory, CategorySimpleDto leafCategory) {
         return new CategoryHierarchyDto(rootCategory, leafCategory);
     }
 }

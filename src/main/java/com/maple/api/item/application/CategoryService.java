@@ -2,6 +2,7 @@ package com.maple.api.item.application;
 
 import com.maple.api.common.presentation.exception.ApiException;
 import com.maple.api.item.application.dto.CategoryDto;
+import com.maple.api.item.application.dto.CategorySimpleDto;
 import com.maple.api.item.domain.Category;
 import com.maple.api.item.exception.ItemException;
 import com.maple.api.item.repository.CategoryRepository;
@@ -142,5 +143,23 @@ public class CategoryService {
         }
 
         return findCategoryDto(rootCategoryId);
+    }
+
+    public CategorySimpleDto findCategorySimpleDto(Integer categoryId) {
+        Category category = categoryCache.get(categoryId);
+        if (category == null) {
+            throw ApiException.of(ItemException.CATEGORY_NOT_FOUND);
+        }
+
+        return CategorySimpleDto.from(category);
+    }
+
+    public CategorySimpleDto findRootCategorySimpleDto(Integer categoryId) {
+        Integer rootCategoryId = rootCategoryCache.get(categoryId);
+        if (rootCategoryId == null) {
+            throw ApiException.of(ItemException.CATEGORY_NOT_FOUND);
+        }
+
+        return findCategorySimpleDto(rootCategoryId);
     }
 }
