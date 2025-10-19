@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,5 +35,19 @@ public class JobController {
     })
     public ResponseEntity<ResponseTemplate<List<JobDto>>> findAllJobs() {
         return ResponseEntity.ok(ResponseTemplate.success(jobService.findAll()));
+    }
+
+    @GetMapping("/{jobId}")
+    @Operation(
+        summary = "직업 상세 조회",
+        description = "특정 직업의 상세 정보를 조회합니다. 직업의 상위/하위 직업 정보를 함께 제공합니다."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "직업 상세 정보 조회 성공"),
+        @ApiResponse(responseCode = "404", description = "존재하지 않는 직업"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<ResponseTemplate<JobDto>> getJobDetail(@PathVariable Integer jobId) {
+        return ResponseEntity.ok(ResponseTemplate.success(jobService.findDetail(jobId)));
     }
 }

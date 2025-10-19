@@ -1,10 +1,10 @@
 package com.maple.api.job.application;
 
+import com.maple.api.common.presentation.exception.ApiException;
 import com.maple.api.job.application.dto.JobDto;
 import com.maple.api.job.domain.Job;
 import com.maple.api.job.exception.JobException;
 import com.maple.api.job.repository.JobRepository;
-import com.maple.api.common.presentation.exception.ApiException;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +43,14 @@ public class JobService {
                 .filter(job -> !job.isDisabled())
                 .map(JobDto::toDto)
                 .toList();
+    }
+
+    public JobDto findDetail(Integer jobId) {
+        Job job = jobCache.get(jobId);
+        if (job == null || job.isDisabled() || Job.COMMON_JOB_ID == job.getJobId()) {
+            throw ApiException.of(JobException.JOB_NOT_FOUND);
+        }
+        return JobDto.toDto(job);
     }
 
     private Integer findRootJobId(Integer jobId) {
