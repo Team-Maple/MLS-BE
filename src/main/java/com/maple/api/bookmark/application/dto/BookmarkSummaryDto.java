@@ -15,10 +15,15 @@ public record BookmarkSummaryDto(
         @Schema(description = "이미지 URL", example = "https://maplestory.io/api/gms/62/item/1002001/icon?resize=2")
         String imageUrl,
         
-        @Schema(description = "타입 (ITEM, MONSTER, QUEST, NPC, MAP)", example = "ITEM")
+        @Schema(description = "타입 (item, monster, quest, npc, map)", example = "item")
         String type,
-        
+
         @Schema(description = "레벨", example = "0")
         Integer level
 ) {
+    public BookmarkSummaryDto {
+        if (type != null) {
+            type = type.toLowerCase();
+        }
+    }
 }
