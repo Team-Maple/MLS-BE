@@ -21,11 +21,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/collections")
@@ -106,7 +108,7 @@ public class CollectionController {
     @GetMapping("/{collectionId}/bookmarks")
     @Operation(
             summary = "컬렉션별 북마크 조회",
-            description = "특정 컬렉션에 포함된 북마크들을 조회합니다. 정렬과 페이징 옵션을 제공합니다.\\n\\n" +
+            description = "특정 컬렉션에 포함된 북마크들을 조회합니다. 정렬 옵션을 제공합니다.\\n\\n" +
                     "**정렬 옵션:**\\n" +
                     "- `createdAt`: 북마크 생성순 (최신순/오래된순)\\n" +
                     "- `name`: 북마크명 가나다순\\n\\n" +
@@ -122,19 +124,20 @@ public class CollectionController {
             @ApiResponse(responseCode = "404", description = "컬렉션을 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<ResponseTemplate<Page<BookmarkSummaryDto>>> getCollectionBookmarks(
+    public ResponseEntity<ResponseTemplate<List<BookmarkSummaryDto>>> getCollectionBookmarks(
             @Parameter(description = "컬렉션 ID") @PathVariable Integer collectionId,
             @AuthenticationPrincipal PrincipalDetails principalDetails,
-            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+            @ParameterObject Sort sort) {
 
         // 컬렉션 소유권 검증
         collectionService.validateCollectionOwnership(principalDetails.getProviderId(), collectionId);
 
         // 컬렉션별 북마크 조회
+        Sort effectiveSort = resolveSort(sort);
         Page<BookmarkSummaryDto> collectionBookmarks = bookmarkQueryService.getCollectionBookmarks(
-                principalDetails.getProviderId(), collectionId, pageable);
+                principalDetails.getProviderId(), collectionId, PageRequest.of(0, Integer.MAX_VALUE, effectiveSort));
 
-        return ResponseEntity.ok(ResponseTemplate.success(collectionBookmarks));
+        return ResponseEntity.ok(ResponseTemplate.success(collectionBookmarks.getContent()));
     }
 
     @GetMapping
@@ -154,14 +157,15 @@ public class CollectionController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<ResponseTemplate<Page<CollectionWithBookmarksDto>>> getCollections(
+    public ResponseEntity<ResponseTemplate<List<CollectionWithBookmarksDto>>> getCollections(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
-            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+            @ParameterObject Sort sort) {
 
+        Sort effectiveSort = resolveSort(sort);
         Page<CollectionWithBookmarksDto> collections = collectionQueryService.getCollectionsWithRecentBookmarks(
-                principalDetails.getProviderId(), pageable);
+                principalDetails.getProviderId(), PageRequest.of(0, Integer.MAX_VALUE, effectiveSort));
 
-        return ResponseEntity.ok(ResponseTemplate.success(collections));
+        return ResponseEntity.ok(ResponseTemplate.success(collections.getContent()));
     }
 
     @PutMapping("/{collectionId}")
@@ -186,5 +190,12 @@ public class CollectionController {
                 principalDetails.getProviderId(), collectionId, request);
 
         return ResponseEntity.ok(ResponseTemplate.success(response));
+    }
+
+    private Sort resolveSort(Sort requestedSort) {
+        if (requestedSort != null && requestedSort.isSorted()) {
+            return requestedSort;
+        }
+        return Sort.by(Sort.Direction.DESC, "createdAt");
     }
 }

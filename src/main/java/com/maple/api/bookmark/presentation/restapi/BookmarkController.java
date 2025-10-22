@@ -15,11 +15,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/bookmarks")
@@ -35,26 +37,27 @@ public class BookmarkController {
     @Operation(
             summary = "북마크 전체 조회",
             description = "사용자가 소지하고 있는 북마크 전체를 조회합니다.\n\n" +
-                    "**페이징:**\n" +
-                    "- 기본 사이즈: 200개\n\n" +
-                    "**정렬 기준:**\n" +
-                    "- createdAt: 북마크 생성순 정렬 (최신순 기본값)\n" +
-                    "- name: 이름순 정렬\n" +
-                    "- 페이지 크기: 20개 (기본값)"
+                    "**정렬 옵션:**\n" +
+                    "- `createdAt`: 북마크 생성순 정렬 (최신순 기본값)\n" +
+                    "- `name`: 이름순 정렬\n\n" +
+                    "**정렬 사용 예시:**\n" +
+                    "- `sort=createdAt,desc`: 최신 북마크순\n" +
+                    "- `sort=name,asc`: 이름 오름차순"
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "북마크 조회 성공"),
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<ResponseTemplate<Page<BookmarkSummaryDto>>> getBookmarks(
+    public ResponseEntity<ResponseTemplate<List<BookmarkSummaryDto>>> getBookmarks(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
-            @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
+            @ParameterObject Sort sort) {
 
+        Sort effectiveSort = resolveSort(sort);
         Page<BookmarkSummaryDto> bookmarks = bookmarkQueryService.getBookmarks(
-                principalDetails.getProviderId(), pageable);
+                principalDetails.getProviderId(), PageRequest.of(0, Integer.MAX_VALUE, effectiveSort));
 
-        return ResponseEntity.ok(ResponseTemplate.success(bookmarks));
+        return ResponseEntity.ok(ResponseTemplate.success(bookmarks.getContent()));
     }
 
     @PostMapping
@@ -152,15 +155,16 @@ public class BookmarkController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<ResponseTemplate<Page<BookmarkSummaryDto>>> getItemBookmarks(
+    public ResponseEntity<ResponseTemplate<List<BookmarkSummaryDto>>> getItemBookmarks(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @Valid @ParameterObject ItemBookmarkSearchRequestDto searchRequest,
-            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+            @ParameterObject Sort sort) {
 
+        Sort effectiveSort = resolveSort(sort);
         Page<BookmarkSummaryDto> itemBookmarks = bookmarkQueryService.getItemBookmarks(
-                principalDetails.getProviderId(), searchRequest, pageable);
+                principalDetails.getProviderId(), searchRequest, PageRequest.of(0, Integer.MAX_VALUE, effectiveSort));
 
-        return ResponseEntity.ok(ResponseTemplate.success(itemBookmarks));
+        return ResponseEntity.ok(ResponseTemplate.success(itemBookmarks.getContent()));
     }
 
     @GetMapping("/monsters")
@@ -182,21 +186,22 @@ public class BookmarkController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<ResponseTemplate<Page<BookmarkSummaryDto>>> getMonsterBookmarks(
+    public ResponseEntity<ResponseTemplate<List<BookmarkSummaryDto>>> getMonsterBookmarks(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
             @Valid @ParameterObject MonsterBookmarkSearchRequestDto searchRequest,
-            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+            @ParameterObject Sort sort) {
 
+        Sort effectiveSort = resolveSort(sort);
         Page<BookmarkSummaryDto> monsterBookmarks = bookmarkQueryService.getMonsterBookmarks(
-                principalDetails.getProviderId(), searchRequest, pageable);
+                principalDetails.getProviderId(), searchRequest, PageRequest.of(0, Integer.MAX_VALUE, effectiveSort));
 
-        return ResponseEntity.ok(ResponseTemplate.success(monsterBookmarks));
+        return ResponseEntity.ok(ResponseTemplate.success(monsterBookmarks.getContent()));
     }
 
     @GetMapping("/maps")
     @Operation(
             summary = "맵 북마크 조회",
-            description = "사용자가 북마크한 맵들을 조회합니다. 정렬과 페이징 옵션을 제공합니다.\n\n" +
+            description = "사용자가 북마크한 맵들을 조회합니다. 정렬 옵션을 제공합니다.\n\n" +
                     "**정렬 옵션:**\n" +
                     "- `createdAt`: 북마크 생성순 (최신순/오래된순)\n" +
                     "- `name`: 맵명 가나다순\n\n" +
@@ -210,20 +215,21 @@ public class BookmarkController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<ResponseTemplate<Page<BookmarkSummaryDto>>> getMapBookmarks(
+    public ResponseEntity<ResponseTemplate<List<BookmarkSummaryDto>>> getMapBookmarks(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
-            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+            @ParameterObject Sort sort) {
 
+        Sort effectiveSort = resolveSort(sort);
         Page<BookmarkSummaryDto> mapBookmarks = bookmarkQueryService.getMapBookmarks(
-                principalDetails.getProviderId(), pageable);
+                principalDetails.getProviderId(), PageRequest.of(0, Integer.MAX_VALUE, effectiveSort));
 
-        return ResponseEntity.ok(ResponseTemplate.success(mapBookmarks));
+        return ResponseEntity.ok(ResponseTemplate.success(mapBookmarks.getContent()));
     }
 
     @GetMapping("/npcs")
     @Operation(
             summary = "NPC 북마크 조회",
-            description = "사용자가 북마크한 NPC들을 조회합니다. 정렬과 페이징 옵션을 제공합니다.\n\n" +
+            description = "사용자가 북마크한 NPC들을 조회합니다. 정렬 옵션을 제공합니다.\n\n" +
                     "**정렬 옵션:**\n" +
                     "- `createdAt`: 북마크 생성순 (최신순/오래된순)\n" +
                     "- `name`: NPC명 가나다순\n\n" +
@@ -237,20 +243,21 @@ public class BookmarkController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<ResponseTemplate<Page<BookmarkSummaryDto>>> getNpcBookmarks(
+    public ResponseEntity<ResponseTemplate<List<BookmarkSummaryDto>>> getNpcBookmarks(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
-            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+            @ParameterObject Sort sort) {
 
+        Sort effectiveSort = resolveSort(sort);
         Page<BookmarkSummaryDto> npcBookmarks = bookmarkQueryService.getNpcBookmarks(
-                principalDetails.getProviderId(), pageable);
+                principalDetails.getProviderId(), PageRequest.of(0, Integer.MAX_VALUE, effectiveSort));
 
-        return ResponseEntity.ok(ResponseTemplate.success(npcBookmarks));
+        return ResponseEntity.ok(ResponseTemplate.success(npcBookmarks.getContent()));
     }
 
     @GetMapping("/quests")
     @Operation(
             summary = "퀘스트 북마크 조회",
-            description = "사용자가 북마크한 퀘스트들을 조회합니다. 정렬과 페이징 옵션을 제공합니다.\n\n" +
+            description = "사용자가 북마크한 퀘스트들을 조회합니다. 정렬 옵션을 제공합니다.\n\n" +
                     "**정렬 옵션:**\n" +
                     "- `createdAt`: 북마크 생성순 (최신순/오래된순)\n" +
                     "- `name`: 퀘스트명 가나다순\n\n" +
@@ -264,13 +271,21 @@ public class BookmarkController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<ResponseTemplate<Page<BookmarkSummaryDto>>> getQuestBookmarks(
+    public ResponseEntity<ResponseTemplate<List<BookmarkSummaryDto>>> getQuestBookmarks(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
-            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+            @ParameterObject Sort sort) {
 
+        Sort effectiveSort = resolveSort(sort);
         Page<BookmarkSummaryDto> questBookmarks = bookmarkQueryService.getQuestBookmarks(
-                principalDetails.getProviderId(), pageable);
+                principalDetails.getProviderId(), PageRequest.of(0, Integer.MAX_VALUE, effectiveSort));
 
-        return ResponseEntity.ok(ResponseTemplate.success(questBookmarks));
+        return ResponseEntity.ok(ResponseTemplate.success(questBookmarks.getContent()));
+    }
+
+    private Sort resolveSort(Sort requestedSort) {
+        if (requestedSort != null && requestedSort.isSorted()) {
+            return requestedSort;
+        }
+        return Sort.by(Sort.Direction.DESC, "createdAt");
     }
 }

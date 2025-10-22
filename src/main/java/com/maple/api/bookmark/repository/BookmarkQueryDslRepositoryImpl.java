@@ -115,7 +115,7 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
                         vwSearchSummary.originalId,
                         vwSearchSummary.name,
                         vwSearchSummary.imageUrl,
-                        vwSearchSummary.type,
+                        vwSearchSummary.type.stringValue(),
                         vwSearchSummary.level
                 ))
                 .from(bookmark)
