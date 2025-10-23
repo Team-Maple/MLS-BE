@@ -16,21 +16,21 @@ public record MonsterSummaryDto(
         
         @Schema(description = "타입 (고정값: monster)", example = "monster")
         String type,
-        
-        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
-        boolean isBookmarked
+
+        @Schema(description = "로그인 사용자가 생성한 북마크 ID (없으면 null)", example = "123")
+        Integer bookmarkId
 ) {
     public static MonsterSummaryDto toDto(Monster entity) {
-        return toDto(entity, false);
+        return toDto(entity, null);
     }
 
-    public static MonsterSummaryDto toDto(Monster entity, boolean isBookmarked) {
+    public static MonsterSummaryDto toDto(Monster entity, Integer bookmarkId) {
         return new MonsterSummaryDto(
                 entity.getMonsterId(),
                 entity.getNameKr(),
                 entity.getImageUrl(),
                 "monster",
-                isBookmarked
+                bookmarkId
         );
     }
 }

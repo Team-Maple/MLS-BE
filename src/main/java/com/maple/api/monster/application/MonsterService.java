@@ -31,8 +31,8 @@ public class MonsterService {
     public Page<MonsterSummaryDto> searchMonsters(String memberId, MonsterSearchRequestDto request, Pageable pageable) {
         var page = monsterQueryDslRepository.searchMonsters(request, pageable);
         var ids = page.getContent().stream().map(Monster::getMonsterId).toList();
-        var bookmarked = bookmarkFlagService.findBookmarkedIds(memberId, BookmarkType.MONSTER, ids);
-        return page.map(m -> MonsterSummaryDto.toDto(m, bookmarked.contains(m.getMonsterId())));
+        var bookmarkIds = bookmarkFlagService.findBookmarkIds(memberId, BookmarkType.MONSTER, ids);
+        return page.map(m -> MonsterSummaryDto.toDto(m, bookmarkIds.get(m.getMonsterId())));
     }
 
     @Transactional(readOnly = true)
@@ -46,8 +46,8 @@ public class MonsterService {
                 .map(MonsterTypeEffectivenessDto::toDto)
                 .orElse(null);
 
-        boolean isBookmarked = bookmarkFlagService.isBookmarked(memberId, BookmarkType.MONSTER, monsterId);
-        return MonsterDetailDto.toDto(monster, typeEffectivenessDto, isBookmarked);
+        Integer bookmarkId = bookmarkFlagService.findBookmarkId(memberId, BookmarkType.MONSTER, monsterId);
+        return MonsterDetailDto.toDto(monster, typeEffectivenessDto, bookmarkId);
     }
 
     @Transactional(readOnly = true)

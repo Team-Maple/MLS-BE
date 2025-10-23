@@ -49,8 +49,8 @@ public class QuestService {
     public Page<QuestSummaryDto> searchQuests(String memberId, QuestSearchRequestDto request, Pageable pageable) {
         Page<Quest> questPage = questQueryDslRepository.searchQuests(request, pageable);
         var ids = questPage.getContent().stream().map(Quest::getQuestId).toList();
-        var bookmarked = bookmarkFlagService.findBookmarkedIds(memberId, BookmarkType.QUEST, ids);
-        return questPage.map(q -> QuestSummaryDto.toDto(q, bookmarked.contains(q.getQuestId())));
+        var bookmarkIds = bookmarkFlagService.findBookmarkIds(memberId, BookmarkType.QUEST, ids);
+        return questPage.map(q -> QuestSummaryDto.toDto(q, bookmarkIds.get(q.getQuestId())));
     }
 
     @Transactional(readOnly = true)
@@ -68,9 +68,9 @@ public class QuestService {
         String startNpcName = fetchNpcName(quest.getStartNpcId());
         String endNpcName = fetchNpcName(quest.getEndNpcId());
 
-        boolean isBookmarked = bookmarkFlagService.isBookmarked(memberId, BookmarkType.QUEST, questId);
+        Integer bookmarkId = bookmarkFlagService.findBookmarkId(memberId, BookmarkType.QUEST, questId);
         return buildQuestDetailDto(quest, reward, rewardItems, requirements, allowedJobs,
-                                 itemNameMap, monsterNameMap, jobNameMap, startNpcName, endNpcName, isBookmarked);
+                                 itemNameMap, monsterNameMap, jobNameMap, startNpcName, endNpcName, bookmarkId);
     }
 
     private Quest findQuest(Integer questId) {
@@ -145,11 +145,11 @@ public class QuestService {
                 .orElseThrow(() -> ApiException.of(NpcException.NPC_NOT_FOUND));
     }
 
-    private QuestDetailDto buildQuestDetailDto(Quest quest, QuestReward reward, 
+    private QuestDetailDto buildQuestDetailDto(Quest quest, QuestReward reward,
                                              List<QuestRewardItem> rewardItems, List<QuestRequirement> requirements,
                                              List<QuestAllowedJob> allowedJobs, Map<Integer, String> itemNameMap,
                                              Map<Integer, String> monsterNameMap, Map<Integer, String> jobNameMap,
-                                             String startNpcName, String endNpcName, boolean bookmarked) {
+                                             String startNpcName, String endNpcName, Integer bookmarkId) {
         QuestRewardDto rewardDto = reward != null ? QuestRewardDto.toDto(reward) : null;
 
         List<QuestRewardItemDto> rewardItemDtos = rewardItems.stream()
@@ -166,7 +166,7 @@ public class QuestService {
                 .map(job -> new QuestJobDto(job.getJobId(), jobNameMap.get(job.getJobId())))
                 .toList();
 
-        return QuestDetailDto.toDto(quest, rewardDto, rewardItemDtos, requirementDtos, allowedJobDtos, startNpcName, endNpcName, bookmarked);
+        return QuestDetailDto.toDto(quest, rewardDto, rewardItemDtos, requirementDtos, allowedJobDtos, startNpcName, endNpcName, bookmarkId);
     }
 
     @Transactional(readOnly = true)

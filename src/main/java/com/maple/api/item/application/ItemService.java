@@ -40,8 +40,8 @@ public class ItemService {
     public Page<ItemSummaryDto> searchItems(String memberId, ItemSearchRequestDto searchRequest, Pageable pageable) {
         var page = itemQueryDslRepository.searchItems(searchRequest, pageable);
         var ids = page.getContent().stream().map(Item::getItemId).toList();
-        var bookmarked = bookmarkFlagService.findBookmarkedIds(memberId, BookmarkType.ITEM, ids);
-        return page.map(item -> ItemSummaryDto.toDto(item, bookmarked.contains(item.getItemId())));
+        var bookmarkIds = bookmarkFlagService.findBookmarkIds(memberId, BookmarkType.ITEM, ids);
+        return page.map(item -> ItemSummaryDto.toDto(item, bookmarkIds.get(item.getItemId())));
     }
 
     @Transactional(readOnly = true)
@@ -56,8 +56,8 @@ public class ItemService {
 
         List<Job> availableJobs = jobRepository.findByItemId(itemId);
 
-        boolean isBookmarked = bookmarkFlagService.isBookmarked(memberId, BookmarkType.ITEM, itemId);
-        return ItemDetailDto.toDto(item, rootCategory, leafCategory, availableJobs, isBookmarked);
+        Integer bookmarkId = bookmarkFlagService.findBookmarkId(memberId, BookmarkType.ITEM, itemId);
+        return ItemDetailDto.toDto(item, rootCategory, leafCategory, availableJobs, bookmarkId);
     }
 
     private Item loadTypeSpecificData(Item item) {

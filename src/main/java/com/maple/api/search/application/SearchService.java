@@ -26,27 +26,39 @@ public class SearchService {
         Page<VwSearchSummary> resultPage = vwSearchSummaryQueryDslRepository.search(keyword, pageable);
 
         List<VwSearchSummary> content = resultPage.getContent();
-        Map<Integer, Boolean> flagMap = buildBookmarkFlagMap(memberId, content);
+        Map<String, Integer> bookmarkIdMap = buildBookmarkIdMap(memberId, content);
 
-        return resultPage.map(e -> SearchSummaryDto.toDto(e, flagMap.getOrDefault(e.getOriginalId(), false)));
+        return resultPage.map(e -> SearchSummaryDto.toDto(e,
+                bookmarkIdMap.get(BookmarkedKey.of(e.getType(), e.getOriginalId()))));
     }
 
-    private Map<Integer, Boolean> buildBookmarkFlagMap(String memberId, List<VwSearchSummary> content) {
+    private Map<String, Integer> buildBookmarkIdMap(String memberId, List<VwSearchSummary> content) {
         if (memberId == null || content.isEmpty()) return Collections.emptyMap();
 
         Map<BookmarkType, List<Integer>> idsByType = content.stream()
                 .collect(Collectors.groupingBy(VwSearchSummary::getType,
                         Collectors.mapping(VwSearchSummary::getOriginalId, Collectors.toList())));
 
-        Map<Integer, Boolean> result = new HashMap<>();
+        Map<String, Integer> result = new HashMap<>();
 
         idsByType.forEach((type, ids) -> {
-            Set<Integer> bookmarked = bookmarkFlagService.findBookmarkedIds(memberId, type, ids);
-            for (Integer id : ids) {
-                result.put(id, bookmarked.contains(id));
+            if (type == null) {
+                return;
             }
+            Map<Integer, Integer> bookmarkIds = bookmarkFlagService.findBookmarkIds(memberId, type, ids);
+            bookmarkIds.forEach((resourceId, bookmarkId) ->
+                    result.put(BookmarkedKey.of(type, resourceId), bookmarkId));
         });
 
         return result;
+    }
+
+    private static final class BookmarkedKey {
+        private static String of(BookmarkType type, Integer resourceId) {
+            if (type == null || resourceId == null) {
+                return null;
+            }
+            return type.name() + ":" + resourceId;
+        }
     }
 }

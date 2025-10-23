@@ -57,19 +57,19 @@ public record QuestDetailDto(
         
         @Schema(description = "허용 직업 목록")
         List<QuestJobDto> allowedJobs,
-        
-        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
-        boolean isBookmarked
+
+        @Schema(description = "로그인 사용자가 생성한 북마크 ID (없으면 null)", example = "123")
+        Integer bookmarkId
 ) {
     public static QuestDetailDto toDto(Quest quest, QuestRewardDto reward, List<QuestRewardItemDto> rewardItems, 
                                       List<QuestRequirementDto> requirements, List<QuestJobDto> allowedJobs,
                                       String startNpcName, String endNpcName) {
-        return toDto(quest, reward, rewardItems, requirements, allowedJobs, startNpcName, endNpcName, false);
+        return toDto(quest, reward, rewardItems, requirements, allowedJobs, startNpcName, endNpcName, null);
     }
 
     public static QuestDetailDto toDto(Quest quest, QuestRewardDto reward, List<QuestRewardItemDto> rewardItems,
                                        List<QuestRequirementDto> requirements, List<QuestJobDto> allowedJobs,
-                                       String startNpcName, String endNpcName, boolean isBookmarked) {
+                                       String startNpcName, String endNpcName, Integer bookmarkId) {
         return new QuestDetailDto(
                 quest.getQuestId(),
                 quest.getTitlePrefix(),
@@ -88,7 +88,7 @@ public record QuestDetailDto(
                 rewardItems,
                 requirements,
                 allowedJobs,
-                isBookmarked
+                bookmarkId
         );
     }
 }

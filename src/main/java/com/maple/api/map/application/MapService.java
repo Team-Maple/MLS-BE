@@ -29,8 +29,8 @@ public class MapService {
     public Page<MapSummaryDto> searchMaps(String memberId, MapSearchRequestDto request, Pageable pageable) {
         var page = mapQueryDslRepository.searchMaps(request, pageable);
         var ids = page.getContent().stream().map(com.maple.api.map.domain.Map::getMapId).toList();
-        var bookmarked = bookmarkFlagService.findBookmarkedIds(memberId, BookmarkType.MAP, ids);
-        return page.map(m -> MapSummaryDto.toDto(m, bookmarked.contains(m.getMapId())));
+        var bookmarkIds = bookmarkFlagService.findBookmarkIds(memberId, BookmarkType.MAP, ids);
+        return page.map(m -> MapSummaryDto.toDto(m, bookmarkIds.get(m.getMapId())));
     }
 
     @Transactional(readOnly = true)
@@ -38,8 +38,8 @@ public class MapService {
         com.maple.api.map.domain.Map map = mapRepository.findById(mapId)
                 .orElseThrow(() -> ApiException.of(MapException.MAP_NOT_FOUND));
 
-        boolean isBookmarked = bookmarkFlagService.isBookmarked(memberId, BookmarkType.MAP, mapId);
-        return MapDetailDto.toDto(map, isBookmarked);
+        Integer bookmarkId = bookmarkFlagService.findBookmarkId(memberId, BookmarkType.MAP, mapId);
+        return MapDetailDto.toDto(map, bookmarkId);
     }
 
     @Transactional(readOnly = true)

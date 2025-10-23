@@ -33,8 +33,8 @@ public class NpcService {
     public Page<NpcSummaryDto> searchNpcs(String memberId, NpcSearchRequestDto request, Pageable pageable) {
         Page<Npc> npcPage = npcQueryDslRepository.searchNpcs(request, pageable);
         var ids = npcPage.getContent().stream().map(Npc::getNpcId).toList();
-        var bookmarked = bookmarkFlagService.findBookmarkedIds(memberId, BookmarkType.NPC, ids);
-        return npcPage.map(n -> NpcSummaryDto.toDto(n, bookmarked.contains(n.getNpcId())));
+        var bookmarkIds = bookmarkFlagService.findBookmarkIds(memberId, BookmarkType.NPC, ids);
+        return npcPage.map(n -> NpcSummaryDto.toDto(n, bookmarkIds.get(n.getNpcId())));
     }
 
     @Transactional(readOnly = true)
@@ -42,8 +42,8 @@ public class NpcService {
         Npc npc = npcRepository.findByNpcId(npcId)
                 .orElseThrow(() -> ApiException.of(NpcException.NPC_NOT_FOUND));
         
-        boolean isBookmarked = bookmarkFlagService.isBookmarked(memberId, BookmarkType.NPC, npcId);
-        return NpcDetailDto.toDto(npc, isBookmarked);
+        Integer bookmarkId = bookmarkFlagService.findBookmarkId(memberId, BookmarkType.NPC, npcId);
+        return NpcDetailDto.toDto(npc, bookmarkId);
     }
 
     @Transactional(readOnly = true)

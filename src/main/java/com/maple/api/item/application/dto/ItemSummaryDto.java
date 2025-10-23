@@ -17,20 +17,20 @@ public record ItemSummaryDto(
         @Schema(description = "아이템 타입 (고정값: 'item')", example = "item")
         String type,
 
-        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
-        boolean isBookmarked
+        @Schema(description = "로그인 사용자가 생성한 북마크 ID (없으면 null)", example = "123")
+        Integer bookmarkId
 ) {
     public static ItemSummaryDto toDto(Item entity) {
-        return toDto(entity, false);
+        return toDto(entity, null);
     }
 
-    public static ItemSummaryDto toDto(Item entity, boolean isBookmarked) {
+    public static ItemSummaryDto toDto(Item entity, Integer bookmarkId) {
         return new ItemSummaryDto(
                 entity.getItemId(),
                 entity.getNameKr(),
                 entity.getItemImageUrl(),
                 "item",
-                isBookmarked
+                bookmarkId
         );
     }
 }

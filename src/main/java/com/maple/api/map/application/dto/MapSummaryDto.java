@@ -16,15 +16,15 @@ public record MapSummaryDto(
         
         @Schema(description = "데이터 타입 (고정값: 'map')", example = "map")
         String type,
-        
-        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
-        boolean isBookmarked
+
+        @Schema(description = "로그인 사용자가 생성한 북마크 ID (없으면 null)", example = "123")
+        Integer bookmarkId
 ) {
     public static MapSummaryDto toDto(Map entity) {
-        return toDto(entity, false);
+        return toDto(entity, null);
     }
 
-    public static MapSummaryDto toDto(Map entity, boolean isBookmarked) {
-        return new MapSummaryDto(entity.getMapId(), entity.getNameKr(), entity.getIconUrl(), "map", isBookmarked);
+    public static MapSummaryDto toDto(Map entity, Integer bookmarkId) {
+        return new MapSummaryDto(entity.getMapId(), entity.getNameKr(), entity.getIconUrl(), "map", bookmarkId);
     }
 }

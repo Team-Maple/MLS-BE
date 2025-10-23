@@ -16,15 +16,15 @@ public record NpcSummaryDto(
         
         @Schema(description = "데이터 타입", example = "npc")
         String type,
-        
-        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
-        boolean isBookmarked
+
+        @Schema(description = "로그인 사용자가 생성한 북마크 ID (없으면 null)", example = "123")
+        Integer bookmarkId
 ) {
     public static NpcSummaryDto toDto(Npc entity) {
-        return toDto(entity, false);
+        return toDto(entity, null);
     }
 
-    public static NpcSummaryDto toDto(Npc entity, boolean isBookmarked) {
-        return new NpcSummaryDto(entity.getNpcId(), entity.getNameKr(), entity.getIconUrlDetail(), "npc", isBookmarked);
+    public static NpcSummaryDto toDto(Npc entity, Integer bookmarkId) {
+        return new NpcSummaryDto(entity.getNpcId(), entity.getNameKr(), entity.getIconUrlDetail(), "npc", bookmarkId);
     }
 }

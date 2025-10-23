@@ -52,9 +52,9 @@ public record MonsterDetailDto(
         
         @Schema(description = "속성 효과 정보")
         MonsterTypeEffectivenessDto typeEffectiveness,
-        
-        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
-        boolean isBookmarked
+
+        @Schema(description = "로그인 사용자가 생성한 북마크 ID (없으면 null)", example = "123")
+        Integer bookmarkId
 ) {
     public static MonsterDetailDto toDto(
             Monster monster,
@@ -77,14 +77,14 @@ public record MonsterDetailDto(
                 monster.getMesoDropAmount(),
                 monster.getMesoDropRate(),
                 typeEffectiveness,
-                false
+                null
         );
     }
 
     public static MonsterDetailDto toDto(
             Monster monster,
             MonsterTypeEffectivenessDto typeEffectiveness,
-            boolean isBookmarked
+            Integer bookmarkId
     ) {
         return new MonsterDetailDto(
                 monster.getMonsterId(),
@@ -103,7 +103,7 @@ public record MonsterDetailDto(
                 monster.getMesoDropAmount(),
                 monster.getMesoDropRate(),
                 typeEffectiveness,
-                isBookmarked
+                bookmarkId
         );
     }
 }

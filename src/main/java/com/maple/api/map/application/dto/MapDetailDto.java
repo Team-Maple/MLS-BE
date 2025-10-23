@@ -28,15 +28,15 @@ public record MapDetailDto(
         
         @Schema(description = "아이콘 URL")
         String iconUrl,
-        
-        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
-        boolean isBookmarked
+
+        @Schema(description = "로그인 사용자가 생성한 북마크 ID (없으면 null)", example = "123")
+        Integer bookmarkId
 ) {
     public static MapDetailDto toDto(Map map) {
-        return toDto(map, false);
+        return toDto(map, null);
     }
 
-    public static MapDetailDto toDto(Map map, boolean isBookmarked) {
+    public static MapDetailDto toDto(Map map, Integer bookmarkId) {
         return new MapDetailDto(
                 map.getMapId(),
                 map.getNameKr(),
@@ -46,7 +46,7 @@ public record MapDetailDto(
                 map.getTopRegionName(),
                 map.getMapUrl(),
                 map.getIconUrl(),
-                isBookmarked
+                bookmarkId
         );
     }
 }

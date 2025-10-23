@@ -14,27 +14,27 @@ public record SearchSummaryDto(
         @Schema(description = "이미지 URL", example = "https://maplestory.io/api/gms/62/item/1002001/icon?resize=2")
         String imageUrl,
         
-        @Schema(description = "타입 (ITEM, MONSTER, QUEST, NPC, MAP)", example = "ITEM")
+        @Schema(description = "타입 (item, monster, quest, npc, map)", example = "item")
         String type,
 
         @Schema(description = "레벨", example = "0")
         Integer level,
 
-        @Schema(description = "로그인 사용자의 북마크 여부", example = "false")
-        boolean isBookmarked
+        @Schema(description = "로그인 사용자가 생성한 북마크 ID (없으면 null)", example = "123")
+        Integer bookmarkId
 ) {
     public static SearchSummaryDto toDto(VwSearchSummary entity) {
-        return toDto(entity, false);
+        return toDto(entity, null);
     }
 
-    public static SearchSummaryDto toDto(VwSearchSummary entity, boolean isBookmarked) {
+    public static SearchSummaryDto toDto(VwSearchSummary entity, Integer bookmarkId) {
         return new SearchSummaryDto(
                 entity.getOriginalId(),
                 entity.getName(),
                 entity.getImageUrl(),
-                entity.getType() != null ? entity.getType().name() : null,
+                entity.getType() != null ? entity.getType().name().toLowerCase() : null,
                 entity.getLevel(),
-                isBookmarked
+                bookmarkId
         );
     }
 }
