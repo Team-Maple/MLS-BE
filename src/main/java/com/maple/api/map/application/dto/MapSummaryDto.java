@@ -13,7 +13,10 @@ public record MapSummaryDto(
         
         @Schema(description = "맵 이미지 URL", example = "https://maplestory.io/api/gms/62/map/100000000/icon?resize=2")
         String imageUrl,
-        
+
+        @Schema(description = "맵 레벨", example = "null", nullable = true)
+        Integer level,
+
         @Schema(description = "데이터 타입 (고정값: 'map')", example = "map")
         String type,
 
@@ -25,6 +28,6 @@ public record MapSummaryDto(
     }
 
     public static MapSummaryDto toDto(Map entity, Integer bookmarkId) {
-        return new MapSummaryDto(entity.getMapId(), entity.getNameKr(), entity.getIconUrl(), "map", bookmarkId);
+        return new MapSummaryDto(entity.getMapId(), entity.getNameKr(), entity.getIconUrl(), null, "map", bookmarkId);
     }
 }

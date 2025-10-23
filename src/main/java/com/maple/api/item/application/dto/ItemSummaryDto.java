@@ -1,5 +1,6 @@
 package com.maple.api.item.application.dto;
 
+import com.maple.api.item.domain.EquipmentItem;
 import com.maple.api.item.domain.Item;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -7,13 +8,16 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record ItemSummaryDto(
         @Schema(description = "아이템 ID", example = "1002001")
         Integer itemId,
-        
+
         @Schema(description = "아이템명", example = "메탈 기어")
         String name,
-        
+
         @Schema(description = "아이템 이미지 URL", example = "https://maplestory.io/api/gms/62/item/1002001/icon?resize=2")
         String imageUrl,
-        
+
+        @Schema(description = "아이템 레벨", example = "80")
+        Integer level,
+
         @Schema(description = "아이템 타입 (고정값: 'item')", example = "item")
         String type,
 
@@ -29,8 +33,16 @@ public record ItemSummaryDto(
                 entity.getItemId(),
                 entity.getNameKr(),
                 entity.getItemImageUrl(),
+                extractLevel(entity),
                 "item",
                 bookmarkId
         );
+    }
+
+    private static Integer extractLevel(Item entity) {
+        if (entity instanceof EquipmentItem equipmentItem) {
+            return equipmentItem.getRequiredStats() != null ? equipmentItem.getRequiredStats().getLevel() : null;
+        }
+        return null;
     }
 }

@@ -14,6 +14,9 @@ public record QuestSummaryDto(
         @Schema(description = "퀘스트 이미지 URL", example = "https://maplestory.io/api/gms/62/quest/1000/icon?resize=2")
         String imageUrl,
 
+        @Schema(description = "퀘스트 최소 수락 레벨", example = "15")
+        Integer level,
+
         @Schema(description = "데이터 타입 (고정값: 'quest')", example = "quest")
         String type,
 
@@ -25,6 +28,6 @@ public record QuestSummaryDto(
     }
 
     public static QuestSummaryDto toDto(Quest entity, Integer bookmarkId) {
-        return new QuestSummaryDto(entity.getQuestId(), entity.getNameKr(), entity.getIconUrl(), "quest", bookmarkId);
+        return new QuestSummaryDto(entity.getQuestId(), entity.getNameKr(), entity.getIconUrl(), entity.getMinLevel(), "quest", bookmarkId);
     }
 }

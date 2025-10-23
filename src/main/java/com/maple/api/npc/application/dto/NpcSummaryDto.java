@@ -13,7 +13,10 @@ public record NpcSummaryDto(
         
         @Schema(description = "NPC 이미지 URL", example = "https://maplestory.io/api/gms/62/npc/2000/icon?resize=2")
         String imageUrl,
-        
+
+        @Schema(description = "NPC 레벨", example = "null", nullable = true)
+        Integer level,
+
         @Schema(description = "데이터 타입", example = "npc")
         String type,
 
@@ -25,6 +28,6 @@ public record NpcSummaryDto(
     }
 
     public static NpcSummaryDto toDto(Npc entity, Integer bookmarkId) {
-        return new NpcSummaryDto(entity.getNpcId(), entity.getNameKr(), entity.getIconUrlDetail(), "npc", bookmarkId);
+        return new NpcSummaryDto(entity.getNpcId(), entity.getNameKr(), entity.getIconUrlDetail(), null, "npc", bookmarkId);
     }
 }

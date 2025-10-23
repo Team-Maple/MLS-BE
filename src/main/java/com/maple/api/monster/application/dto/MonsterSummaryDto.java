@@ -13,7 +13,10 @@ public record MonsterSummaryDto(
         
         @Schema(description = "몬스터 이미지 URL", example = "https://maplestory.io/api/gms/62/mob/100100/render/stand")
         String imageUrl,
-        
+
+        @Schema(description = "몬스터 레벨", example = "3")
+        Integer level,
+
         @Schema(description = "타입 (고정값: monster)", example = "monster")
         String type,
 
@@ -29,6 +32,7 @@ public record MonsterSummaryDto(
                 entity.getMonsterId(),
                 entity.getNameKr(),
                 entity.getImageUrl(),
+                entity.getLevel(),
                 "monster",
                 bookmarkId
         );
