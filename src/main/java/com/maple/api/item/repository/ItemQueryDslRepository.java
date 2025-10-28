@@ -12,4 +12,5 @@ import java.util.List;
 public interface ItemQueryDslRepository {
     Page<Item> searchItems(ItemSearchRequestDto searchRequest, Pageable pageable);
     List<ItemMonsterDropDto> findItemDropMonstersByItemId(Integer itemId, Sort sort);
+    long countItemsByKeyword(String keyword);
 }

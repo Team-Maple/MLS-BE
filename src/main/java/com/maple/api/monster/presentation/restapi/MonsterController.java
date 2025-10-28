@@ -2,6 +2,7 @@ package com.maple.api.monster.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.common.presentation.exception.ExceptionResponse;
+import com.maple.api.common.presentation.restapi.CountResponse;
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.monster.application.MonsterService;
 import com.maple.api.monster.application.dto.*;
@@ -24,6 +25,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -58,6 +60,16 @@ public class MonsterController {
             @AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         return ResponseEntity.ok(ResponseTemplate.success(monsterService.searchMonsters(memberId, request, pageable)));
+    }
+
+    @GetMapping("/counts")
+    @Operation(summary = "몬스터 검색 결과 수 조회",
+            description = "키워드로 필터링된 몬스터 데이터의 총 개수를 조회합니다.")
+    public ResponseEntity<ResponseTemplate<CountResponse>> countMonsters(
+            @Parameter(description = "검색할 키워드", example = "슬라임")
+            @RequestParam(required = false) String keyword) {
+        long counts = monsterService.countMonstersByKeyword(keyword);
+        return ResponseEntity.ok(ResponseTemplate.success(CountResponse.of(counts)));
     }
 
     @GetMapping("/{monsterId}")

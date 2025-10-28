@@ -81,4 +81,9 @@ public class ItemService {
         return itemQueryDslRepository.findItemDropMonstersByItemId(itemId, sort);
     }
 
+    @Transactional(readOnly = true)
+    public long countItemsByKeyword(String keyword) {
+        return itemQueryDslRepository.countItemsByKeyword(keyword);
+    }
+
 }

@@ -59,4 +59,9 @@ public class MapService {
 
         return mapNpcQueryDslRepository.findNpcsByMapId(mapId);
     }
+
+    @Transactional(readOnly = true)
+    public long countMapsByKeyword(String keyword) {
+        return mapQueryDslRepository.countMapsByKeyword(keyword);
+    }
 }

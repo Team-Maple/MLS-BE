@@ -1,6 +1,7 @@
 package com.maple.api.item.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
+import com.maple.api.common.presentation.restapi.CountResponse;
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.item.application.ItemService;
 import com.maple.api.item.application.dto.ItemDetailDto;
@@ -24,6 +25,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -56,6 +58,16 @@ public class ItemController {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         Page<ItemSummaryDto> results = itemService.searchItems(memberId, searchRequest, pageable);
         return ResponseEntity.ok(ResponseTemplate.success(results));
+    }
+
+    @GetMapping("/counts")
+    @Operation(summary = "아이템 검색 결과 수 조회",
+            description = "키워드로 필터링된 아이템 데이터의 총 개수를 조회합니다.")
+    public ResponseEntity<ResponseTemplate<CountResponse>> countItems(
+            @Parameter(description = "검색할 키워드", example = "메이플")
+            @RequestParam(required = false) String keyword) {
+        long counts = itemService.countItemsByKeyword(keyword);
+        return ResponseEntity.ok(ResponseTemplate.success(CountResponse.of(counts)));
     }
 
     @GetMapping("/{id}")

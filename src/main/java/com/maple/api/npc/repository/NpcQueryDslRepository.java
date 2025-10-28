@@ -14,4 +14,5 @@ public interface NpcQueryDslRepository {
     Page<Npc> searchNpcs(NpcSearchRequestDto request, Pageable pageable);
     List<NpcSpawnMapDto> findNpcSpawnMapsByNpcId(Integer npcId);
     List<NpcQuestDto> findNpcQuestsByNpcId(Integer npcId, Sort sort);
+    long countNpcsByKeyword(String keyword);
 }

@@ -77,4 +77,22 @@ public class VwSearchSummaryQueryDslRepositoryImpl implements VwSearchSummaryQue
         return orders;
     }
 
+    @Override
+    public long countByKeyword(String keyword) {
+        QVwSearchSummary vwSearchSummary = QVwSearchSummary.vwSearchSummary;
+
+        BooleanBuilder builder = new BooleanBuilder();
+        if (StringUtils.hasText(keyword)) {
+            builder.and(vwSearchSummary.name.contains(keyword));
+        }
+
+        Long result = queryFactory
+                .select(vwSearchSummary.count())
+                .from(vwSearchSummary)
+                .where(builder)
+                .fetchOne();
+
+        return result != null ? result : 0L;
+    }
+
 }

@@ -1,6 +1,7 @@
 package com.maple.api.quest.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
+import com.maple.api.common.presentation.restapi.CountResponse;
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.quest.application.QuestService;
 import com.maple.api.quest.application.dto.QuestChainResponseDto;
@@ -8,6 +9,7 @@ import com.maple.api.quest.application.dto.QuestDetailDto;
 import com.maple.api.quest.application.dto.QuestSearchRequestDto;
 import com.maple.api.quest.application.dto.QuestSummaryDto;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +23,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -51,6 +54,16 @@ public class QuestController {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         Page<QuestSummaryDto> quests = questService.searchQuests(memberId, request, pageable);
         return ResponseEntity.ok(ResponseTemplate.success(quests));
+    }
+
+    @GetMapping("/counts")
+    @Operation(summary = "퀘스트 검색 결과 수 조회",
+            description = "키워드로 필터링된 퀘스트 데이터의 총 개수를 조회합니다.")
+    public ResponseEntity<ResponseTemplate<CountResponse>> countQuests(
+            @Parameter(description = "검색할 키워드", example = "첫 번째")
+            @RequestParam(required = false) String keyword) {
+        long counts = questService.countQuestsByKeyword(keyword);
+        return ResponseEntity.ok(ResponseTemplate.success(CountResponse.of(counts)));
     }
 
     @GetMapping("/{questId}")

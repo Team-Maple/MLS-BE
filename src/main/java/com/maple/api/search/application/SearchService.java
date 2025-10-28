@@ -32,6 +32,11 @@ public class SearchService {
                 bookmarkIdMap.get(BookmarkedKey.of(e.getType(), e.getOriginalId()))));
     }
 
+    @Transactional(readOnly = true)
+    public long countByKeyword(String keyword) {
+        return vwSearchSummaryQueryDslRepository.countByKeyword(keyword);
+    }
+
     private Map<String, Integer> buildBookmarkIdMap(String memberId, List<VwSearchSummary> content) {
         if (memberId == null || content.isEmpty()) return Collections.emptyMap();
 

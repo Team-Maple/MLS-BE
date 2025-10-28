@@ -54,6 +54,11 @@ public class QuestService {
     }
 
     @Transactional(readOnly = true)
+    public long countQuestsByKeyword(String keyword) {
+        return questQueryDslRepository.countQuestsByKeyword(keyword);
+    }
+
+    @Transactional(readOnly = true)
     public QuestDetailDto getQuestDetail(String memberId, Integer questId) {
         Quest quest = findQuest(questId);
         

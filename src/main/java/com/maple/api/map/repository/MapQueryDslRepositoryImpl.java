@@ -78,4 +78,20 @@ public class MapQueryDslRepositoryImpl implements MapQueryDslRepository {
                 .from(map)
                 .where(where);
     }
+
+    @Override
+    public long countMapsByKeyword(String keyword) {
+        BooleanBuilder builder = new BooleanBuilder();
+        if (StringUtils.hasText(keyword)) {
+            builder.and(map.nameKr.containsIgnoreCase(keyword.trim()));
+        }
+
+        Long result = queryFactory
+                .select(map.count())
+                .from(map)
+                .where(builder)
+                .fetchOne();
+
+        return result != null ? result : 0L;
+    }
 }

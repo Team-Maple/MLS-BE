@@ -6,4 +6,5 @@ import org.springframework.data.domain.Pageable;
 
 public interface VwSearchSummaryQueryDslRepository {
     Page<VwSearchSummary> search(String keyword, Pageable pageable);
+    long countByKeyword(String keyword);
 }

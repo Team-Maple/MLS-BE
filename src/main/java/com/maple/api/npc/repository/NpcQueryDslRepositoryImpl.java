@@ -153,4 +153,20 @@ public class NpcQueryDslRepositoryImpl implements NpcQueryDslRepository {
         
         return orderSpecifiers;
     }
+
+    @Override
+    public long countNpcsByKeyword(String keyword) {
+        BooleanBuilder builder = new BooleanBuilder();
+        if (StringUtils.hasText(keyword)) {
+            builder.and(npc.nameKr.containsIgnoreCase(keyword.trim()));
+        }
+
+        Long result = queryFactory
+                .select(npc.count())
+                .from(npc)
+                .where(builder)
+                .fetchOne();
+
+        return result != null ? result : 0L;
+    }
 }

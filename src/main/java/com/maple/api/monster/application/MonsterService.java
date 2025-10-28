@@ -68,5 +68,10 @@ public class MonsterService {
         return monsterQueryDslRepository.findMonsterDropItemsByMonsterId(monsterId, sort);
     }
 
+    @Transactional(readOnly = true)
+    public long countMonstersByKeyword(String keyword) {
+        return monsterQueryDslRepository.countMonstersByKeyword(keyword);
+    }
+
 
 }

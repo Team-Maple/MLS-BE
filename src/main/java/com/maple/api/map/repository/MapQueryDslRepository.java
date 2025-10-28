@@ -7,4 +7,5 @@ import org.springframework.data.domain.Pageable;
 
 public interface MapQueryDslRepository {
     Page<Map> searchMaps(MapSearchRequestDto request, Pageable pageable);
+    long countMapsByKeyword(String keyword);
 }

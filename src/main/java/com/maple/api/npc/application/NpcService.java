@@ -63,4 +63,9 @@ public class NpcService {
 
         return npcQueryDslRepository.findNpcQuestsByNpcId(npcId, sort);
     }
+
+    @Transactional(readOnly = true)
+    public long countNpcsByKeyword(String keyword) {
+        return npcQueryDslRepository.countNpcsByKeyword(keyword);
+    }
 }

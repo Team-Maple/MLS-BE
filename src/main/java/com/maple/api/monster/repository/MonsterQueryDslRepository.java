@@ -14,4 +14,5 @@ public interface MonsterQueryDslRepository {
     Page<Monster> searchMonsters(MonsterSearchRequestDto request, Pageable pageable);
     List<MonsterSpawnMapDto> findMonsterSpawnMapsByMonsterId(Integer monsterId, Sort sort);
     List<MonsterDropItemDto> findMonsterDropItemsByMonsterId(Integer monsterId, Sort sort);
+    long countMonstersByKeyword(String keyword);
 }

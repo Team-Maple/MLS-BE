@@ -2,6 +2,7 @@ package com.maple.api.npc.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.common.presentation.exception.ExceptionResponse;
+import com.maple.api.common.presentation.restapi.CountResponse;
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.npc.application.NpcService;
 import com.maple.api.npc.application.dto.*;
@@ -23,6 +24,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -55,6 +57,16 @@ public class NpcController {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         Page<NpcSummaryDto> npcs = npcService.searchNpcs(memberId, request, pageable);
         return ResponseEntity.ok(ResponseTemplate.success(npcs));
+    }
+
+    @GetMapping("/counts")
+    @Operation(summary = "NPC 검색 결과 수 조회",
+            description = "키워드로 필터링된 NPC 데이터의 총 개수를 조회합니다.")
+    public ResponseEntity<ResponseTemplate<CountResponse>> countNpcs(
+            @Parameter(description = "검색할 키워드", example = "헤네시스")
+            @RequestParam(required = false) String keyword) {
+        long counts = npcService.countNpcsByKeyword(keyword);
+        return ResponseEntity.ok(ResponseTemplate.success(CountResponse.of(counts)));
     }
 
     @GetMapping("/{npcId}")

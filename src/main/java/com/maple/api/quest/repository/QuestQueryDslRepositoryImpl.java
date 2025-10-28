@@ -79,4 +79,20 @@ public class QuestQueryDslRepositoryImpl implements QuestQueryDslRepository {
                 .from(quest)
                 .where(where);
     }
+
+    @Override
+    public long countQuestsByKeyword(String keyword) {
+        BooleanBuilder builder = new BooleanBuilder();
+        if (StringUtils.hasText(keyword)) {
+            builder.and(quest.nameKr.containsIgnoreCase(keyword.trim()));
+        }
+
+        Long result = queryFactory
+                .select(quest.count())
+                .from(quest)
+                .where(builder)
+                .fetchOne();
+
+        return result != null ? result : 0L;
+    }
 }

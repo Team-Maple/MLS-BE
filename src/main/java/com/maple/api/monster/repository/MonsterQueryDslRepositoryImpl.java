@@ -220,4 +220,20 @@ public class MonsterQueryDslRepositoryImpl implements MonsterQueryDslRepository 
         return orderSpecifiers;
     }
 
+    @Override
+    public long countMonstersByKeyword(String keyword) {
+        BooleanBuilder builder = new BooleanBuilder();
+        if (StringUtils.hasText(keyword)) {
+            builder.and(monster.nameKr.containsIgnoreCase(keyword.trim()));
+        }
+
+        Long result = queryFactory
+                .select(monster.count())
+                .from(monster)
+                .where(builder)
+                .fetchOne();
+
+        return result != null ? result : 0L;
+    }
+
 }

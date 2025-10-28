@@ -1,6 +1,7 @@
 package com.maple.api.search.presentation.restapi;
 
 import com.maple.api.auth.domain.PrincipalDetails;
+import com.maple.api.common.presentation.restapi.CountResponse;
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.search.application.SearchService;
 import com.maple.api.search.application.dto.SearchSummaryDto;
@@ -58,5 +59,15 @@ public class SearchController {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         Page<SearchSummaryDto> results = searchService.search(memberId, keyword, pageable);
         return ResponseEntity.ok(ResponseTemplate.success(results));
+    }
+
+    @GetMapping("/counts")
+    @Operation(summary = "통합 검색 결과 수 조회",
+            description = "키워드로 필터링된 통합 검색 결과의 총 개수를 조회합니다.")
+    public ResponseEntity<ResponseTemplate<CountResponse>> count(
+            @Parameter(description = "검색할 키워드 (최대 100자)", example = "슬라임")
+            @RequestParam(required = false) @Size(max = 100) String keyword) {
+        long counts = searchService.countByKeyword(keyword);
+        return ResponseEntity.ok(ResponseTemplate.success(CountResponse.of(counts)));
     }
 }

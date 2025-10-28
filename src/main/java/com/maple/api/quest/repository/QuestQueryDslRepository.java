@@ -7,4 +7,5 @@ import org.springframework.data.domain.Pageable;
 
 public interface QuestQueryDslRepository {
     Page<Quest> searchQuests(QuestSearchRequestDto request, Pageable pageable);
+    long countQuestsByKeyword(String keyword);
 }

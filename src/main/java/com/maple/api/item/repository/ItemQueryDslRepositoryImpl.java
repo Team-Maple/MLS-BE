@@ -188,4 +188,21 @@ public class ItemQueryDslRepositoryImpl implements ItemQueryDslRepository {
         
         return orderSpecifiers;
     }
+
+    @Override
+    public long countItemsByKeyword(String keyword) {
+        BooleanBuilder builder = new BooleanBuilder();
+
+        if (StringUtils.hasText(keyword)) {
+            builder.and(item.nameKr.containsIgnoreCase(keyword.trim()));
+        }
+
+        Long result = queryFactory
+                .select(item.countDistinct())
+                .from(item)
+                .where(builder)
+                .fetchOne();
+
+        return result != null ? result : 0L;
+    }
 }
