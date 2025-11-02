@@ -23,6 +23,7 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.maple.api.item.domain.QEquipmentItem.equipmentItem;
 import static com.maple.api.item.domain.QItem.item;
@@ -77,10 +78,14 @@ public class ItemQueryDslRepositoryImpl implements ItemQueryDslRepository {
         if (StringUtils.hasText(request.keyword())) {
             builder.and(item.nameKr.containsIgnoreCase(request.keyword().trim()));
         }
-        if (request.jobId() != null) {
+        if (request.jobIds() != null && !request.jobIds().isEmpty()) {
+            List<Integer> jobIds = request.jobIds().stream()
+                    .filter(Objects::nonNull)
+                    .toList();
+
             builder.and(
                 new BooleanBuilder()
-                    .or(itemJob.jobId.eq(request.jobId()))
+                    .or(itemJob.jobId.in(jobIds))
                     .or(itemJob.jobId.eq(Job.COMMON_JOB_ID))
             );
         }

@@ -16,11 +16,11 @@ public record ItemSearchRequestDto(
         String keyword,
         
         @Schema(
-            description = "직업 ID (특정 직업 착용 가능한 아이템만 검색)",
-            example = "5",
+            description = "직업 ID 목록 (특정 직업들이 착용 가능한 아이템만 검색)",
+            example = "100,200",
             nullable = true
         )
-        Integer jobId,
+        List<Integer> jobIds,
         
         @Schema(
             description = "최소 요구 레벨 (1-200)",
