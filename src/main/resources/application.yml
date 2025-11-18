@@ -30,6 +30,12 @@ management:
 
 jwt:
   secret: JTh4bhwwq69/Cj9gDLDXh8Riktoi9ndjD5T0cfHeSWkyC1aE7Xk2XpcDxwbk3Yyotj9d007VxNQuOYMjRoXMzg==
+
+auradb:
+  uri: ${AURADB_URI:}
+  username: ${AURADB_USERNAME:}
+  password: ${AURADB_PASSWORD:}
+  database: ${AURADB_DATABASE:neo4j}
 ---
 spring:
   config:

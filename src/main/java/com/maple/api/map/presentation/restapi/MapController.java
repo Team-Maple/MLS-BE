@@ -10,6 +10,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -18,6 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,6 +33,7 @@ import java.util.List;
 @RequestMapping("/api/v1/maps")
 @RequiredArgsConstructor
 @Tag(name = "Map", description = "맵 관련 API")
+@Validated
 public class MapController {
 
     private final MapService mapService;
@@ -119,5 +123,24 @@ public class MapController {
     public ResponseEntity<ResponseTemplate<List<MapNpcDto>>> getMapNpcs(@PathVariable Integer mapId) {
         List<MapNpcDto> npcs = mapService.getMapNpcs(mapId);
         return ResponseEntity.ok(ResponseTemplate.success(npcs));
+    }
+
+    @GetMapping("/recommendations")
+    @Operation(
+            summary = "사냥터 추천",
+            description = "레벨과 직업을 이용해 사냥터를 추천합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "사냥터 추천 결과 조회 성공")
+    })
+    public ResponseEntity<ResponseTemplate<List<MapRecommendationDto>>> recommendMaps(
+            @Parameter(description = "요청 캐릭터 레벨", example = "100")
+            @RequestParam @Min(1) @Max(200) int level,
+            @Parameter(description = "요청 직업 ID", example = "100")
+            @RequestParam int jobId,
+            @Parameter(description = "반환할 추천 개수 (최대 20)", example = "5")
+            @RequestParam(required = false) @Min(1) @Max(20) Integer limit) {
+        List<MapRecommendationDto> recommendations = mapService.recommendMaps(level, jobId, limit);
+        return ResponseEntity.ok(ResponseTemplate.success(recommendations));
     }
 }

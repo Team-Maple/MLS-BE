@@ -34,6 +34,8 @@ dependencies {
 
   implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
 
+  implementation 'org.neo4j.driver:neo4j-java-driver:5.26.1'
+
   runtimeOnly 'com.mysql:mysql-connector-j'
 
   // jwt

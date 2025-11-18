@@ -11,7 +11,8 @@ import static org.springframework.http.HttpStatus.*;
 @RequiredArgsConstructor
 public enum MapException implements ExceptionCode {
 
-    MAP_NOT_FOUND("존재하지 않는 맵입니다.", NOT_FOUND);
+    MAP_NOT_FOUND("존재하지 않는 맵입니다.", NOT_FOUND),
+    MAP_RECOMMENDATION_UNAVAILABLE("사냥터 추천 기능을 사용할 수 없습니다.", SERVICE_UNAVAILABLE);
 
     private final String message;
     private final HttpStatus status;
