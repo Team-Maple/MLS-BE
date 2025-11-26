@@ -21,7 +21,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -119,10 +121,6 @@ public class CollectionService {
         List<Integer> collectionIds = request.collectionIds();
         List<Integer> bookmarkIds = request.bookmarkIds();
 
-        if (collectionIds == null || collectionIds.isEmpty() || bookmarkIds == null || bookmarkIds.isEmpty()) {
-            throw new ApiException(BookmarkException.BOOKMARK_NOT_FOUND);
-        }
-
         List<Collection> collections = collectionRepository.findAllById(collectionIds);
         if (collections.size() != collectionIds.size()) {
             throw new ApiException(BookmarkException.COLLECTION_NOT_FOUND);
@@ -146,20 +144,22 @@ public class CollectionService {
             throw new ApiException(BookmarkException.ACCESS_DENIED);
         }
 
-        // 3. 기존 매핑 존재 여부 확인
+        // 3. 기존 매핑 조회 후 중복 제거
         List<BookmarkCollection> existingMappings = bookmarkCollectionRepository
                 .findByCollectionIdInAndBookmarkIdIn(collectionIds, bookmarkIds);
-        if (!existingMappings.isEmpty()) {
-            throw new ApiException(BookmarkException.DUPLICATE_BOOKMARK_IN_COLLECTION);
-        }
+        Set<String> existingPairs = new HashSet<>();
+        existingMappings.forEach(mapping -> existingPairs.add(mapping.getCollectionId() + "-" + mapping.getBookmarkId()));
 
-        // 4. BookmarkCollection 엔티티 생성 및 저장
+        // 4. BookmarkCollection 엔티티 생성 및 저장 (중복 제외)
         List<BookmarkCollection> bookmarkCollections = collectionIds.stream()
                 .flatMap(collectionId -> bookmarkIds.stream()
+                        .filter(bookmarkId -> !existingPairs.contains(collectionId + "-" + bookmarkId))
                         .map(bookmarkId -> new BookmarkCollection(bookmarkId, collectionId)))
                 .toList();
 
-        bookmarkCollectionRepository.saveAll(bookmarkCollections);
+        if (!bookmarkCollections.isEmpty()) {
+            bookmarkCollectionRepository.saveAll(bookmarkCollections);
+        }
 
         return BookmarkCollectionBulkAddResponseDto.of(bookmarkCollections.size());
     }

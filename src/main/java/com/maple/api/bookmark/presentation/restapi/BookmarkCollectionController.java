@@ -29,7 +29,7 @@ public class BookmarkCollectionController {
     @PostMapping
     @Operation(
             summary = "여러 컬렉션에 여러 북마크 추가",
-            description = "여러 컬렉션에 여러 북마크를 한 번에 추가합니다. 이미 존재하는 매핑이 하나라도 있으면 추가되지 않습니다."
+            description = "여러 컬렉션에 여러 북마크를 한 번에 추가합니다. 이미 존재하는 매핑은 무시하고 신규 매핑만 추가합니다."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "북마크 추가 성공"),
