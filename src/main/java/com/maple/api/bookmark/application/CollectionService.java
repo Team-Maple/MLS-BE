@@ -4,6 +4,8 @@ import com.maple.api.bookmark.application.dto.BookmarkAddToCollectionsRequestDto
 import com.maple.api.bookmark.application.dto.BookmarkAddToCollectionsResponseDto;
 import com.maple.api.bookmark.application.dto.CollectionAddBookmarksRequestDto;
 import com.maple.api.bookmark.application.dto.CollectionAddBookmarksResponseDto;
+import com.maple.api.bookmark.application.dto.BookmarkCollectionBulkAddRequestDto;
+import com.maple.api.bookmark.application.dto.BookmarkCollectionBulkAddResponseDto;
 import com.maple.api.bookmark.application.dto.CollectionResponseDto;
 import com.maple.api.bookmark.application.dto.CreateCollectionRequestDto;
 import com.maple.api.bookmark.application.dto.UpdateCollectionRequestDto;
@@ -110,6 +112,56 @@ public class CollectionService {
         bookmarkCollectionRepository.saveAll(bookmarkCollections);
 
         return BookmarkAddToCollectionsResponseDto.of(request.collectionIds().size());
+    }
+
+    public BookmarkCollectionBulkAddResponseDto addBookmarksToCollections(String memberId, BookmarkCollectionBulkAddRequestDto request) {
+        // 1. 컬렉션 존재 및 소유권 검증
+        List<Integer> collectionIds = request.collectionIds();
+        List<Integer> bookmarkIds = request.bookmarkIds();
+
+        if (collectionIds == null || collectionIds.isEmpty() || bookmarkIds == null || bookmarkIds.isEmpty()) {
+            throw new ApiException(BookmarkException.BOOKMARK_NOT_FOUND);
+        }
+
+        List<Collection> collections = collectionRepository.findAllById(collectionIds);
+        if (collections.size() != collectionIds.size()) {
+            throw new ApiException(BookmarkException.COLLECTION_NOT_FOUND);
+        }
+
+        boolean allCollectionsOwnedByUser = collections.stream()
+                .allMatch(collection -> collection.getMemberId().equals(memberId));
+        if (!allCollectionsOwnedByUser) {
+            throw new ApiException(BookmarkException.ACCESS_DENIED);
+        }
+
+        // 2. 북마크 존재 및 소유권 검증
+        List<Bookmark> bookmarks = bookmarkRepository.findAllById(bookmarkIds);
+        if (bookmarks.size() != bookmarkIds.size()) {
+            throw new ApiException(BookmarkException.BOOKMARK_NOT_FOUND);
+        }
+
+        boolean allBookmarksOwnedByUser = bookmarks.stream()
+                .allMatch(bookmark -> bookmark.getMemberId().equals(memberId));
+        if (!allBookmarksOwnedByUser) {
+            throw new ApiException(BookmarkException.ACCESS_DENIED);
+        }
+
+        // 3. 기존 매핑 존재 여부 확인
+        List<BookmarkCollection> existingMappings = bookmarkCollectionRepository
+                .findByCollectionIdInAndBookmarkIdIn(collectionIds, bookmarkIds);
+        if (!existingMappings.isEmpty()) {
+            throw new ApiException(BookmarkException.DUPLICATE_BOOKMARK_IN_COLLECTION);
+        }
+
+        // 4. BookmarkCollection 엔티티 생성 및 저장
+        List<BookmarkCollection> bookmarkCollections = collectionIds.stream()
+                .flatMap(collectionId -> bookmarkIds.stream()
+                        .map(bookmarkId -> new BookmarkCollection(bookmarkId, collectionId)))
+                .toList();
+
+        bookmarkCollectionRepository.saveAll(bookmarkCollections);
+
+        return BookmarkCollectionBulkAddResponseDto.of(bookmarkCollections.size());
     }
 
     public void validateCollectionOwnership(String memberId, Integer collectionId) {

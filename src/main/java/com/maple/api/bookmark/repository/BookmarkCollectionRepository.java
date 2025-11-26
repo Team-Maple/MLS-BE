@@ -53,4 +53,6 @@ public interface BookmarkCollectionRepository extends JpaRepository<BookmarkColl
         String getType();
         Integer getLevel();
     }
+
+    List<BookmarkCollection> findByCollectionIdInAndBookmarkIdIn(List<Integer> collectionIds, List<Integer> bookmarkIds);
 }
