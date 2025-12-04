@@ -16,12 +16,12 @@ public record ItemBookmarkSearchRequestDto(
         List<Integer> jobIds,
         
         @Schema(
-            description = "최소 요구 레벨 (1-200)",
+            description = "최소 요구 레벨 (0-200)",
             example = "10",
-            minimum = "1",
+            minimum = "0",
             nullable = true
         )
-        @Min(value = 1, message = "최소 레벨은 1 이상이어야 합니다")
+        @Min(value = 0, message = "최소 레벨은 0 이상이어야 합니다")
         Integer minLevel,
         
         @Schema(
