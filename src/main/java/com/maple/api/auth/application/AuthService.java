@@ -42,10 +42,12 @@ public class AuthService {
     String userId = jwtTokenValidator.getUserDetails(refreshToken).getUsername();
 
     // 저장된 RefreshToken과 비교 (DB 또는 Redis)
-    String savedToken = refreshTokenService.get(userId);
-    if (!refreshToken.equals(savedToken)) {
-      return Optional.empty();
-    }
+    // JIN => 반영하지 않겠습니다. 여러 기기에서 로그인 되어야 하기 때문입니다.
+
+//    String savedToken = refreshTokenService.get(userId);
+//    if (!refreshToken.equals(savedToken)) {
+//      return Optional.empty();
+//    }
 
     String newAccessToken = jwtTokenProvider.createAccessToken(userId);
     String newRefreshToken = jwtTokenProvider.createRefreshToken(userId);
