@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.springframework.lang.Nullable;
 
 import java.time.LocalDateTime;
@@ -14,6 +15,7 @@ import java.util.Random;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 public class Member {
   private static final String[] MONSTERS = {
     "주황버섯", "슬라임", "골렘", "발록", "자쿰", "핑크빈", "혼테일", "반레온", "매그너스", "힐라",
