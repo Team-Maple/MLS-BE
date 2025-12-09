@@ -21,8 +21,8 @@ public class AlrimEventBatch {
   private final AlrimFcmManager alrimFcmManager;
 
   // 서버 다중화시 락 필요
-  // 매일 09:00~20:00 사이 3분마다 실행
-  @Scheduled(cron = "0 */3 9-20 * * *", zone = "Asia/Seoul")
+  // 매일 09:00~20:00 사이 0분에 실행
+  @Scheduled(cron = "0 0 9-20 * * *", zone = "Asia/Seoul")
 //  @Scheduled(initialDelay = 0, fixedRate = 60 * 1000 * 60) // 1시간마다 실행 (테스트용)
   public void runCollectBatch() {
     val fcmCandidates = new ArrayList<Alrim>();

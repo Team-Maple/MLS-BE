@@ -36,7 +36,9 @@ public class AlrimCrawler {
           LocalDateTime.parse(date, formatter),
           BaseUrlString + link
         );
-      }).toList();
+      })
+      .filter(it -> it.getTitle().length() >= 10)
+      .toList();
   }
 
   public List<Alrim> crawlPatchNotes() throws IOException {
@@ -58,7 +60,7 @@ public class AlrimCrawler {
           LocalDateTime.parse(date, formatter),
           BaseUrlString + link
         );
-      }).toList();
+      }).filter(it -> it.getTitle().length() >= 10).toList();
   }
 
   public List<Alrim> crawlEvents() throws IOException {
@@ -80,6 +82,6 @@ public class AlrimCrawler {
           LocalDateTime.parse(date, formatter),
           BaseUrlString + link
         );
-      }).toList();
+      }).filter(it -> it.getTitle().length() >= 10).toList();
   }
 }
