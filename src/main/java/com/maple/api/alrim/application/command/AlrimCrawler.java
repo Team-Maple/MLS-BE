@@ -33,7 +33,7 @@ public class AlrimCrawler {
 //        log.info("제목: {}, 날짜: {}, 링크: {}", title, date, link);
         return Alrim.createNotice(
           title,
-          LocalDateTime.parse(date, formatter),
+          LocalDateTime.parse(date, formatter).plusHours(9),
           BaseUrlString + link
         );
       })
@@ -57,7 +57,7 @@ public class AlrimCrawler {
 //        log.info("제목: {}, 날짜: {}, 링크: {}", title, date, link);
         return Alrim.createPatchNote(
           title,
-          LocalDateTime.parse(date, formatter),
+          LocalDateTime.parse(date, formatter).plusHours(9),
           BaseUrlString + link
         );
       }).filter(it -> it.getTitle().length() >= 10).toList();
@@ -79,7 +79,7 @@ public class AlrimCrawler {
 //        log.info("제목: {}, 날짜: {}, 링크: {}", title, date, link);
         return Alrim.createEvents(
           title,
-          LocalDateTime.parse(date, formatter),
+          LocalDateTime.parse(date, formatter).plusHours(9),
           BaseUrlString + link
         );
       }).filter(it -> it.getTitle().length() >= 10).toList();
