@@ -18,13 +18,11 @@ import java.util.Random;
 @EntityListeners(AuditingEntityListener.class)
 public class Member {
   private static final String[] MONSTERS = {
-    "주황버섯", "슬라임", "골렘", "발록", "자쿰", "핑크빈", "혼테일", "반레온", "매그너스", "힐라",
-    "블러디퀸", "반반", "벨룸", "루시드", "윌", "더스크", "검은마법사"
+    "주황버섯", "슬라임", "골렘", "발록", "자쿰", "와일드카고", "와일드보어", "머쉬맘",
   };
 
   private static final String[] EMOTIONS = {
-    "용감한", "슬픈", "화난", "기쁜", "지친", "신난", "겁먹은", "냉정한", "따뜻한", "차가운", "짜증난",
-    "졸린", "수줍은", "광기어린", "의욕적인", "무기력한"
+    "용감한", "기쁜", "지친", "신난", "냉정한", "따뜻한", "차가운", "의욕적인"
   };
 
   @Id
