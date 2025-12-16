@@ -6,6 +6,8 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 @Entity
 @Table(name = "bookmark_collections")
@@ -22,8 +24,18 @@ public class BookmarkCollection extends BaseEntity {
     @Column(name = "bookmark_id", nullable = false)
     private Integer bookmarkId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bookmark_id", insertable = false, updatable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private Bookmark bookmark;
+
     @Column(name = "collection_id", nullable = false)
     private Integer collectionId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "collection_id", insertable = false, updatable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private Collection collection;
 
     public BookmarkCollection(Integer bookmarkId, Integer collectionId) {
         this.bookmarkId = bookmarkId;
