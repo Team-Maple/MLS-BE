@@ -123,6 +123,9 @@ public class AuthController {
         .body(ResponseTemplate.failure("401", "Apple ID Token이 유효하지 않습니다."));
     }
 
+    // FE 에서 보내주는 request 한번 감싸서 저장하기
+    createMemberRequestDto.setProviderId(appleUserId);
+
     Optional<MemberDto> memberDtoOptional = memberService.findMember(appleUserId);
     if (memberDtoOptional.isEmpty()) {
       MemberDto member = memberService.createMember(createMemberRequestDto);
