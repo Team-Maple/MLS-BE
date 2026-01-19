@@ -1,0 +1,20 @@
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = [{labels = {}}]
+  forward_to = [loki.process.add_labels.receiver]
+}
+
+loki.process "add_labels" {
+  forward_to = [loki.write.grafana_cloud.receiver]
+
+}
+
+loki.write "grafana_cloud" {
+  endpoint {
+    url = env("GRAFANA_CLOUD_LOKI_URL")
+    basic_auth {
+      username = env("GRAFANA_CLOUD_LOKI_USERNAME")
+      password = env("GRAFANA_CLOUD_LOKI_API_TOKEN")
+    }
+  }
+}

@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  maple-api:
+    container_name: mapleland-api
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - ~/.env
+    restart: always
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: alloy
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+    ports:
+      - "12345:12345"
+    env_file:
+      - ./alloy/.env
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
