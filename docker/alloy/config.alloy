@@ -7,6 +7,11 @@ loki.source.docker "containers" {
 loki.process "add_labels" {
   forward_to = [loki.write.grafana_cloud.receiver]
 
+  stage.labels {
+    values = {
+      service = "mapleland-api",
+    }
+  }
 }
 
 loki.write "grafana_cloud" {
