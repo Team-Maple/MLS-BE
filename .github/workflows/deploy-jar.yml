@@ -30,14 +30,26 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew bootJar
 
-      - name: SCP to EC2 instance
+      - name: Prepare docker build context
+        run: |
+          mkdir -p docker/build/libs
+          cp "build/libs/${{ env.JAR_NAME }}" docker/build/libs/
+
+      - name: Create alloy env file
+        run: |
+          mkdir -p docker/alloy
+          cat <<'EOF' > docker/alloy/.env
+          ${{ secrets.ALLOY_ENV }}
+          EOF
+
+      - name: SCP docker directory to EC2 instance
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
-          source: "build/libs/${{ env.JAR_NAME }}"
+          source: "docker/**"
           target: "~/"
 
       - name: Deploy on EC2 instance
@@ -50,12 +62,5 @@ jobs:
           script: |
             cd ~
 
-            echo "🆕 새로운 이미지를 빌드합니다."
-            docker build -t mapleland-api:latest .
-
-            echo "🔄 기존 컨테이너를 중지하고 제거합니다..."
-            docker ps -f name=mapleland-api -q | xargs --no-run-if-empty docker container stop
-            docker ps -a -f name=mapleland-api -q | xargs --no-run-if-empty docker container rm
-
-            echo "🚀 새로운 애플리케이션을 시작합니다!"
-            docker run -d -p 8080:8080 --name mapleland-api --restart always --env-file ~/.env mapleland-api:latest
+            echo "🆕 새로운 이미지를 빌드하고 실행합니다."
+            docker compose -f ~/docker/docker-compose.yml up -d --build
