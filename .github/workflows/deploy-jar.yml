@@ -63,4 +63,4 @@ jobs:
             cd ~
 
             echo "🆕 새로운 이미지를 빌드하고 실행합니다."
-            docker compose -f ~/docker/docker-compose.yml up -d --build
+            docker-compose -f ~/docker/docker-compose.yml up -d --build
