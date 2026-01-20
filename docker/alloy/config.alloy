@@ -2,20 +2,20 @@ discovery.docker "all_containers" {
   host = "unix:///var/run/docker.sock"
 }
 
-loki.source.docker "containers" {
-  host       = "unix:///var/run/docker.sock"
-  targets    = discovery.docker.all_containers.output
-  forward_to = [loki.process.add_labels.receiver]
+discovery.relabel "container_labels" {
+  targets = discovery.docker.all_containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/?(.*)"
+    target_label  = "service_name"
+  }
 }
 
-loki.process "add_labels" {
+loki.source.docker "log_scrape" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.container_labels.output
   forward_to = [loki.write.grafana_cloud.receiver]
-
-  stage.labels {
-    values = {
-      service = "mapleland-api",
-    }
-  }
 }
 
 loki.write "grafana_cloud" {
