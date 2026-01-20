@@ -35,13 +35,6 @@ jobs:
           mkdir -p docker/build/libs
           cp "build/libs/${{ env.JAR_NAME }}" docker/build/libs/
 
-      - name: Create alloy env file
-        run: |
-          mkdir -p docker/alloy
-          cat <<'EOF' > docker/alloy/.env
-          ${{ secrets.ALLOY_ENV }}
-          EOF
-
       - name: SCP docker directory to EC2 instance
         uses: appleboy/scp-action@v0.1.7
         with:
