@@ -18,7 +18,7 @@
                 </encoder>
             </encode>
             <label>
-                <pattern>app=mapleland-api,host=${HOSTNAME},level=%level</pattern>
+                <pattern>service_name=mapleland-api,host=${HOSTNAME},level=%level</pattern>
             </label>
         </format>
     </appender>
