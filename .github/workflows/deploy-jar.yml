@@ -60,7 +60,8 @@ jobs:
 
             docker pull "$IMAGE"
 
-            docker rm -f "$CONTAINER_NAME" || true
-            docker run -d --name "$CONTAINER_NAME" --restart unless-stopped -p 8080:8080 "$IMAGE"
+            docker ps -f name=$CONTAINER_NAME -q | xargs --no-run-if-empty docker container stop
+            docker ps -a -f name=$CONTAINER_NAME -q | xargs --no-run-if-empty docker container rm
+            docker run -d --name "$CONTAINER_NAME" --restart always --env-file ~/.env -p 8080:8080 "$IMAGE"
 
             docker image prune -f
