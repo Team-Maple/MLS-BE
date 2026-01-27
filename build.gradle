@@ -52,6 +52,9 @@ dependencies {
   // JSoup
   implementation 'org.jsoup:jsoup:1.17.2'
 
+  // logging
+  implementation 'com.github.loki4j:loki-logback-appender:2.0.1'
+
   // QueryDSL
   implementation 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
   annotationProcessor "com.querydsl:querydsl-apt:5.1.0:jakarta"

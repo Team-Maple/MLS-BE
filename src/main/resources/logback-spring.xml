@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>${GRAFANA_CLOUD_URL}/loki/api/v1/push</url>
+            <auth>
+                <username>${GRAFANA_CLOUD_USERNAME}</username>
+                <password>${GRAFANA_CLOUD_PASSWORD}</password>
+            </auth>
+        </http>
+
+        <labels>
+            service_name = mapleland-api
+            level        = %level
+        </labels>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="LOKI" />
+        <appender-ref ref="CONSOLE" />
+    </root>
+</configuration>
