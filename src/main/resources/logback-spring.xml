@@ -10,17 +10,11 @@
                 <password>${GRAFANA_CLOUD_PASSWORD}</password>
             </auth>
         </http>
-        <format>
-            <encode>
-                <encoder class="co.elastic.logging.logback.EcsEncoder">
-                    <serviceName>mapleland-api</serviceName>
-                    <includeMarkers>true</includeMarkers>
-                </encoder>
-            </encode>
-            <label>
-                <pattern>service_name=mapleland-api,host=${HOSTNAME},level=%level</pattern>
-            </label>
-        </format>
+
+        <labels>
+            service_name = mapleland-api
+            level        = %level
+        </labels>
     </appender>
 
     <root level="INFO">
