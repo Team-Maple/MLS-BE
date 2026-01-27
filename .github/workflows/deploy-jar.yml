@@ -65,3 +65,5 @@ jobs:
             docker run -d --name "$CONTAINER_NAME" --restart always --env-file ~/.env -p 8080:8080 "$IMAGE"
 
             docker image prune -f
+
+            docker logout ghcr.io
