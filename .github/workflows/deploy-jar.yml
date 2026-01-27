@@ -11,7 +11,7 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     env:
-      IMAGE_NAME: "ghcr.io/${{ github.repository }}/api"
+      IMAGE_NAME: "ghcr.io/team-maple/mls-be/mapleland-api"
 
     steps:
       - name: Checkout code
