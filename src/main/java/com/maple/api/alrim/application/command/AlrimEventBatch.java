@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
-//@Component
+@Component
 @RequiredArgsConstructor
 public class AlrimEventBatch {
   private final AlrimCommandMediator commandBatchMediator;
