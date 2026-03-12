@@ -74,13 +74,9 @@ jobs:
 
       - name: Deploy over Tailscale SSH
         uses: appleboy/ssh-action@v1.2.5
-        env:
-          GHCR_USER: ${{ github.actor }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: oracle-cloud
           username: ubuntu
           key: ${{ secrets.ORACLE_SSH_KEY }}
-          envs: GHCR_USER,GHCR_TOKEN
           script: |
             /opt/mapleland/update-api.sh
