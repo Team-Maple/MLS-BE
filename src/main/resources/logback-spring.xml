@@ -2,6 +2,7 @@
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml" />
     <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
+
     <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
         <http>
             <url>${GRAFANA_CLOUD_URL}/loki/api/v1/push</url>
@@ -12,8 +13,9 @@
         </http>
 
         <labels>
-            service_name = mapleland-api
-            level        = %level
+            service_name    = mapleland-api
+            cloud_provider  = ${CLOUD_PROVIDER}
+            level           = %level
         </labels>
     </appender>
 
