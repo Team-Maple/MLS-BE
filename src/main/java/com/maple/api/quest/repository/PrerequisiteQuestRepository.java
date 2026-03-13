@@ -8,6 +8,6 @@ import java.util.List;
 
 @Repository
 public interface PrerequisiteQuestRepository extends JpaRepository<PrerequisiteQuest, Integer> {
-    List<PrerequisiteQuest> findByQuestId(Integer questId);
-    List<PrerequisiteQuest> findByRequiredToStartQuestId(Integer requiredToStartQuestId);
+    List<PrerequisiteQuest> findByQuestIdAndStateIn(Integer questId, List<Integer> states);
+    List<PrerequisiteQuest> findByRequiredToStartQuestIdAndStateIn(Integer requiredToStartQuestId, List<Integer> states);
 }
