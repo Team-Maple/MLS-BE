@@ -11,6 +11,7 @@ import com.maple.api.auth.repository.MemberRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
@@ -18,6 +19,7 @@ import java.io.InputStream;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "batch.alrim-event.enabled", havingValue = "true")
 public class AlrimFcmManager {
   private final MemberRepository memberRepository;
 
