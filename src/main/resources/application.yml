@@ -49,6 +49,9 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+batch:
+  alrim-event:
+    enabled: false
 logging:
   level:
     com.maple.api: DEBUG
@@ -65,3 +68,6 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+batch:
+  alrim-event:
+    enabled: ${ALRIM_EVENT_BATCH_ENABLED:false}
