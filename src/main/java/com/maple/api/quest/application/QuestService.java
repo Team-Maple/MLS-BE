@@ -22,7 +22,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -38,7 +37,9 @@ public class QuestService {
     private final QuestRewardItemRepository questRewardItemRepository;
     private final QuestRequirementRepository questRequirementRepository;
     private final QuestAllowedJobRepository questAllowedJobRepository;
-    private final QuestChainMemberRepository questChainMemberRepository;
+    private static final List<Integer> CHAIN_STATES = List.of(1, 2);
+
+    private final PrerequisiteQuestRepository prerequisiteQuestRepository;
     private final ItemRepository itemRepository;
     private final MonsterRepository monsterRepository;
     private final JobRepository jobRepository;
@@ -177,47 +178,21 @@ public class QuestService {
     @Transactional(readOnly = true)
     public QuestChainResponseDto getQuestChain(Integer questId) {
         findQuest(questId);
-        
-        QuestChainMember currentChainMember = findQuestChainMember(questId);
-        if (currentChainMember == null) {
-            return QuestChainResponseDto.of(List.of(), List.of());
-        }
-        
-        List<QuestChainMember> allChainMembers = findAllChainMembers(currentChainMember.getChainId());
-        Integer currentSequenceOrder = currentChainMember.getSequenceOrder();
-        
-        List<QuestChainDto> previousQuests = buildPreviousQuests(allChainMembers, currentSequenceOrder);
-        List<QuestChainDto> nextQuests = buildNextQuests(allChainMembers, currentSequenceOrder);
-        
+
+        List<Integer> previousQuestIds = prerequisiteQuestRepository.findByQuestIdAndStateIn(questId, CHAIN_STATES).stream()
+                .map(PrerequisiteQuest::getRequiredToStartQuestId)
+                .sorted()
+                .toList();
+
+        List<Integer> nextQuestIds = prerequisiteQuestRepository.findByRequiredToStartQuestIdAndStateIn(questId, CHAIN_STATES).stream()
+                .map(PrerequisiteQuest::getQuestId)
+                .sorted()
+                .toList();
+
+        List<QuestChainDto> previousQuests = buildQuestChainDtos(previousQuestIds);
+        List<QuestChainDto> nextQuests = buildQuestChainDtos(nextQuestIds);
+
         return QuestChainResponseDto.of(previousQuests, nextQuests);
-    }
-
-    private QuestChainMember findQuestChainMember(Integer questId) {
-        return questChainMemberRepository.findByQuestId(questId).orElse(null);
-    }
-
-    private List<QuestChainMember> findAllChainMembers(Integer chainId) {
-        return questChainMemberRepository.findByChainId(chainId);
-    }
-
-    private List<QuestChainDto> buildPreviousQuests(List<QuestChainMember> allChainMembers, Integer currentSequenceOrder) {
-        List<Integer> previousQuestIds = allChainMembers.stream()
-                .filter(member -> member.getSequenceOrder() < currentSequenceOrder)
-                .sorted((a, b) -> Integer.compare(b.getSequenceOrder(), a.getSequenceOrder()))
-                .map(QuestChainMember::getQuestId)
-                .toList();
-        
-        return buildQuestChainDtos(previousQuestIds);
-    }
-
-    private List<QuestChainDto> buildNextQuests(List<QuestChainMember> allChainMembers, Integer currentSequenceOrder) {
-        List<Integer> nextQuestIds = allChainMembers.stream()
-                .filter(member -> member.getSequenceOrder() > currentSequenceOrder)
-                .sorted(Comparator.comparing(QuestChainMember::getSequenceOrder))
-                .map(QuestChainMember::getQuestId)
-                .toList();
-        
-        return buildQuestChainDtos(nextQuestIds);
     }
 
     private List<QuestChainDto> buildQuestChainDtos(List<Integer> questIds) {
