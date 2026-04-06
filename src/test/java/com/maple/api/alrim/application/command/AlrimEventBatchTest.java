@@ -9,7 +9,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -25,6 +24,9 @@ class AlrimEventBatchTest {
   private AlrimCommandMediator commandBatchMediator;
 
   @Mock
+  private MaplelandAlrimBatchService mapleLandAlrimBatchService;
+
+  @Mock
   private AlrimCrawler crawler;
 
   @Mock
@@ -37,33 +39,32 @@ class AlrimEventBatchTest {
   @DisplayName("batch 테스트")
   void batchTest() throws Exception {
     // given
-    LocalDateTime now = LocalDateTime.now();
+    Alrim notice = Alrim.createNotice("제목 공지사항", java.time.LocalDateTime.now(), "링크 공지사항");
+    Alrim patchNote = Alrim.createPatchNote("패치노트 제목", java.time.LocalDateTime.now(), "링크 패치노트");
+    Alrim ongoingEvent = Alrim.createEvents("진행중 이벤트", java.time.LocalDateTime.now(), "링크 진행중 이벤트");
+    Alrim endedEvent = Alrim.createEvents("종료 이벤트", java.time.LocalDateTime.now(), "링크 종료 이벤트");
+    endedEvent.markOutdated(true);
 
     // 공지
-    given(commandBatchMediator.getRecentCreatedAt(AlrimType.NOTICE)).willReturn(now.minusDays(1));
-    given(crawler.crawlNotices()).willReturn(List.of(
-      Alrim.createNotice("제목 공지사항", now, "링크 공지사항")
-    ));
+    given(crawler.crawlNotices()).willReturn(List.of(notice));
+    given(mapleLandAlrimBatchService.excludeExistingFromCrawledAlrims(AlrimType.NOTICE, List.of(notice))).willReturn(List.of(notice));
 
     // 패치노트
-    given(commandBatchMediator.getRecentCreatedAt(AlrimType.PATCH_NOTE)).willReturn(now.minusDays(1));
-    given(crawler.crawlPatchNotes()).willReturn(List.of(
-      Alrim.createPatchNote("패치노트 제목", now, "링크 패치노트")
-    ));
+    given(crawler.crawlPatchNotes()).willReturn(List.of(patchNote));
+    given(mapleLandAlrimBatchService.excludeExistingFromCrawledAlrims(AlrimType.PATCH_NOTE, List.of(patchNote))).willReturn(List.of(patchNote));
 
 
     // 이벤트
-    given(commandBatchMediator.getRecentCreatedAt(AlrimType.EVENT)).willReturn(now.minusDays(1));
-    given(crawler.crawlEvents()).willReturn(List.of(
-      Alrim.createEvents("이벤트", now, "링크 이벤트")
-    ));
+    given(crawler.crawlEvents()).willReturn(List.of(ongoingEvent, endedEvent));
+    given(mapleLandAlrimBatchService.excludeExistingFromCrawledAlrims(AlrimType.EVENT, List.of(ongoingEvent, endedEvent)))
+      .willReturn(List.of(ongoingEvent, endedEvent));
 
     // when
     batch.runCollectBatch();
 
     // then
     verify(commandBatchMediator, times(3)).saveAll(anyList());
+    verify(mapleLandAlrimBatchService).syncEventOutdatedStatusFromCrawl(List.of(ongoingEvent, endedEvent));
     verify(alrimFcmManager).sendFcmMessage(any());
   }
 }
-
