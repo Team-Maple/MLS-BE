@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface AlrimReadRepository extends JpaRepository<AlrimRead, Long> {
   List<AlrimRead> findAllByMemberIdAndAlrimLinkIn(String memberId, List<String> alrimLinks);
+  List<AlrimRead> findAllByMemberIdAndAlrimIdIn(String memberId, List<Long> alrimIds);
+  boolean existsByMemberIdAndAlrimId(String memberId, Long alrimId);
 }

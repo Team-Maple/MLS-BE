@@ -62,4 +62,8 @@ public class Alrim extends BaseEntity {
       null, AlrimType.EVENT, title, date, link, false
     );
   }
+
+  public void markOutdated(boolean outdated) {
+    this.outdated = outdated;
+  }
 }
