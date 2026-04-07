@@ -27,4 +27,5 @@ public interface AlrimRepository extends JpaRepository<Alrim, Long> {
   List<Alrim> findAllByTypeAndDateAfterOrderByDateDesc(AlrimType type, LocalDateTime dateTime);
 
   List<Alrim> findAllByTypeAndLinkIn(AlrimType type, Collection<String> links);
+  Optional<Alrim> findByLink(String link);
 }
