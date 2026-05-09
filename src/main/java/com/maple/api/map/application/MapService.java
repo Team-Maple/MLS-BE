@@ -6,6 +6,7 @@ import com.maple.api.common.presentation.exception.ApiException;
 import com.maple.api.job.exception.JobException;
 import com.maple.api.job.repository.JobRepository;
 import com.maple.api.map.application.dto.*;
+import com.maple.api.map.domain.Map;
 import com.maple.api.map.exception.MapException;
 import com.maple.api.map.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,14 +37,14 @@ public class MapService {
     @Transactional(readOnly = true)
     public Page<MapSummaryDto> searchMaps(String memberId, MapSearchRequestDto request, Pageable pageable) {
         var page = mapQueryDslRepository.searchMaps(request, pageable);
-        var ids = page.getContent().stream().map(com.maple.api.map.domain.Map::getMapId).toList();
+        var ids = page.getContent().stream().map(Map::getMapId).toList();
         var bookmarkIds = bookmarkFlagService.findBookmarkIds(memberId, BookmarkType.MAP, ids);
         return page.map(m -> MapSummaryDto.toDto(m, bookmarkIds.get(m.getMapId())));
     }
 
     @Transactional(readOnly = true)
     public MapDetailDto getMapDetail(String memberId, Integer mapId) {
-        com.maple.api.map.domain.Map map = mapRepository.findById(mapId)
+        Map map = mapRepository.findById(mapId)
                 .orElseThrow(() -> ApiException.of(MapException.MAP_NOT_FOUND));
 
         Integer bookmarkId = bookmarkFlagService.findBookmarkId(memberId, BookmarkType.MAP, mapId);
@@ -72,7 +75,7 @@ public class MapService {
     }
 
     @Transactional(readOnly = true)
-    public List<MapRecommendationDto> recommendMaps(int level, int jobId, Integer limit) {
+    public List<MapRecommendationDto> recommendMaps(String memberId, int level, int jobId, Integer limit) {
         validateJobExists(jobId);
 
         MapRecommendationRepository repository = mapRecommendationRepository
@@ -80,7 +83,31 @@ public class MapService {
 
         int sanitizedLimit = limit == null || limit <= 0 ? 5 : limit;
 
-        return repository.findRecommendedMaps(level, jobId, sanitizedLimit);
+        List<MapRecommendationDto> recommendations = repository.findRecommendedMaps(level, jobId, sanitizedLimit);
+        if (recommendations.isEmpty()) {
+            return recommendations;
+        }
+
+        List<Integer> mapIds = recommendations.stream()
+                .map(MapRecommendationDto::mapId)
+                .toList();
+
+        var mapsById = mapRepository.findByMapIdIn(mapIds).stream()
+                .collect(Collectors.toMap(Map::getMapId, Function.identity()));
+        var bookmarkIds = bookmarkFlagService.findBookmarkIds(memberId, BookmarkType.MAP, mapIds);
+
+        return recommendations.stream()
+                .map(recommendation -> {
+                    Map map = mapsById.get(recommendation.mapId());
+                    return new MapRecommendationDto(
+                            recommendation.mapId(),
+                            recommendation.score(),
+                            map != null ? map.getIconUrl() : null,
+                            map != null ? map.getNameKr() : null,
+                            bookmarkIds.get(recommendation.mapId())
+                    );
+                })
+                .toList();
     }
 
     private void validateJobExists(int jobId) {

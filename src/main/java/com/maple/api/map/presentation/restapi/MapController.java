@@ -81,7 +81,7 @@ public class MapController {
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     public ResponseEntity<ResponseTemplate<MapDetailDto>> getMapDetail(@PathVariable Integer mapId,
-                                                     @org.springframework.security.core.annotation.AuthenticationPrincipal PrincipalDetails principalDetails) {
+                                                     @AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
         MapDetailDto mapDetail = mapService.getMapDetail(memberId, mapId);
         return ResponseEntity.ok(ResponseTemplate.success(mapDetail));
@@ -139,8 +139,10 @@ public class MapController {
             @Parameter(description = "요청 직업 ID", example = "100")
             @RequestParam int jobId,
             @Parameter(description = "반환할 추천 개수 (최대 20)", example = "5")
-            @RequestParam(required = false) @Min(1) @Max(20) Integer limit) {
-        List<MapRecommendationDto> recommendations = mapService.recommendMaps(level, jobId, limit);
+            @RequestParam(required = false) @Min(1) @Max(20) Integer limit,
+            @AuthenticationPrincipal PrincipalDetails principalDetails) {
+        String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
+        List<MapRecommendationDto> recommendations = mapService.recommendMaps(memberId, level, jobId, limit);
         return ResponseEntity.ok(ResponseTemplate.success(recommendations));
     }
 }
