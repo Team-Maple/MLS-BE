@@ -63,4 +63,10 @@ public class MapRecommendationRepository {
             });
         }
     }
+
+    public void ping() {
+        try (Session session = auraDbDriver.session(SessionConfig.defaultConfig())) {
+            session.run("RETURN 1").consume();
+        }
+    }
 }

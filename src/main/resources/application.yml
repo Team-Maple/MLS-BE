@@ -52,6 +52,8 @@ spring:
 batch:
   alrim-event:
     enabled: false
+  auradb-keep-alive:
+    enabled: false
 logging:
   level:
     com.maple.api: DEBUG
@@ -71,3 +73,5 @@ spring:
 batch:
   alrim-event:
     enabled: ${ALRIM_EVENT_BATCH_ENABLED:false}
+  auradb-keep-alive:
+    enabled: ${AURADB_KEEP_ALIVE_ENABLED:true}
