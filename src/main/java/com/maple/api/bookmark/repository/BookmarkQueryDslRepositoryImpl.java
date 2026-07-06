@@ -28,7 +28,7 @@ import static com.maple.api.bookmark.domain.QBookmark.bookmark;
 import static com.maple.api.bookmark.domain.QBookmarkCollection.bookmarkCollection;
 import static com.maple.api.item.domain.QEquipmentItem.equipmentItem;
 import static com.maple.api.item.domain.QItem.item;
-import static com.maple.api.item.domain.QItemCategory.itemCategory;
+import static com.maple.api.item.domain.QItemJob.itemJob;
 import static com.maple.api.map.domain.QMap.map;
 import static com.maple.api.monster.domain.QMonster.monster;
 import static com.maple.api.npc.domain.QNpc.npc;
@@ -166,21 +166,21 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
                 .and(bookmark.bookmarkType.eq(BookmarkType.ITEM));
 
         if (request.jobIds() != null && !request.jobIds().isEmpty()) {
-            List<Integer> categoryIds = request.jobIds().stream()
+            List<Integer> jobCategoryIds = request.jobIds().stream()
                     .filter(Objects::nonNull)
                     .toList();
 
-            if (!categoryIds.isEmpty()) {
+            if (!jobCategoryIds.isEmpty()) {
                 builder.and(
                         new BooleanBuilder()
                                 .or(JPAExpressions.selectOne()
-                                        .from(itemCategory)
-                                        .where(itemCategory.itemId.eq(item.itemId)
-                                                .and(itemCategory.categoryId.in(categoryIds)))
+                                        .from(itemJob)
+                                        .where(itemJob.itemId.eq(item.itemId)
+                                                .and(itemJob.jobCategoryId.in(jobCategoryIds)))
                                         .exists())
                                 .or(JPAExpressions.selectOne()
-                                        .from(itemCategory)
-                                        .where(itemCategory.itemId.eq(item.itemId))
+                                        .from(itemJob)
+                                        .where(itemJob.itemId.eq(item.itemId))
                                         .notExists())
                 );
             }

@@ -27,7 +27,7 @@ import java.util.Objects;
 
 import static com.maple.api.item.domain.QEquipmentItem.equipmentItem;
 import static com.maple.api.item.domain.QItem.item;
-import static com.maple.api.item.domain.QItemCategory.itemCategory;
+import static com.maple.api.item.domain.QItemJob.itemJob;
 import static com.maple.api.monster.domain.QItemMonsterDrop.itemMonsterDrop;
 import static com.maple.api.monster.domain.QMonster.monster;
 
@@ -79,21 +79,21 @@ public class ItemQueryDslRepositoryImpl implements ItemQueryDslRepository {
             builder.and(item.nameKr.containsIgnoreCase(request.keyword().trim()));
         }
         if (request.jobIds() != null && !request.jobIds().isEmpty()) {
-            List<Integer> categoryIds = request.jobIds().stream()
+            List<Integer> jobCategoryIds = request.jobIds().stream()
                     .filter(Objects::nonNull)
                     .toList();
 
-            if (!categoryIds.isEmpty()) {
+            if (!jobCategoryIds.isEmpty()) {
                 builder.and(
                     new BooleanBuilder()
                         .or(JPAExpressions.selectOne()
-                                .from(itemCategory)
-                                .where(itemCategory.itemId.eq(item.itemId)
-                                        .and(itemCategory.categoryId.in(categoryIds)))
+                                .from(itemJob)
+                                .where(itemJob.itemId.eq(item.itemId)
+                                        .and(itemJob.jobCategoryId.in(jobCategoryIds)))
                                 .exists())
                         .or(JPAExpressions.selectOne()
-                                .from(itemCategory)
-                                .where(itemCategory.itemId.eq(item.itemId))
+                                .from(itemJob)
+                                .where(itemJob.itemId.eq(item.itemId))
                                 .notExists())
                 );
             }
