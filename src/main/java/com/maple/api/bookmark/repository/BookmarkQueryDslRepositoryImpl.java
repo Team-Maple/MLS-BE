@@ -4,13 +4,13 @@ import com.maple.api.bookmark.application.dto.BookmarkSummaryDto;
 import com.maple.api.bookmark.application.dto.ItemBookmarkSearchRequestDto;
 import com.maple.api.bookmark.application.dto.MonsterBookmarkSearchRequestDto;
 import com.maple.api.bookmark.domain.BookmarkType;
-import com.maple.api.job.domain.Job;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Path;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -22,12 +22,13 @@ import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.maple.api.bookmark.domain.QBookmark.bookmark;
 import static com.maple.api.bookmark.domain.QBookmarkCollection.bookmarkCollection;
 import static com.maple.api.item.domain.QEquipmentItem.equipmentItem;
 import static com.maple.api.item.domain.QItem.item;
-import static com.maple.api.item.domain.QItemJob.itemJob;
+import static com.maple.api.item.domain.QItemCategory.itemCategory;
 import static com.maple.api.map.domain.QMap.map;
 import static com.maple.api.monster.domain.QMonster.monster;
 import static com.maple.api.npc.domain.QNpc.npc;
@@ -165,11 +166,24 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
                 .and(bookmark.bookmarkType.eq(BookmarkType.ITEM));
 
         if (request.jobIds() != null && !request.jobIds().isEmpty()) {
-            builder.and(
-                    new BooleanBuilder()
-                            .or(itemJob.jobId.in(request.jobIds()))
-                            .or(itemJob.jobId.eq(Job.COMMON_JOB_ID))
-            );
+            List<Integer> categoryIds = request.jobIds().stream()
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            if (!categoryIds.isEmpty()) {
+                builder.and(
+                        new BooleanBuilder()
+                                .or(JPAExpressions.selectOne()
+                                        .from(itemCategory)
+                                        .where(itemCategory.itemId.eq(item.itemId)
+                                                .and(itemCategory.categoryId.in(categoryIds)))
+                                        .exists())
+                                .or(JPAExpressions.selectOne()
+                                        .from(itemCategory)
+                                        .where(itemCategory.itemId.eq(item.itemId))
+                                        .notExists())
+                );
+            }
         }
         if (request.minLevel() != null) {
             builder.and(equipmentItem.requiredStats.level.goe(request.minLevel()));
@@ -190,7 +204,6 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
                 .from(bookmark)
                 .join(item).on(bookmark.resourceId.eq(item.itemId))
                 .leftJoin(equipmentItem).on(item.itemId.eq(equipmentItem.itemId))
-                .leftJoin(itemJob).on(item.itemId.eq(itemJob.itemId))
                 .where(where)
                 .groupBy(bookmark.bookmarkId)
                 .orderBy(order.toArray(new OrderSpecifier[0]))
@@ -222,7 +235,6 @@ public class BookmarkQueryDslRepositoryImpl implements BookmarkQueryDslRepositor
                 .from(bookmark)
                 .join(item).on(bookmark.resourceId.eq(item.itemId))
                 .leftJoin(equipmentItem).on(item.itemId.eq(equipmentItem.itemId))
-                .leftJoin(itemJob).on(item.itemId.eq(itemJob.itemId))
                 .where(where);
     }
 
