@@ -33,7 +33,7 @@ import static org.assertj.core.groups.Tuple.tuple;
 })
 @ActiveProfiles("test")
 @Import({QueryDslConfig.class, ItemQueryDslRepositoryImpl.class, BookmarkQueryDslRepositoryImpl.class})
-class ItemCategoryRepositoryTransitionTest {
+class ItemJobRepositoryTransitionTest {
 
     private static final Pageable PAGEABLE = PageRequest.of(0, 10);
 
@@ -58,8 +58,8 @@ class ItemCategoryRepositoryTransitionTest {
         insertEquipmentItem(7001, "법사 아이템");
         insertEquipmentItem(7002, "전체착용 아이템");
 
-        insertItemCategory(7000, 100);
-        insertItemCategory(7001, 200);
+        insertItemJob(7000, 100);
+        insertItemJob(7001, 200);
 
         jdbcTemplate.update("""
                 INSERT INTO member (
@@ -194,11 +194,11 @@ class ItemCategoryRepositoryTransitionTest {
                 """, itemId, nameKr, nameKr);
     }
 
-    private void insertItemCategory(int itemId, int categoryId) {
+    private void insertItemJob(int itemId, int jobCategoryId) {
         jdbcTemplate.update("""
-                INSERT INTO item_categories (item_id, category_id, created_at)
+                INSERT INTO item_jobs (item_id, job_category_id, created_at)
                 VALUES (?, ?, CURRENT_TIMESTAMP)
-                """, itemId, categoryId);
+                """, itemId, jobCategoryId);
     }
 
     private void insertItemBookmark(int itemId) {

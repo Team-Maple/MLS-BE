@@ -14,10 +14,10 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "item_categories")
+@Table(name = "item_jobs")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ItemCategory {
+public class ItemJob {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,8 +26,8 @@ public class ItemCategory {
     @Column(name = "item_id")
     private Integer itemId;
 
-    @Column(name = "category_id")
-    private Integer categoryId;
+    @Column(name = "job_category_id")
+    private Integer jobCategoryId;
 
     @CreationTimestamp
     @Column(name = "created_at")
