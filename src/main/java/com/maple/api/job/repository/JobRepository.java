@@ -9,6 +9,6 @@ import java.util.List;
 
 public interface JobRepository extends JpaRepository<Job, Integer> {
     
-    @Query("SELECT j FROM Job j JOIN ItemJob ij ON j.jobId = ij.jobId WHERE ij.itemId = :itemId")
+    @Query("SELECT j FROM Job j JOIN ItemCategory ic ON j.jobId = ic.categoryId WHERE ic.itemId = :itemId")
     List<Job> findByItemId(@Param("itemId") Integer itemId);
 }

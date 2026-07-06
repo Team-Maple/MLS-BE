@@ -3,13 +3,13 @@ package com.maple.api.item.repository;
 import com.maple.api.item.application.dto.ItemMonsterDropDto;
 import com.maple.api.item.application.dto.ItemSearchRequestDto;
 import com.maple.api.item.domain.Item;
-import com.maple.api.job.domain.Job;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Path;
 import com.querydsl.core.types.Projections;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ import java.util.Objects;
 
 import static com.maple.api.item.domain.QEquipmentItem.equipmentItem;
 import static com.maple.api.item.domain.QItem.item;
-import static com.maple.api.item.domain.QItemJob.itemJob;
+import static com.maple.api.item.domain.QItemCategory.itemCategory;
 import static com.maple.api.monster.domain.QItemMonsterDrop.itemMonsterDrop;
 import static com.maple.api.monster.domain.QMonster.monster;
 
@@ -79,15 +79,24 @@ public class ItemQueryDslRepositoryImpl implements ItemQueryDslRepository {
             builder.and(item.nameKr.containsIgnoreCase(request.keyword().trim()));
         }
         if (request.jobIds() != null && !request.jobIds().isEmpty()) {
-            List<Integer> jobIds = request.jobIds().stream()
+            List<Integer> categoryIds = request.jobIds().stream()
                     .filter(Objects::nonNull)
                     .toList();
 
-            builder.and(
-                new BooleanBuilder()
-                    .or(itemJob.jobId.in(jobIds))
-                    .or(itemJob.jobId.eq(Job.COMMON_JOB_ID))
-            );
+            if (!categoryIds.isEmpty()) {
+                builder.and(
+                    new BooleanBuilder()
+                        .or(JPAExpressions.selectOne()
+                                .from(itemCategory)
+                                .where(itemCategory.itemId.eq(item.itemId)
+                                        .and(itemCategory.categoryId.in(categoryIds)))
+                                .exists())
+                        .or(JPAExpressions.selectOne()
+                                .from(itemCategory)
+                                .where(itemCategory.itemId.eq(item.itemId))
+                                .notExists())
+                );
+            }
         }
         if (request.minLevel() != null) {
             builder.and(equipmentItem.requiredStats.level.goe(request.minLevel()));
@@ -124,7 +133,6 @@ public class ItemQueryDslRepositoryImpl implements ItemQueryDslRepository {
                 .select(item.itemId, item.nameKr, equipmentItem.requiredStats.level)
                 .from(item)
                 .leftJoin(equipmentItem).on(item.itemId.eq(equipmentItem.itemId))
-                .leftJoin(itemJob).on(item.itemId.eq(itemJob.itemId))
                 .where(where)
                 .distinct()
                 .offset(pageable.getOffset())
@@ -151,7 +159,6 @@ public class ItemQueryDslRepositoryImpl implements ItemQueryDslRepository {
                 .select(item.countDistinct())
                 .from(item)
                 .leftJoin(equipmentItem).on(item.itemId.eq(equipmentItem.itemId))
-                .leftJoin(itemJob).on(item.itemId.eq(itemJob.itemId))
                 .where(where);
     }
 
