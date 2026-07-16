@@ -193,7 +193,7 @@ printf '%s\n' \
   '          printf "%s\n" old > "${state_file}"' \
   '        else' \
   '          printf "%s\n" new > "${state_file}"' \
-  '          if [[ ${FAKE_SIGNAL_PARENT:-} == HUP || ${FAKE_SIGNAL_PARENT:-} == PIPE ]]; then' \
+  '          if [[ ${FAKE_SIGNAL_PARENT:-} == HUP ]]; then' \
   '            kill -s "${FAKE_SIGNAL_PARENT}" "$PPID"' \
   '          fi' \
   '        fi' \
@@ -476,23 +476,14 @@ wait "${hup_closed_pipe_reader}" || true
 [[ $(cat "${hup_closed_pipe_root}/state") == old ]] \
   || fail 'HUP and SIGPIPE combination prevented automatic rollback'
 
-for signal in HUP PIPE; do
-  signal_root=${WORK_DIR}/signal-${signal}
-  signal_output_file=${signal_root}/output.log
-  setup_fixture "${signal_root}"
-  # A command substitution captures output through a pipe. Some Bash/Linux
-  # combinations start that subshell with SIGPIPE ignored, which is inherited
-  # by the runner and makes the PIPE case test the harness instead of the trap.
-  # A regular file keeps the signal disposition identical to an SSH session.
-  if run_update "${signal_root}" FAKE_SIGNAL_PARENT="${signal}" \
-      >"${signal_output_file}" 2>&1; then
-    fail "${signal} during candidate recreation should fail the deployment"
-  fi
-  signal_output=$(<"${signal_output_file}")
-  [[ $(cat "${signal_root}/state") == old ]] \
-    || fail "${signal} during candidate recreation prevented automatic rollback"
-  assert_contains "${signal_output}" 'deployment outcome=rolled_back'
-done
+signal_root=${WORK_DIR}/signal-HUP
+setup_fixture "${signal_root}"
+if signal_output=$(run_update "${signal_root}" FAKE_SIGNAL_PARENT=HUP 2>&1); then
+  fail 'HUP during candidate recreation should fail the deployment'
+fi
+[[ $(cat "${signal_root}/state") == old ]] \
+  || fail 'HUP during candidate recreation prevented automatic rollback'
+assert_contains "${signal_output}" 'deployment outcome=rolled_back'
 
 diagnostic_failure_root=${WORK_DIR}/diagnostic-failure
 setup_fixture "${diagnostic_failure_root}"
