@@ -45,11 +45,13 @@ jobs:
           bash -n deploy/observability/alloy/validate.sh
           bash -n deploy/observability/preflight-host.sh
           bash -n deploy/observability/tests/host-preflight-test.sh
+          bash -n deploy/observability/tests/recommendation-assets-test.sh
           bash -n deploy/observability/tests/update-api-test.sh
           bash -n deploy/observability/update-api.sh
           test -x deploy/observability/alloy/validate.sh
           test -x deploy/observability/preflight-host.sh
           test -x deploy/observability/tests/host-preflight-test.sh
+          test -x deploy/observability/tests/recommendation-assets-test.sh
           test -x deploy/observability/tests/update-api-test.sh
           test -x deploy/observability/update-api.sh
 
@@ -63,3 +65,4 @@ jobs:
         run: |
           jq empty deploy/observability/grafana/mapleland-production-overview.json
           jq empty deploy/observability/grafana/alert-rules.json
+          deploy/observability/tests/recommendation-assets-test.sh

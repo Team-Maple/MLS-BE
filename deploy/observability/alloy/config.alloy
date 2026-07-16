@@ -99,12 +99,13 @@ prometheus.scrape "application" {
 prometheus.relabel "application" {
 	forward_to = [prometheus.remote_write.grafana_cloud.receiver]
 
-	// Preserve only the metrics needed for RED, JVM, process, and HikariCP
-	// views. Route-template `uri` remains; high-cardinality identifiers do not.
+	// Preserve only the metrics needed for RED, JVM, process, HikariCP, and the
+	// bounded recommendation outcome/result views. Route-template `uri` remains;
+	// high-cardinality identifiers do not.
 	rule {
 		action        = "keep"
 		source_labels = ["__name__"]
-		regex         = "^(up|http_server_requests_seconds_(bucket|count|sum|max)|jvm_memory_(used|committed|max)_bytes|jvm_gc_pause_seconds_(bucket|count|sum|max)|jvm_threads_(live|daemon|peak|states)_threads|process_(cpu|memory|resident|virtual|uptime|start|files).*|system_cpu_(usage|count)|hikaricp_connections_(active|idle|pending|max|min|timeout_total|acquire_seconds_(bucket|count|sum|max)|creation_seconds_(bucket|count|sum|max)|usage_seconds_(bucket|count|sum|max)))$"
+		regex         = "^(up|http_server_requests_seconds_(bucket|count|sum|max)|jvm_memory_(used|committed|max)_bytes|jvm_gc_pause_seconds_(bucket|count|sum|max)|jvm_threads_(live|daemon|peak|states)_threads|process_(cpu|memory|resident|virtual|uptime|start|files).*|system_cpu_(usage|count)|hikaricp_connections_(active|idle|pending|max|min|timeout_total|acquire_seconds_(bucket|count|sum|max)|creation_seconds_(bucket|count|sum|max)|usage_seconds_(bucket|count|sum|max))|mapleland_recommendation_requests_total|mapleland_recommendation_results_recommendations_(count|sum|max))$"
 	}
 
 	rule {
@@ -224,28 +225,32 @@ loki.process "application" {
 
 	stage.json {
 		expressions = {
-			ecs_timestamp                = "\"@timestamp\"",
-			level                        = "\"log.level\"",
-			logger                       = "\"log.logger\"",
-			thread                       = "\"process.thread.name\"",
-			process_pid                  = "\"process.pid\"",
-			service_name                 = "\"service.name\"",
-			deployment_environment       = "\"service.environment\"",
-			service_version              = "\"service.version\"",
-			event_action                 = "\"event.action\"",
-			event_outcome                = "\"event.outcome\"",
-			event_category               = "\"event.category\"",
-			http_request_method          = "\"http.request.method\"",
-			http_response_status_code    = "\"http.response.status_code\"",
-			http_route                   = "\"http.route\"",
-			error_type                   = "\"error.type\"",
-			error_message                = "\"error.message\"",
-			trace_id                     = "\"trace.id\"",
-			span_id                      = "\"span.id\"",
-			request_id                   = "\"request.id\"",
-			mapleland_batch_type         = "\"mapleland.batch.type\"",
-			mapleland_batch_record_count = "\"mapleland.batch.record_count\"",
-			mapleland_external_system    = "\"mapleland.external.system\"",
+			ecs_timestamp                   = "\"@timestamp\"",
+			level                           = "\"log.level\"",
+			logger                          = "\"log.logger\"",
+			thread                          = "\"process.thread.name\"",
+			process_pid                     = "\"process.pid\"",
+			service_name                    = "\"service.name\"",
+			deployment_environment          = "\"service.environment\"",
+			service_version                 = "\"service.version\"",
+			event_action                    = "\"event.action\"",
+			event_outcome                   = "\"event.outcome\"",
+			event_category                  = "\"event.category\"",
+			http_request_method             = "\"http.request.method\"",
+			http_response_status_code       = "\"http.response.status_code\"",
+			http_route                      = "\"http.route\"",
+			error_type                      = "\"error.type\"",
+			error_message                   = "\"error.message\"",
+			trace_id                        = "\"trace.id\"",
+			span_id                         = "\"span.id\"",
+			request_id                      = "\"request.id\"",
+			mapleland_batch_type            = "\"mapleland.batch.type\"",
+			mapleland_batch_record_count    = "\"mapleland.batch.record_count\"",
+			mapleland_external_system       = "\"mapleland.external.system\"",
+			event_duration                  = "\"event.duration\"",
+			mapleland_recommendation_engine = "\"mapleland.recommendation.engine\"",
+			mapleland_api_version           = "\"mapleland.api.version\"",
+			mapleland_result_count          = "\"mapleland.result.count\"",
 		}
 		drop_malformed = false
 	}
@@ -291,24 +296,28 @@ loki.process "application" {
 	// ECS and mapleland.* fields remain available through `| json` as well.
 	stage.structured_metadata {
 		values = {
-			logger                       = "logger",
-			thread                       = "thread",
-			process_pid                  = "process_pid",
-			service_version              = "service_version",
-			event_action                 = "event_action",
-			event_outcome                = "event_outcome",
-			event_category               = "event_category",
-			http_request_method          = "http_request_method",
-			http_response_status_code    = "http_response_status_code",
-			http_route                   = "http_route",
-			error_type                   = "error_type",
-			error_message                = "error_message",
-			trace_id                     = "trace_id",
-			span_id                      = "span_id",
-			request_id                   = "request_id",
-			mapleland_batch_type         = "mapleland_batch_type",
-			mapleland_batch_record_count = "mapleland_batch_record_count",
-			mapleland_external_system    = "mapleland_external_system",
+			logger                          = "logger",
+			thread                          = "thread",
+			process_pid                     = "process_pid",
+			service_version                 = "service_version",
+			event_action                    = "event_action",
+			event_outcome                   = "event_outcome",
+			event_category                  = "event_category",
+			http_request_method             = "http_request_method",
+			http_response_status_code       = "http_response_status_code",
+			http_route                      = "http_route",
+			error_type                      = "error_type",
+			error_message                   = "error_message",
+			trace_id                        = "trace_id",
+			span_id                         = "span_id",
+			request_id                      = "request_id",
+			mapleland_batch_type            = "mapleland_batch_type",
+			mapleland_batch_record_count    = "mapleland_batch_record_count",
+			mapleland_external_system       = "mapleland_external_system",
+			event_duration                  = "event_duration",
+			mapleland_recommendation_engine = "mapleland_recommendation_engine",
+			mapleland_api_version           = "mapleland_api_version",
+			mapleland_result_count          = "mapleland_result_count",
 		}
 	}
 

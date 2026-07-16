@@ -53,6 +53,9 @@ printf '%s\n' \
 printf '%s\n' \
   'MANAGEMENT_SCRAPE_TOKEN=fixture-management-secret-0123456789' \
   "SERVICE_VERSION=${FIXTURE_VERSION}" \
+  'RECOMMENDATION_V1_ENGINE=AURA' \
+  'RECOMMENDATION_V2_ENABLED=false' \
+  'RECOMMENDATION_QUERY_TIMEOUT_SECONDS=10' \
   > "${ROOT_DIR}/opt/mapleland/.env"
 printf '%s\n' 'services:' '  mapleland-api:' \
   '    image: ghcr.io/team-maple/mls-be/mapleland-api:latest-arm64' \
@@ -98,9 +101,9 @@ printf '%s\n' \
   '      if [[ ${2:-} == --quiet ]]; then exit 0; fi' \
   '      if [[ ${2:-} == --format && ${3:-} == json ]]; then' \
   "        if [[ \${FAKE_LEGACY_GRAFANA_ENV:-0} == 1 ]]; then" \
-  "          printf '%s\\n' '{\"services\":{\"mapleland-api\":{\"image\":\"ghcr.io/team-maple/mls-be/mapleland-api:latest-arm64\",\"environment\":{\"MANAGEMENT_SERVER_ADDRESS\":\"0.0.0.0\",\"MANAGEMENT_SERVER_PORT\":\"18080\",\"MANAGEMENT_SCRAPE_TOKEN\":\"fixture-management-secret-0123456789\",\"SERVICE_VERSION\":\"f4bf228b934959be125a72540c91e43f003b7b6e\",\"GRAFANA_CLOUD_PASSWORD\":\"fixture-legacy-secret\"},\"ports\":[{\"host_ip\":\"127.0.0.1\",\"target\":18080,\"published\":\"18080\",\"protocol\":\"tcp\"}],\"volumes\":[{\"type\":\"bind\",\"source\":\"/var/log/mapleland-api\",\"target\":\"/workspace/logs\",\"bind\":{\"create_host_path\":false}}]}}}'" \
+  "          printf '%s\\n' '{\"services\":{\"mapleland-api\":{\"image\":\"ghcr.io/team-maple/mls-be/mapleland-api:latest-arm64\",\"environment\":{\"MANAGEMENT_SERVER_ADDRESS\":\"0.0.0.0\",\"MANAGEMENT_SERVER_PORT\":\"18080\",\"MANAGEMENT_SCRAPE_TOKEN\":\"fixture-management-secret-0123456789\",\"SERVICE_VERSION\":\"f4bf228b934959be125a72540c91e43f003b7b6e\",\"RECOMMENDATION_V1_ENGINE\":\"AURA\",\"RECOMMENDATION_V2_ENABLED\":\"false\",\"RECOMMENDATION_QUERY_TIMEOUT_SECONDS\":\"10\",\"GRAFANA_CLOUD_PASSWORD\":\"fixture-legacy-secret\"},\"ports\":[{\"host_ip\":\"127.0.0.1\",\"target\":18080,\"published\":\"18080\",\"protocol\":\"tcp\"}],\"volumes\":[{\"type\":\"bind\",\"source\":\"/var/log/mapleland-api\",\"target\":\"/workspace/logs\",\"bind\":{\"create_host_path\":false}}]}}}'" \
   "        elif [[ \${FAKE_COMPOSE_VALID:-1} == 1 ]]; then" \
-  "          printf '%s\\n' '{\"services\":{\"mapleland-api\":{\"image\":\"ghcr.io/team-maple/mls-be/mapleland-api:latest-arm64\",\"environment\":{\"MANAGEMENT_SERVER_ADDRESS\":\"0.0.0.0\",\"MANAGEMENT_SERVER_PORT\":\"18080\",\"MANAGEMENT_SCRAPE_TOKEN\":\"fixture-management-secret-0123456789\",\"SERVICE_VERSION\":\"f4bf228b934959be125a72540c91e43f003b7b6e\"},\"ports\":[{\"host_ip\":\"127.0.0.1\",\"target\":18080,\"published\":\"18080\",\"protocol\":\"tcp\"}],\"volumes\":[{\"type\":\"bind\",\"source\":\"/var/log/mapleland-api\",\"target\":\"/workspace/logs\",\"bind\":{}}]}}}'" \
+  "          printf '%s\\n' '{\"services\":{\"mapleland-api\":{\"image\":\"ghcr.io/team-maple/mls-be/mapleland-api:latest-arm64\",\"environment\":{\"MANAGEMENT_SERVER_ADDRESS\":\"0.0.0.0\",\"MANAGEMENT_SERVER_PORT\":\"18080\",\"MANAGEMENT_SCRAPE_TOKEN\":\"fixture-management-secret-0123456789\",\"SERVICE_VERSION\":\"f4bf228b934959be125a72540c91e43f003b7b6e\",\"RECOMMENDATION_V1_ENGINE\":\"AURA\",\"RECOMMENDATION_V2_ENABLED\":\"false\",\"RECOMMENDATION_QUERY_TIMEOUT_SECONDS\":\"10\"},\"ports\":[{\"host_ip\":\"127.0.0.1\",\"target\":18080,\"published\":\"18080\",\"protocol\":\"tcp\"}],\"volumes\":[{\"type\":\"bind\",\"source\":\"/var/log/mapleland-api\",\"target\":\"/workspace/logs\",\"bind\":{}}]}}}'" \
   "        else" \
   "          printf '%s\\n' '{\"services\":{\"mapleland-api\":{\"image\":\"ghcr.io/team-maple/mls-be/mapleland-api:latest-arm64\",\"environment\":{},\"ports\":[{\"host_ip\":\"0.0.0.0\",\"target\":18080,\"published\":\"18080\"}],\"volumes\":[]}}}'" \
   "        fi" \
@@ -262,5 +265,15 @@ if legacy_output=$(run_preflight "${SELF_SHA}" "${UPDATE_SHA}" "${OVERRIDE_SHA}"
 fi
 assert_contains "${legacy_output}" 'Compose observability contract is incomplete'
 assert_not_contains "${legacy_output}" 'fixture-legacy-secret'
+
+awk '
+  /^RECOMMENDATION_V1_ENGINE=/ { print "RECOMMENDATION_V1_ENGINE=INVALID"; next }
+  { print }
+' "${ROOT_DIR}/opt/mapleland/.env" > "${ROOT_DIR}/opt/mapleland/.env.invalid"
+mv "${ROOT_DIR}/opt/mapleland/.env.invalid" "${ROOT_DIR}/opt/mapleland/.env"
+if engine_output=$(run_preflight "${SELF_SHA}" "${UPDATE_SHA}" "${OVERRIDE_SHA}" 2>&1); then
+  fail 'invalid recommendation engine should fail'
+fi
+assert_contains "${engine_output}" 'RECOMMENDATION_V1_ENGINE must be AURA or MYSQL'
 
 echo 'host-preflight tests passed'

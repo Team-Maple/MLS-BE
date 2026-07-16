@@ -1479,6 +1479,319 @@
       "type": "timeseries"
     },
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "id": 18,
+      "panels": [],
+      "title": "Recommendations",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "description": "Total v1/v2 endpoint request rate from the existing http.server.requests route-template metric, including validation and configuration failures.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 0,
+        "y": 29
+      },
+      "id": 19,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "sum by (uri) (rate(http_server_requests_seconds_count{service_name=\"mapleland-api\",deployment_environment=\"prod\",cloud_provider=\"oci\",instance=\"$instance\",uri=~\"/api/v[12]/maps/recommendations\"}[$__rate_interval]))",
+          "instant": false,
+          "legendFormat": "{{uri}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Recommendation request rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "description": "p95 latency from the existing http.server.requests route-template histogram; no duplicate recommendation timer is used.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 5,
+        "y": 29
+      },
+      "id": 20,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket{service_name=\"mapleland-api\",deployment_environment=\"prod\",cloud_provider=\"oci\",instance=\"$instance\",uri=~\"/api/v[12]/maps/recommendations\"}[$__rate_interval])))",
+          "instant": false,
+          "legendFormat": "p95 {{uri}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Recommendation p95 latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "description": "HTTP 4xx/5xx rates plus bounded empty and unavailable processing outcomes for the recommendation routes.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 10,
+        "y": 29
+      },
+      "id": 21,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "sum by (api_version, outcome) (rate(mapleland_recommendation_requests_total{service_name=\"mapleland-api\",deployment_environment=\"prod\",cloud_provider=\"oci\",instance=\"$instance\",outcome=~\"empty|unavailable\"}[$__rate_interval]))",
+          "instant": false,
+          "legendFormat": "{{api_version}} {{outcome}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "sum by (uri, status) (rate(http_server_requests_seconds_count{service_name=\"mapleland-api\",deployment_environment=\"prod\",cloud_provider=\"oci\",instance=\"$instance\",uri=~\"/api/v[12]/maps/recommendations\",status=~\"4..|5..\"}[$__rate_interval]))",
+          "instant": false,
+          "legendFormat": "{{uri}} HTTP {{status}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Error / empty / unavailable rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "description": "Engine/API pairs observed in the selected dashboard time range. ACTIVE means at least one request was recorded; this is traffic-observed state, not configuration truth.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "text",
+                  "index": 0,
+                  "text": "NO REQUESTS"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "ACTIVE"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 15,
+        "y": 29
+      },
+      "id": 22,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum by (api_version, engine) (increase(mapleland_recommendation_requests_total{service_name=\"mapleland-api\",deployment_environment=\"prod\",cloud_provider=\"oci\",instance=\"$instance\"}[$__range])) > bool 0",
+          "instant": true,
+          "legendFormat": "{{api_version}} / {{engine}}",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Engine state (observed)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "description": "Average result count for completed recommendation responses, including successful empty responses and excluding unavailable failures.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "decimals": 2,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 19,
+        "y": 29
+      },
+      "id": 23,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum by (api_version, engine) (rate(mapleland_recommendation_results_recommendations_sum{service_name=\"mapleland-api\",deployment_environment=\"prod\",cloud_provider=\"oci\",instance=\"$instance\"}[$__rate_interval])) / clamp_min(sum by (api_version, engine) (rate(mapleland_recommendation_results_recommendations_count{service_name=\"mapleland-api\",deployment_environment=\"prod\",cloud_provider=\"oci\",instance=\"$instance\"}[$__rate_interval])), 0.000000001)",
+          "instant": false,
+          "legendFormat": "{{api_version}} / {{engine}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Average result count",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "id": 24,
+      "panels": [],
+      "title": "Application logs",
+      "type": "row"
+    },
+    {
       "datasource": {
         "type": "loki",
         "uid": "grafanacloud-logs"
@@ -1488,7 +1801,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 28
+        "y": 38
       },
       "id": 17,
       "options": {
@@ -1559,6 +1872,6 @@
   "timezone": "browser",
   "title": "Mapleland / Production Overview",
   "uid": "mapleland-production-overview",
-  "version": 1,
+  "version": 3,
   "weekStart": ""
 }

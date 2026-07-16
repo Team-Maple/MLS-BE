@@ -1,5 +1,7 @@
 package com.maple.api.observability;
 
+import com.maple.api.map.recommendation.application.RecommendationObservability;
+import com.maple.api.map.recommendation.port.RecommendationEngineType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +46,9 @@ class ObservabilityHttpIntegrationTest {
 
     @Autowired
     private TestRestTemplate http;
+
+    @Autowired
+    private RecommendationObservability recommendationObservability;
 
     @BeforeAll
     static void useLoopbackForHttpClient() {
@@ -97,6 +102,22 @@ class ObservabilityHttpIntegrationTest {
         assertThat(metrics)
             .contains("http_server_requests_seconds_count")
             .contains("uri=\"/api/v1/jobs\"");
+    }
+
+    @Test
+    void recommendationMetricsExposeOnlyTheAllowlistedPrometheusFamilies() {
+        recommendationObservability.completed(RecommendationEngineType.MYSQL, "v2", 3, 1_000L);
+
+        String metrics = getWithBearer(
+            managementPort, "/actuator/prometheus", SCRAPE_TOKEN).getBody();
+        assertThat(metrics)
+            .contains("mapleland_recommendation_requests_total")
+            .contains("mapleland_recommendation_results_recommendations_count")
+            .contains("mapleland_recommendation_results_recommendations_sum")
+            .contains("mapleland_recommendation_results_recommendations_max")
+            .contains("api_version=\"v2\"")
+            .contains("engine=\"mysql\"")
+            .contains("outcome=\"success\"");
     }
 
     @Test

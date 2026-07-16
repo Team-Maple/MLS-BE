@@ -83,8 +83,12 @@ Alloy scrape interval은 host/application/self 모두 60초, timeout은 10초다
 - `jvm_memory_*`, `jvm_gc_pause_*`, `jvm_threads_*`
 - `process_*`, `system_cpu_*`
 - `hikaricp_connections_*`
+- `mapleland_recommendation_requests_total` (`engine`, `api_version`, `outcome`만 사용)
+- `mapleland_recommendation_results_recommendations_{count,sum,max}` (`engine`, `api_version`만 사용)
 
 HTTP latency bucket은 50 ms, 100 ms, 250 ms, 500 ms, 1 s, 2 s, 5 s, 10 s의 고정 SLO 경계만 추가한다. URI는 Spring MVC route template tag를 그대로 사용하며 raw URI/query/user tag는 추가하지 않는다.
+
+추천 처리 로그의 `event.duration`, `mapleland.recommendation.engine`, `mapleland.api.version`, `mapleland.result.count`는 structured metadata로만 전달한다. Job/level/map/member와 원본 URI/query는 metric label이나 Loki indexed label로 만들지 않는다.
 
 Host collector는 CPU, load, memory, filesystem, 최소 network, uname만 사용한다. Docker/loopback/VPN의 임시 network와 pseudo/container filesystem을 제외하고, remote write 전에 dashboard에 필요한 metric name allowlist를 다시 적용한다. 단일 고정 `instance=mapleland-oci-1`은 향후 host별 구분을 위한 bounded label이다.
 
@@ -511,6 +515,7 @@ sudoedit /opt/mapleland/ghcr.env
 3. 기존 Compose `.env`를 shell로 `source`하지 않는다. `ghcr.env.example`의 두 key만 포함하는 `/opt/mapleland/ghcr.env`를 별도로 만들고 `root:root 0600`, non-symlink인지 확인한다. `update-api.sh`는 이 파일을 실행하지 않고 exact key/value parser로만 읽는다.
 4. `docker-compose.override.example.yml`을 checksum 검증 후 `/opt/mapleland/docker-compose.observability.yml`로 설치한다. 첫 전환 전에는 base Compose와 `.env`의 `GRAFANA_CLOUD_URL`, `GRAFANA_CLOUD_USERNAME`, `GRAFANA_CLOUD_PASSWORD` 세 legacy entry를 제거하지 않는다. 새 container가 실패하면 이전 Loki4j image가 exact rollback 입력으로 사용할 수 있어야 하기 때문이다. `update-api.sh`와 preflight는 이 세 entry를 제외한 root-only 임시 base와 `--env-file`을 사용해 새 container model을 render한다. App service의 기존 repository tag 계약은 `update-api.sh`가 digest-pinned image ID로 local retag하므로 임의 변경하지 않는다.
 5. `SERVICE_VERSION`을 위 `expected_commit`으로 설정한다. Publish workflow run, commit과 build job이 확정한 manifest digest를 운영 기록에 남긴다.
+   추천 기능이 포함된 image부터 같은 root-only `.env`에 `RECOMMENDATION_V1_ENGINE=AURA`, `RECOMMENDATION_V2_ENABLED=false`, `RECOMMENDATION_QUERY_TIMEOUT_SECONDS=10`을 명시한다. preflight는 enum/boolean/range와 rendered Compose를 검증하고, update readiness는 실제 candidate container env가 이 값들과 정확히 같은지 값 출력 없이 확인한다. topology/schema/rate-limit gate 승인 전에는 v2를 켜지 않는다.
 6. 새 image의 readiness, management health, public smoke와 실제 container environment의 legacy key 부재가 모두 확인된 뒤에만 `update-api.sh`가 base Compose와 `.env`의 세 entry를 같은 directory의 root-only candidate로 만들고 render validation 후 atomic rename한다. 실패 전에는 원본을 보존하고, 성공 뒤에는 root-only backup에만 남긴다. Alloy write secret과 이 legacy rollback 값은 서로 다른 파일과 목적을 유지한다.
 7. `18080`이 비어 있는지 다시 확인한다. public/Traefik routing이나 firewall rule은 추가하지 않는다. 저장소에서 계산한 두 script와 override checksum으로 `/opt/mapleland/preflight-host.sh`를 실행해 sanitized Compose render, legacy rollback entry의 `3:3` 또는 `0:0` 완전성, root-only env, active deployment script, log ACL, Alloy readiness/loopback listener, 현재 app container와 rollback image, public smoke를 읽기 전용으로 검증한다.
 8. 승인 후 workflow를 dispatch한다. Workflow 순서는 `host-preflight -> build-and-publish -> production Environment approval -> host-preflight recheck -> deploy`다. 첫 preflight가 실패하면 image를 만들지 않으며, 두 번째 preflight와 `update-api.sh`는 forced-command gateway의 한 `deploy` 요청에서 연속 실행된다. Build job은 manifest digest를 `image_ref` output으로 넘기고 gateway가 세 checksum과 `<repository>@sha256:<digest>` 전체를 allowlist로 검증한다. Root update script가 digest pull, per-deploy rollback tag, local retag, `--pull never`, legacy environment 부재, exact image ID, bounded readiness/smoke를 모두 성공해야 한다. 첫 전환 실패 시 base Compose와 원래 `.env`로 이전 Loki4j image를 복구하고, 성공 시에만 legacy entry를 제거한다. 한 번의 전환으로 Loki4j를 제거하고 Alloy file tail을 시작해 중복 전송 구간을 만들지 않는다.
@@ -786,6 +791,7 @@ increase(loki_process_custom_ecs_log_lines_total{job="alloy"}[30m])
 - dashboard UID/title: `mapleland-production-overview` / `Mapleland / Production Overview`
 - datasource: `grafanacloud-prom`, `grafanacloud-logs`
 - source: `deploy/observability/grafana/`
+- recommendation row: `http.server.requests` 기반 v1/v2 전체 request rate와 p95/HTTP error, custom empty/unavailable outcome, 요청이 관찰된 engine, 평균 result count. 새 alert threshold는 baseline 없이 추가하지 않는다.
 
 Alert 정책:
 

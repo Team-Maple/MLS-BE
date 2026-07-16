@@ -89,7 +89,8 @@ printf '%s\n' \
   '      *State.Status*) if [[ $(cat "$state_file") == new ]]; then printf "%s\\n" "${FAKE_NEW_STATE:-running}"; else printf "%s\\n" running; fi ;;' \
   '      *State.Health*) printf "%s\\n" healthy ;;' \
   '      *Config.Env*)' \
-  '        if [[ $target == new-container && ${FAKE_NEW_HAS_LEGACY:-0} == 1 ]]; then printf "%s\\n" GRAFANA_CLOUD_PASSWORD=fixture-legacy-secret; else printf "%s\\n" SPRING_PROFILES_ACTIVE=prod; fi ;;' \
+  '        if [[ $target == new-container && ${FAKE_NEW_HAS_LEGACY:-0} == 1 ]]; then printf "%s\\n" GRAFANA_CLOUD_PASSWORD=fixture-legacy-secret; fi' \
+  '        printf "%s\\n" SPRING_PROFILES_ACTIVE=prod "RECOMMENDATION_V1_ENGINE=${FAKE_NEW_RECOMMENDATION_ENGINE:-AURA}" RECOMMENDATION_V2_ENABLED=false RECOMMENDATION_QUERY_TIMEOUT_SECONDS=10 ;;' \
   '      *.Image*) [[ $target == old-container ]] && printf "%s\\n" sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa || printf "%s\\n" sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb ;;' \
   '    esac' \
   '    exit 0 ;;' \
@@ -121,6 +122,9 @@ setup_fixture() {
     'GRAFANA_CLOUD_PASSWORD=fixture-legacy-secret' \
     'MANAGEMENT_SCRAPE_TOKEN=fixture-management-secret-0123456789' \
     'SERVICE_VERSION=f4bf228b934959be125a72540c91e43f003b7b6e' \
+    'RECOMMENDATION_V1_ENGINE=AURA' \
+    'RECOMMENDATION_V2_ENABLED=false' \
+    'RECOMMENDATION_QUERY_TIMEOUT_SECONDS=10' \
     > "${root}/opt/mapleland/.env"
   printf '%s\n' \
     'GHCR_USER=fixture-user' \
@@ -177,6 +181,16 @@ assert_not_contains "${rollback_output}" 'fixture-management-secret'
 [[ $(cat "${rollback_root}/var/log/mapleland-deploy/last-failure/container.log") == \
   'fixture startup failure' ]] \
   || fail 'failed candidate logs were not preserved before rollback'
+
+engine_mismatch_root=${WORK_DIR}/engine-mismatch
+setup_fixture "${engine_mismatch_root}"
+if engine_mismatch_output=$(run_update "${engine_mismatch_root}" \
+    FAKE_NEW_RECOMMENDATION_ENGINE=MYSQL 2>&1); then
+  fail 'candidate with an unattested recommendation engine should fail'
+fi
+[[ $(cat "${engine_mismatch_root}/state") == old ]] \
+  || fail 'recommendation engine mismatch did not restore the previous container'
+assert_not_contains "${engine_mismatch_output}" 'fixture-management-secret'
 
 restart_root=${WORK_DIR}/restart
 setup_fixture "${restart_root}"

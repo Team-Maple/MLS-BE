@@ -130,11 +130,31 @@ fi
 
 management_scrape_token=''
 management_token_count=0
+recommendation_v1_engine=''
+recommendation_v1_engine_count=0
+recommendation_v2_enabled=''
+recommendation_v2_enabled_count=0
+recommendation_query_timeout_seconds=''
+recommendation_query_timeout_count=0
 while IFS= read -r app_env_line || [[ -n ${app_env_line} ]]; do
-  if [[ ${app_env_line} == MANAGEMENT_SCRAPE_TOKEN=* ]]; then
-    management_scrape_token=${app_env_line#*=}
-    management_token_count=$((management_token_count + 1))
-  fi
+  case ${app_env_line} in
+    MANAGEMENT_SCRAPE_TOKEN=*)
+      management_scrape_token=${app_env_line#*=}
+      management_token_count=$((management_token_count + 1))
+      ;;
+    RECOMMENDATION_V1_ENGINE=*)
+      recommendation_v1_engine=${app_env_line#*=}
+      recommendation_v1_engine_count=$((recommendation_v1_engine_count + 1))
+      ;;
+    RECOMMENDATION_V2_ENABLED=*)
+      recommendation_v2_enabled=${app_env_line#*=}
+      recommendation_v2_enabled_count=$((recommendation_v2_enabled_count + 1))
+      ;;
+    RECOMMENDATION_QUERY_TIMEOUT_SECONDS=*)
+      recommendation_query_timeout_seconds=${app_env_line#*=}
+      recommendation_query_timeout_count=$((recommendation_query_timeout_count + 1))
+      ;;
+  esac
 done < "${APP_ENV_FILE}"
 if (( management_token_count != 1 )) \
   || [[ -z ${management_scrape_token} || ${#management_scrape_token} -lt 32 \
@@ -143,6 +163,24 @@ if (( management_token_count != 1 )) \
   exit 1
 fi
 readonly management_scrape_token
+if (( recommendation_v1_engine_count != 1 )) \
+  || [[ ! ${recommendation_v1_engine} =~ ^(AURA|MYSQL)$ ]]; then
+  echo 'exactly one RECOMMENDATION_V1_ENGINE=AURA|MYSQL is required' >&2
+  exit 1
+fi
+if (( recommendation_v2_enabled_count != 1 )) \
+  || [[ ! ${recommendation_v2_enabled} =~ ^(true|false)$ ]]; then
+  echo 'exactly one RECOMMENDATION_V2_ENABLED=true|false is required' >&2
+  exit 1
+fi
+if (( recommendation_query_timeout_count != 1 )) \
+  || [[ ! ${recommendation_query_timeout_seconds} =~ ^([1-9]|[1-5][0-9]|60)$ ]]; then
+  echo 'exactly one recommendation query timeout between 1 and 60 is required' >&2
+  exit 1
+fi
+readonly recommendation_v1_engine
+readonly recommendation_v2_enabled
+readonly recommendation_query_timeout_seconds
 
 curl_management_prometheus() {
   local escaped_token=${management_scrape_token//\\/\\\\}
@@ -325,6 +363,7 @@ wait_for_readiness() {
   local candidate_state
   local candidate_health
   local candidate_restart_count
+  local candidate_environment
   local management_status
   local public_status
 
@@ -356,12 +395,23 @@ wait_for_readiness() {
       if [[ ${candidate_image_id} == "${expected_image_id}" \
         && ${candidate_state} == running \
         && ( ${candidate_health} == none || ${candidate_health} == healthy ) ]]; then
-        if [[ ${require_management_health} == true ]] \
-          && docker inspect "${candidate_container_id}" \
-            --format '{{range .Config.Env}}{{println .}}{{end}}' |
-            grep -Eq '^GRAFANA_CLOUD_(URL|USERNAME|PASSWORD)='; then
-          sleep 2
-          continue
+        if [[ ${require_management_health} == true ]]; then
+          candidate_environment=$(docker inspect "${candidate_container_id}" \
+            --format '{{range .Config.Env}}{{println .}}{{end}}')
+          if grep -Eq '^GRAFANA_CLOUD_(URL|USERNAME|PASSWORD)=' \
+              <<< "${candidate_environment}" \
+            || ! grep -Fxq "RECOMMENDATION_V1_ENGINE=${recommendation_v1_engine}" \
+              <<< "${candidate_environment}" \
+            || ! grep -Fxq "RECOMMENDATION_V2_ENABLED=${recommendation_v2_enabled}" \
+              <<< "${candidate_environment}" \
+            || ! grep -Fxq \
+              "RECOMMENDATION_QUERY_TIMEOUT_SECONDS=${recommendation_query_timeout_seconds}" \
+              <<< "${candidate_environment}"; then
+            candidate_environment=''
+            sleep 2
+            continue
+          fi
+          candidate_environment=''
         fi
         if [[ ${require_management_health} == false ]] \
           || curl_management_prometheus \

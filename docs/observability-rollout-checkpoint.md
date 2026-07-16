@@ -2,6 +2,15 @@
 
 이 문서는 Codex task, OAuth 또는 로컬 앱이 재시작돼도 운영 상태를 추측하거나 이미 끝난 작업을 반복하지 않기 위한 비밀값 없는 재개 기준이다. 외부 상태를 변경한 뒤에는 해당 operation의 URL·commit·checksum·검증 결과와 다음 안전 작업을 갱신한다. token, credential, 원본 환경 파일 내용은 기록하지 않는다.
 
+## 2026-07-16 추천 dashboard 사전 갱신
+
+- 구현 작업은 [Issue #34](https://github.com/Team-Maple/MLS-BE/issues/34)의 draft PR 전 단계이며 애플리케이션 merge·배포와 v1 MySQL 전환은 수행하지 않았다.
+- 기존 [Mapleland / Production Overview](https://mungmnb777.grafana.net/d/mapleland-production-overview/mapleland-production-overview?orgId=1&from=now-6h&to=now&timezone=browser&var-instance=mapleland-oci-1&refresh=1m)를 고정 UID `mapleland-production-overview`로 먼저 읽은 뒤 같은 UID를 `Import (Overwrite)`해 create-or-update했다. 기존 `Dashboards` folder와 datasource를 유지했다.
+- live dashboard는 version `3`, panel `24`개다. version history에서 version 3이 `2026-07-16 23:21:43 KST`의 Latest이고 직전 version 2와 version 1은 restore 가능한 상태임을 확인했다.
+- recommendation row와 `Recommendation request rate`, `Recommendation p95 latency`, `Error / empty / unavailable rate`, `Engine state (observed)`, `Average result count` panel, 그리고 기존 log panel을 구분하는 `Application logs` row가 각각 한 번 렌더링됨을 확인했다.
+- request rate와 HTTP error는 `http_server_requests_seconds_count`, p95는 기존 `http_server_requests_seconds_bucket`의 v1/v2 route template을 사용한다. 따라서 validation/config parsing/404/5xx를 포함한 실제 endpoint traffic을 보고 custom counter는 scorer의 empty/unavailable outcome만 보완한다. live 화면에서 panel 다섯 개가 load error 없이 렌더링됐지만 애플리케이션/Alloy 변경이 아직 배포되지 않았고 추천 route traffic 표본도 없으므로 live series 존재를 완료 조건으로 주장하지 않는다. 배포 후 v2 안전 smoke에서 data와 label을 다시 확인한다.
+- alert rule, threshold, contact point, notification policy, datasource, unrelated panel은 수정하거나 삭제하지 않았다. source dashboard JSON도 version 3과 동일한 24개 panel로 갱신했다.
+
 ## 2026-07-16 최종 운영 적용 상태
 
 - Issue: [#32](https://github.com/Team-Maple/MLS-BE/issues/32)

@@ -4,6 +4,9 @@ set -euo pipefail
 readonly EXPECTED_REPOSITORY=ghcr.io/team-maple/mls-be/mapleland-api
 readonly EXPECTED_SHA256_REGEX='^[0-9a-f]{64}$'
 readonly EXPECTED_SERVICE_VERSION_REGEX='^[0-9a-f]{40}$'
+readonly EXPECTED_RECOMMENDATION_ENGINE_REGEX='^(AURA|MYSQL)$'
+readonly EXPECTED_RECOMMENDATION_ENABLED_REGEX='^(true|false)$'
+readonly EXPECTED_RECOMMENDATION_TIMEOUT_REGEX='^([1-9]|[1-5][0-9]|60)$'
 readonly LEGACY_COMPOSE_ENV_REGEX='^[[:space:]]*-[[:space:]]*GRAFANA_CLOUD_(URL|USERNAME|PASSWORD)='
 readonly LEGACY_APP_ENV_REGEX='^GRAFANA_CLOUD_(URL|USERNAME|PASSWORD)='
 
@@ -137,6 +140,9 @@ validate_app_env() {
   local value
   local management_token_seen=false
   local service_version_seen=false
+  local recommendation_v1_engine_seen=false
+  local recommendation_v2_enabled_seen=false
+  local recommendation_query_timeout_seen=false
   local legacy_url_seen=false
   local legacy_username_seen=false
   local legacy_password_seen=false
@@ -180,17 +186,51 @@ validate_app_env() {
           || fail '.env SERVICE_VERSION must be a full lowercase Git commit SHA'
         service_version_seen=true
         ;;
+      RECOMMENDATION_V1_ENGINE)
+        [[ ${recommendation_v1_engine_seen} == false ]] \
+          || fail '.env contains duplicate RECOMMENDATION_V1_ENGINE'
+        [[ ${value} =~ ${EXPECTED_RECOMMENDATION_ENGINE_REGEX} ]] \
+          || fail '.env RECOMMENDATION_V1_ENGINE must be AURA or MYSQL'
+        recommendation_v1_engine=${value}
+        recommendation_v1_engine_seen=true
+        ;;
+      RECOMMENDATION_V2_ENABLED)
+        [[ ${recommendation_v2_enabled_seen} == false ]] \
+          || fail '.env contains duplicate RECOMMENDATION_V2_ENABLED'
+        [[ ${value} =~ ${EXPECTED_RECOMMENDATION_ENABLED_REGEX} ]] \
+          || fail '.env RECOMMENDATION_V2_ENABLED must be true or false'
+        recommendation_v2_enabled=${value}
+        recommendation_v2_enabled_seen=true
+        ;;
+      RECOMMENDATION_QUERY_TIMEOUT_SECONDS)
+        [[ ${recommendation_query_timeout_seen} == false ]] \
+          || fail '.env contains duplicate RECOMMENDATION_QUERY_TIMEOUT_SECONDS'
+        [[ ${value} =~ ${EXPECTED_RECOMMENDATION_TIMEOUT_REGEX} ]] \
+          || fail '.env RECOMMENDATION_QUERY_TIMEOUT_SECONDS must be between 1 and 60'
+        recommendation_query_timeout_seconds=${value}
+        recommendation_query_timeout_seen=true
+        ;;
     esac
   done < "${APP_ENV_FILE}"
 
-  [[ ${management_token_seen} == true && ${service_version_seen} == true ]] \
-    || fail '.env must contain MANAGEMENT_SCRAPE_TOKEN and SERVICE_VERSION'
+  [[ ${management_token_seen} == true \
+      && ${service_version_seen} == true \
+      && ${recommendation_v1_engine_seen} == true \
+      && ${recommendation_v2_enabled_seen} == true \
+      && ${recommendation_query_timeout_seen} == true ]] \
+    || fail '.env must contain management, service version, and recommendation rollout settings'
 }
 
 management_scrape_token=''
+recommendation_v1_engine=''
+recommendation_v2_enabled=''
+recommendation_query_timeout_seconds=''
 validate_ghcr_env
 validate_app_env
 readonly management_scrape_token
+readonly recommendation_v1_engine
+readonly recommendation_v2_enabled
+readonly recommendation_query_timeout_seconds
 
 curl_management_prometheus() {
   local escaped_token=${management_scrape_token//\\/\\\\}
@@ -237,7 +277,11 @@ readonly -a COMPOSE_ARGS=(
 )
 docker compose "${COMPOSE_ARGS[@]}" config --quiet
 compose_json=$(docker compose "${COMPOSE_ARGS[@]}" config --format json)
-if ! printf '%s' "${compose_json}" | jq -e --arg repository "${EXPECTED_REPOSITORY}:" '
+if ! printf '%s' "${compose_json}" | jq -e \
+    --arg repository "${EXPECTED_REPOSITORY}:" \
+    --arg recommendation_v1_engine "${recommendation_v1_engine}" \
+    --arg recommendation_v2_enabled "${recommendation_v2_enabled}" \
+    --arg recommendation_query_timeout_seconds "${recommendation_query_timeout_seconds}" '
   .services["mapleland-api"] as $app |
   ($app | type == "object") and
   (($app.image | type) == "string" and ($app.image | startswith($repository))) and
@@ -247,6 +291,9 @@ if ! printf '%s' "${compose_json}" | jq -e --arg repository "${EXPECTED_REPOSITO
   (($app.environment.MANAGEMENT_SCRAPE_TOKEN | length) >= 32) and
   (($app.environment.SERVICE_VERSION | type) == "string") and
   ($app.environment.SERVICE_VERSION | test("^[0-9a-f]{40}$")) and
+  ($app.environment.RECOMMENDATION_V1_ENGINE == $recommendation_v1_engine) and
+  (($app.environment.RECOMMENDATION_V2_ENABLED | tostring) == $recommendation_v2_enabled) and
+  (($app.environment.RECOMMENDATION_QUERY_TIMEOUT_SECONDS | tostring) == $recommendation_query_timeout_seconds) and
   ([ ($app.environment // {} | keys[]) |
       select(startswith("GRAFANA_CLOUD_")) ] | length == 0) and
   ([ $app.ports[]? | select((.target | tostring) == "18080") ] | length == 1) and
