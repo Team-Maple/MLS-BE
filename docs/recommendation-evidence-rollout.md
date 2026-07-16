@@ -251,15 +251,14 @@ versioned dashboard JSON과 live Grafana dashboard UID `mapleland-production-ove
 않는다. 다음 항목이 모두 충족돼야 이 initial image 배포 승인을 요청할 수 있다.
 
 - [x] Issue #34와 draft PR #35에 v1/v2 계약, 점수 공식, DB 전제, rollout/rollback이 기록됨
-- [ ] 배포 단순화 변경의 독립 코드 리뷰와 위험 리뷰 finding을 반영하고 최종 actionable P0-P3 0으로 재검증함
+- [ ] legacy OCI workflow 복원 변경을 검토하고 `c49ee3255afb4ddfa0168ce91783fff368864a4d`의 구조 및 concurrency/least-privilege adaptation을 재검증함
 - [ ] 최신 `./gradlew clean test` 전체 실행이 성공함. 현재 외부 실사이트 crawler 3건의 timeout 재확인과 CI가 남아 있음
 - [ ] CI가 성공하고 unresolved required review가 없음
-- [ ] Firebase key는 main-only `production-build`, Tailscale/SSH credential은 `production` Environment secret으로 재발급·이전하고 repository/organization 사본을 제거함
+- [ ] legacy workflow가 사용하는 repository secret `FIREBASE_KEY`, `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `ORACLE_SSH_KEY`의 존재와 접근 범위를 owner가 확인함
 - [ ] Firebase key가 image layer에 포함되는 기존 잔여 위험을 owner가 명시적으로 수용하거나 runtime secret mount 전환과 key rotation을 완료함
-- [ ] 검증한 Oracle SSH host-key SHA256 fingerprint를 `production` Environment variable로 등록함
 - [ ] 삭제 대상 legacy EC2 경로가 DNS/LB/failover/DR에서 쓰이지 않음을 운영 inventory로 확인하고 HOST/USERNAME/KEY/PORT/GHCR credential revoke·rotation·secret 제거를 완료함
-- [ ] `production-build`와 `production` branch를 `main`만 허용하고 production administrator bypass를 비활성화함
-- [ ] owner 승인 아래 host runner와 Compose override를 새 `deploy <immutable digest>` 계약으로 한 번 전환하고 rollback backup을 남김
+- [ ] host의 기존 `/opt/mapleland/update-api.sh`가 `latest-arm64` 배포 계약을 계속 지원하는지 owner가 확인함
+- [ ] read-only host attestation으로 exact previous image와 legacy host script에 맞는 수동 rollback 명령을 확인해 checkpoint에 기록함
 - [x] Grafana versioned JSON과 live dashboard UID/version이 일치하고 새 panel query가 오류 없이 완료됨. 실제 series 검증은 배포 후 smoke gate로 남음
 - [ ] merge와 운영 배포에 대한 owner의 명시적 승인이 있음
 
@@ -285,16 +284,16 @@ jq empty deploy/observability/grafana/alert-rules.json
 bash deploy/observability/alloy/validate.sh
 ```
 
-2026-07-16 최종 로컬 트리에서 `./gradlew clean test`는 88 tests, failure/error/skip 0으로 성공했고 `./gradlew bootJar`, 두 Grafana JSON `jq empty`, Alloy 공식 container validation, immutable deploy/rollback 계약 test, recommendation asset test, shell syntax·executable 검증도 성공했다. 배포 runner 단순화 뒤 전체 검증과 CI 결과는 PR #35에 별도로 기록한다.
+2026-07-16 최종 로컬 트리에서 `./gradlew clean test`는 88 tests, failure/error/skip 0으로 성공했고 `./gradlew bootJar`, 두 Grafana JSON `jq empty`, Alloy 공식 container validation, recommendation asset test, shell syntax·executable 검증도 성공했다.
 
-2026-07-17 배포 runner 단순화 뒤 `bootJar`, 추천/설정 바인딩 테스트군, immutable deploy/rollback 계약 test, recommendation asset test, 두 Grafana JSON과 Alloy validation은 성공했다. `./gradlew clean test`는 91개 중 88개가 통과했고, 운영 외부 사이트를 직접 호출하는 기존 `NoticeApiTest` 세 건만 `SocketTimeoutException`으로 실패했다. 이 테스트를 우회하거나 배포 변경에 unrelated한 crawler 코드를 수정하지 않으며 GitHub CI에서 재확인한다.
+2026-07-17 legacy OCI workflow 복원 전 `bootJar`, 추천/설정 바인딩 테스트군, recommendation asset test, 두 Grafana JSON과 Alloy validation은 성공했다. `./gradlew clean test`는 91개 중 88개가 통과했고, 운영 외부 사이트를 직접 호출하는 기존 `NoticeApiTest` 세 건만 `SocketTimeoutException`으로 실패했다. 이 테스트를 우회하거나 배포 변경에 unrelated한 crawler 코드를 수정하지 않으며 GitHub CI에서 재확인한다.
 
 ## 권장 rollout
 
 1. 구현 PR을 merge하지 않은 상태에서 전체 test, 독립 코드 리뷰, 위험 리뷰, CI를 완료한다.
-2. `production-build`/`production` Environment, secret scope·rotation, main-only policy, SSH fingerprint와 legacy credential 폐기를 완료한다.
-3. 새 workflow를 처음 사용하기 전에 owner 승인 change window에서 merged `main`의 reviewed runner와 Compose override를 host에 한 번 설치한다. 추천 설정을 생략하면 application과 Compose의 안전 기본값 `AURA`, `false`, `10`을 사용한다.
-4. 구현 image를 immutable digest로 배포한다. Runner는 exact image ID, service version, container state/health와 공개 `/api/v1/jobs`, loopback `/actuator/info`, authenticated `/actuator/prometheus` exact-200 smoke를 확인하며 설정 파일을 수정하거나 recommendation 값을 해석하지 않는다. 이 단계에서 v1은 기존 Aura 동작을 유지하고 v2는 DB를 읽지 않는 503 kill-switch 상태다.
+2. Legacy workflow가 사용하는 repository secret, host의 기존 `/opt/mapleland/update-api.sh`, exact previous image와 수동 rollback 명령을 owner가 read-only로 확인한다.
+3. Owner가 workflow dispatch를 명시적으로 승인하면 `latest-arm64` image를 build/publish하고 기존 Tailscale SSH 경로로 host script를 실행한다. 이 단계에서 v1은 기존 Aura 동작을 유지하고 v2는 DB를 읽지 않는 503 kill-switch 상태다.
+4. Workflow 자체에는 digest pinning, host-key fingerprint와 자동 smoke/rollback 계약이 없으므로 Actions 종료 직후 공개 `/api/v1/jobs`, 기존 dashboard와 application scrape를 수동 확인한다.
 5. 기존 dashboard에서 application scrape와 recommendation panel의 배포 후 상태를 확인한다. 이 확인 전에는 initial rollout을 완료로 표시하지 않는다.
 6. mapleland schema PR, topology equality, 운영 SELECT 권한, full query plan, reverse-proxy rate-limit, Hikari connection 획득 대기 상한과 pool saturation 대응을 검토한다. DDL이 필요하면 owner 승인 뒤 forward SQL만 실행하고 결과를 기록한다.
 7. MySQL 활성화 게이트를 모두 통과한 뒤 owner 승인 host maintenance로 `.env` backup을 남기고 `RECOMMENDATION_V2_ENABLED=true`를 원자적으로 적용한다. Compose rendering을 확인한 뒤 같은 workflow로 재생성해야 running container에 반영된다. v2 익명/로그인 smoke를 소량 수행해 exact contract, bookmark, score/reasons, empty, invalid input, missing Job, 503을 확인한다. 운영 부하 테스트는 하지 않는다.
@@ -304,7 +303,7 @@ bash deploy/observability/alloy/validate.sh
 
 ## rollback
 
-문제가 생기면 request 단위 fallback을 추가하지 않는다. 먼저 root-only 운영 설정의 승인된 backup을 복원하거나 `RECOMMENDATION_V1_ENGINE=AURA`, `RECOMMENDATION_V2_ENABLED=false`를 원자적으로 적용하고 승인된 현재 immutable digest를 runner에 다시 전달해 container 재생성을 완료한 뒤 MySQL recommendation traffic을 drain한다. 이 break-glass config 복구는 image rebuild를 기다리지 않는다. `.env` 편집만으로는 실행 중 process가 바뀌지 않는다. Runner의 자동 image rollback도 현재 config를 재사용하므로 config 오류로 rollback이 실패했다면 config를 먼저 복원한 뒤 승인된 immutable image를 다시 실행한다. 과거 정상 배포 readiness는 21.680초였지만 runner의 polling deadline은 90초이고 config 복구 RTO를 별도로 측정하지 않았으므로 21.680초를 보장값으로 사용하지 않는다. v2를 Aura로 의미 변경하지 않는다. 구현 자체의 회귀라면 승인된 이전 immutable image로 애플리케이션을 rollback한다.
+문제가 생기면 request 단위 fallback을 추가하지 않는다. 먼저 root-only 운영 설정의 승인된 backup을 복원하거나 `RECOMMENDATION_V1_ENGINE=AURA`, `RECOMMENDATION_V2_ENABLED=false`를 원자적으로 적용하고 MySQL recommendation traffic을 drain한다. `.env` 편집만으로는 실행 중 process가 바뀌지 않는다. Legacy workflow에는 자동 rollback과 이전 digest 보존 계약이 없으므로 구현 image 회귀 시 host가 보유한 승인된 이전 image를 owner의 break-glass 절차로 재실행해야 한다. 정확한 이전 image가 확인되지 않으면 새 workflow를 반복 실행하지 않는다. v2를 Aura로 의미 변경하지 않는다.
 
 index rollback은 애플리케이션 rollback과 분리한다. scoring traffic drain과 실행 계획을 확인하고 owner가 승인한 경우에만 schema Issue #131의 rollback SQL을 사용한다. topology 차이를 credential 추가, cross-schema grant, 임시 복제 table로 우회하지 않는다.
 
@@ -313,10 +312,9 @@ index rollback은 애플리케이션 rollback과 분리한다. scoring traffic d
 - MLS-BE production DB와 mapleland DB의 endpoint/schema equality가 확인되지 않았다.
 - production reverse proxy의 recommendation 전용 rate-limit은 확인되지 않아 v2는 default-off다.
 - Hikari connection 획득 대기 상한과 pool saturation 대응은 결정되지 않아 statement timeout만으로 endpoint 전체 wall-clock을 보장하지 않는다.
-- deploy credential은 아직 repository scope에 있고 `production-build`/`production` Environment 이전·rotation은 수행하지 않았다.
+- deploy credential은 legacy workflow 요구대로 repository scope에 있으며 Environment 승인으로 격리되지 않는다.
 - 삭제되는 legacy workflow의 SSH/GHCR repository secret revoke·제거도 아직 수행하지 않았다.
-- `production-build` Environment 생성과 두 Environment의 main-only/admin-bypass hardening은 아직 수행하지 않았다.
-- Runner는 rollback image를 자동 prune하지 않으며 host disk alert를 기준으로 한 owner 승인 retention maintenance가 필요하다.
+- Legacy workflow는 mutable `latest-arm64`, third-party SSH action과 host-local script에 의존하고 자동 rollback을 보장하지 않는다.
 - Firebase service-account key는 기존 방식대로 image layer에 포함되므로 GHCR package read 권한을 key 접근 권한으로 취급해야 한다. Runtime secret mount 전환과 key rotation은 별도 보안 작업이다.
 - production index DDL은 실행하지 않았다.
 - live Grafana dashboard layout/version 갱신은 완료했지만 배포 전이므로 recommendation metric의 live series 검증은 남아 있다.

@@ -2,7 +2,21 @@
 
 이 문서는 Codex task, OAuth 또는 로컬 앱이 재시작돼도 운영 상태를 추측하거나 이미 끝난 작업을 반복하지 않기 위한 비밀값 없는 재개 기준이다. 외부 상태를 변경한 뒤에는 해당 operation의 URL·commit·checksum·검증 결과와 다음 안전 작업을 갱신한다. token, credential, 원본 환경 파일 내용은 기록하지 않는다.
 
-## 2026-07-17 애플리케이션 배포 경로 단순화 (아직 운영 미적용)
+## 2026-07-17 legacy OCI 배포 경로 복원 (아직 운영 미적용)
+
+- Owner가 성공 이력이 있는 [deploy run 28788801815](https://github.com/Team-Maple/MLS-BE/actions/runs/28788801815), commit `c49ee3255afb4ddfa0168ce91783fff368864a4d`의 legacy 배포 구조 복원을 명시적으로 승인했다. 동시 `latest-arm64` overwrite를 막는 `deploy-oci` concurrency와 실제로 쓰지 않는 `id-token: write` 제거만 적용했다.
+- Workflow는 arm64 image를 `latest-arm64`로 build/publish한 뒤 Tailscale과 `appleboy/ssh-action@v1.2.5`로 접속해 host의 `/opt/mapleland/update-api.sh`를 인자 없이 실행한다.
+- `host-preflight`, repository checksum, immutable digest 전달, image metadata/FCM permission gate, 별도 Environment 승인과 native OpenSSH fingerprint 검증은 사용하지 않는다.
+- 새 immutable runner 구현과 전용 CI test는 저장소에서 제거했다. Host의 기존 `/opt/mapleland/update-api.sh`는 이번 작업에서 읽거나 수정하거나 실행하지 않았다.
+- 마지막으로 기록된 active host script SHA-256 `74e714fa058a6a2318b8f842de6ef7c0582da4e460446c844af22b12e43efb26`는 no-arg 실행을 거부하고 `preflight <3 checksums>` 또는 `deploy <3 checksums> <immutable digest>`만 허용한다. 따라서 현재 기록만으로는 복원 workflow와 host가 호환되지 않는다. Read-only host attestation 또는 owner가 별도로 승인한 host script rollback 전에는 workflow를 dispatch하지 않는다.
+- Legacy workflow에는 이전 image 식별·보존·자동 복구 계약이 없다. 첫 dispatch 전에 read-only host attestation으로 exact previous image가 존재하는지와 현재 host script에 맞는 수동 rollback 명령을 확인해 비밀값 없이 checkpoint에 기록해야 한다. 확인 전에는 deploy readiness P1 blocker다.
+- 이 복원은 검증된 운영 단순성을 우선한 명시적 위험 수용이다. `latest-arm64`의 가변성, third-party SSH action, workflow 내부 owner approval 부재, host script의 저장소 밖 drift는 잔여 위험이다. Concurrency는 겹치는 workflow run만 직렬화하며 mutable tag 자체를 immutable하게 만들지 않는다.
+- 실패한 [deploy run 29540196835](https://github.com/Team-Maple/MLS-BE/actions/runs/29540196835)는 deploy 전에 추가 image 검증 script의 Bash `case` 문법 오류로 끝났고 host 변경은 시작되지 않았다.
+- Merge와 운영 workflow dispatch는 owner의 별도 명시적 승인 전에는 수행하지 않는다.
+
+## 폐기된 2026-07-17 immutable 배포 단순화 계획
+
+아래 계획은 구현됐지만 운영 적용 전에 폐기됐다. 현재 배포 절차로 사용하지 않는다.
 
 - 추천 branch의 [deploy run 29531165131](https://github.com/Team-Maple/MLS-BE/actions/runs/29531165131)은 host의 기존 `preflight-host.sh` checksum과 branch의 변경본이 달라 `host-preflight`에서 실패했다. Build, image publish, container pull/recreate와 운영 설정 변경은 시작되지 않았다.
 - 파일 checksum을 확인하는 host script 자체가 새 checksum 계약을 알아야 하는 순환 bootstrap이 원인이었다. 애플리케이션 상태나 추천 코드 문제가 아니다.
@@ -93,14 +107,14 @@
 
 ## 다음 안전 작업
 
-1. PR #35의 최종 CI와 리뷰를 확인하되 owner의 별도 요청 전에는 merge, host runner 전환 또는 운영 배포를 수행하지 않는다.
+1. PR #35의 최종 CI와 리뷰를 확인하되 owner의 별도 요청 전에는 merge 또는 legacy OCI workflow dispatch를 수행하지 않는다.
 2. 반복됐던 Hikari connection validation warning의 발생량과 DB/server timeout·`maxLifetime` 정합성을 별도 후속 작업으로 조사한다.
 3. 인증 재발급 경로의 NullPointerException 재현 조건과 null contract를 별도 후속 작업으로 조사한다.
 4. 운영 traffic이 늘면 active series, Loki 일일 환산량, Alloy RSS/CPU와 alert noise를 같은 30분 gate로 다시 측정한다.
 
 ## 재개 규칙
 
-- Routine GitHub Actions는 `build-and-publish -> production approval -> deploy immutable digest` 순서를 사용하며 production 승인은 deploy job에서 한 번만 받는다. Build와 deploy는 secret·권한·workspace를 공유하지 않는다. Runner·Compose override 자체 변경은 application deploy와 분리한 owner 승인 host maintenance로 수행한다.
+- Routine GitHub Actions는 run `28788801815`와 같은 `build latest-arm64 -> Tailscale SSH -> /opt/mapleland/update-api.sh` 순서를 사용한다. Workflow 내부 owner approval과 immutable digest 보장은 없으므로 dispatch 자체를 owner의 명시적 승인으로 취급하고 종료 직후 공개 API와 dashboard를 수동 확인한다.
 - manual OCI 작업은 1Password 앱 잠금 상태를 추측하지 않는다. 정확한 SSH alias `OracleCloud`를 사용하고 명시적 `SSH_AUTH_SOCK`으로 `ssh-add -l`을 확인한다. 서명 승인 상태가 불명확하면 TTY에서 `ssh-add -T ~/.ssh/1Password/SHA256_QoL9bUNkoXz+boL+ozfL1CHCMCaDSZWulM8S2cVMTWs.pub`를 먼저 실행해 1Password 승인을 받은 뒤 `BatchMode` SSH 연결을 검증한다. `oracle-cloud`처럼 다른 대소문자의 host를 사용해 identity 규칙을 우회하지 않는다.
 - routine deploy는 GitHub Actions의 `ORACLE_SSH_KEY`를 사용한다. 1Password SSH agent는 manual host preparation과 break-glass 확인에만 사용한다.
 - Grafana Cloud MCP는 한 Codex task만 사용한다. 병렬 agent를 시작한 상태에서 Grafana MCP를 초기화하거나 OAuth 재로그인을 반복하지 않는다.

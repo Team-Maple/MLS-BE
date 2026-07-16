@@ -9,51 +9,26 @@ concurrency:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   build-and-publish:
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 20
-    environment:
-      name: production-build
-      deployment: false
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      image_ref: ${{ steps.published_image.outputs.image_ref }}
     env:
       IMAGE_NAME: ghcr.io/team-maple/mls-be/mapleland-api
-      IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-arm64
+      IMAGE_TAG: latest-arm64
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@v4
 
       - name: Restore FCM key file
-        env:
-          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
         run: |
-          set -euo pipefail
-          umask 077
-          firebase_dir=src/main/resources/firebase
-          firebase_key="${firebase_dir}/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json"
-          mkdir -p "${firebase_dir}"
-          printf '%s' "$FIREBASE_KEY" \
-            > "${firebase_key}"
-          test -s "${firebase_key}"
-          jq -e 'type == "object" and .type == "service_account" and
-            (.private_key | type == "string" and length > 0) and
-            (.client_email | type == "string" and length > 0)' \
-            "${firebase_key}" >/dev/null
-          # Paketo launches as uid 1002, gid 1001 while application layers are
-          # owned by 1001:1001. Keep the secret group-readable only so the
-          # runtime process can traverse/read it without making it world-readable.
-          chmod 0750 "${firebase_dir}"
-          chmod 0640 "${firebase_key}"
+          mkdir -p src/main/resources/firebase
+          echo '${{ secrets.FIREBASE_KEY }}' > src/main/resources/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json
 
       - name: Set up JDK 21
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: corretto
@@ -62,45 +37,13 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build jar
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./gradlew clean bootJar
-          jar_path=build/libs/api-0.0.1-SNAPSHOT.jar
-          firebase_dir_mode="$(zipinfo -l "${jar_path}" \
-            'BOOT-INF/classes/firebase/' | awk 'NR == 1 { print $1 }')"
-          firebase_key_mode="$(zipinfo -l "${jar_path}" \
-            'BOOT-INF/classes/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json' \
-            | awk 'NR == 1 { print $1 }')"
-          # ZIP directory entries use '-' in zipinfo's type column; the
-          # trailing slash still materializes this entry as a directory.
-          test "${firebase_dir_mode}" = '-rwxr-x---'
-          test "${firebase_key_mode}" = '-rw-r-----'
+        run: ./gradlew clean bootJar
 
-      - name: Install reviewed pack CLI
-        shell: bash
-        env:
-          PACK_VERSION: 0.40.0
-          PACK_ARCHIVE_SHA256: 2e9f46e422495d8ac7e5078b7f76cdca1c5f53d37783e18e69b7ff737ec440dc
-        run: |
-          set -euo pipefail
-          pack_archive="${RUNNER_TEMP}/pack.tgz"
-          pack_dir="${RUNNER_TEMP}/pack-bin"
-          curl --fail --silent --show-error --location --retry 3 \
-            --output "${pack_archive}" \
-            "https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION}/pack-v${PACK_VERSION}-linux-arm64.tgz"
-          printf '%s  %s\n' "${PACK_ARCHIVE_SHA256}" "${pack_archive}" \
-            | sha256sum --check --status
-          mkdir -p "${pack_dir}"
-          tar --extract --gzip --file "${pack_archive}" \
-            --directory "${pack_dir}" pack
-          test "$(find "${pack_dir}" -mindepth 1 -maxdepth 1 -type f -name pack | wc -l)" -eq 1
-          chmod 0755 "${pack_dir}/pack"
-          "${pack_dir}/pack" version | grep -F "${PACK_VERSION}"
-          printf '%s\n' "${pack_dir}" >> "${GITHUB_PATH}"
+      - name: Set up pack CLI
+        uses: buildpacks/github-actions/setup-pack@v5.11.0
 
       - name: Log in to GHCR
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -110,144 +53,32 @@ jobs:
         run: |
           pack build "${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" \
             --path build/libs/api-0.0.1-SNAPSHOT.jar \
-            --builder paketobuildpacks/builder-noble-java-tiny@sha256:b57aaea99c5d33a944c925498411805d50245085f4515a781dab67abd3729a09 \
-            --run-image paketobuildpacks/ubuntu-noble-run-tiny@sha256:b30bdba17bde5b386cb2b364b69a794a79634b71b75e007789c38f6aba1b73b1 \
+            --builder paketobuildpacks/builder-noble-java-tiny \
             --platform linux/arm64 \
-            --env "BP_IMAGE_LABELS=org.opencontainers.image.revision=${GITHUB_SHA}" \
             --publish
-
-      - name: Resolve published manifest digest
-        id: published_image
-        shell: bash
-        run: |
-          set -euo pipefail
-          image_tag="${IMAGE_NAME}:${IMAGE_TAG}"
-          digest="$(docker buildx imagetools inspect "${image_tag}" \
-            --format '{{json .Manifest}}' | jq -er '.digest')"
-          if [[ ! ${digest} =~ ^sha256:[0-9a-f]{64}$ ]]; then
-            echo 'invalid published image digest' >&2
-            exit 1
-          fi
-          image_ref="${IMAGE_NAME}@${digest}"
-          docker buildx imagetools inspect "${image_ref}" >/dev/null
-          printf 'image_ref=%s\n' "${image_ref}" >> "${GITHUB_OUTPUT}"
-
-      - name: Verify published image FCM permissions
-        shell: bash
-        env:
-          PUBLISHED_IMAGE_REF: ${{ steps.published_image.outputs.image_ref }}
-        run: |
-          set -euo pipefail
-          image_ref="${PUBLISHED_IMAGE_REF}"
-          docker pull "${image_ref}" >/dev/null
-          image_revision="$(docker image inspect --format \
-            '{{ index .Config.Labels "org.opencontainers.image.revision" }}' \
-            "${image_ref}")"
-          test "${image_revision}" = "${GITHUB_SHA}"
-          lifecycle_metadata="$(docker image inspect --format \
-            '{{ index .Config.Labels "io.buildpacks.lifecycle.metadata" }}' \
-            "${image_ref}")"
-          run_image_reference="$(jq -er '.runImage.reference' <<< "${lifecycle_metadata}")"
-          case "${run_image_reference}" in
-            *@sha256:b30bdba17bde5b386cb2b364b69a794a79634b71b75e007789c38f6aba1b73b1 |
-            *@sha256:722b1adf8b657424fe00afa9459a086511974b8a2ac026f7cde536dd5a6d2b88) ;;
-            *) echo 'published image does not use the reviewed run image' >&2; exit 1 ;;
-          esac
-          runtime_user="$(docker image inspect --format '{{.Config.User}}' "${image_ref}")"
-          test "${runtime_user}" = '1002:1001'
-
-          verification_container="fcm-permission-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          cleanup() {
-            docker rm -f "${verification_container}" >/dev/null 2>&1 || true
-          }
-          trap cleanup EXIT
-          docker create --name "${verification_container}" "${image_ref}" >/dev/null
-          metadata="$(docker export "${verification_container}" \
-            | tar --numeric-owner -tvf - \
-            | awk '
-                $NF == "workspace/BOOT-INF/classes/firebase/" {
-                  directory_mode = $1; directory_owner = $2
-                }
-                $NF == "workspace/BOOT-INF/classes/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json" {
-                  key_mode = $1; key_owner = $2
-                }
-                END {
-                  if (!directory_mode || !key_mode) exit 1
-                  print directory_mode, directory_owner, key_mode, key_owner
-                }
-              ')"
-          read -r directory_mode directory_owner key_mode key_owner <<< "${metadata}"
-          test "${directory_mode}" = 'drwxr-x---'
-          test "${directory_owner}" = '1001/1001'
-          test "${key_mode}" = '-rw-r-----'
-          test "${key_owner}" = '1001/1001'
-
-      - name: Log out from GHCR
-        if: always()
-        run: docker logout ghcr.io >/dev/null 2>&1 || true
 
   deploy:
     needs: build-and-publish
-    runs-on: ubuntu-24.04
-    timeout-minutes: 35
-    environment:
-      name: production
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
-      IMAGE_REF: ${{ needs['build-and-publish'].outputs.image_ref }}
+      IMAGE_NAME: ghcr.io/team-maple/mls-be/mapleland-api
+      IMAGE_TAG: latest-arm64
 
     steps:
       - name: Connect to Tailscale
-        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        uses: tailscale/github-action@v4
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
-          version: 1.94.2
-          sha256sum: c6f99a5d774c7783b56902188d69e9756fc3dddfb08ac6be4cb2585f3fecdc32
-          use-cache: false
-          ping: oracle-cloud
 
-      - name: Deploy with OpenSSH
-        shell: bash
-        env:
-          ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
-          ORACLE_SSH_FINGERPRINT: ${{ vars.ORACLE_SSH_FINGERPRINT }}
-        run: |
-          set -euo pipefail
-          [[ ${IMAGE_REF} =~ ^ghcr[.]io/team-maple/mls-be/mapleland-api@sha256:[0-9a-f]{64}$ ]]
-          [[ ${ORACLE_SSH_FINGERPRINT} =~ ^SHA256:[A-Za-z0-9+/]{43}$ ]]
-
-          ssh_dir="${RUNNER_TEMP}/mapleland-ssh"
-          private_key="${ssh_dir}/id"
-          scanned_hosts="${ssh_dir}/scanned_hosts"
-          known_hosts="${ssh_dir}/known_hosts"
-          cleanup() { rm -rf -- "${ssh_dir}"; }
-          trap cleanup EXIT
-
-          install -d -m 0700 "${ssh_dir}"
-          printf '%s\n' "${ORACLE_SSH_KEY}" > "${private_key}"
-          chmod 0600 "${private_key}"
-          ssh-keygen -y -f "${private_key}" >/dev/null
-          ssh-keyscan -T 10 oracle-cloud > "${scanned_hosts}" 2>/dev/null
-          : > "${known_hosts}"
-          while IFS= read -r host_key; do
-            fingerprint="$(printf '%s\n' "${host_key}" \
-              | ssh-keygen -lf - -E sha256 | awk '{print $2}')"
-            if [[ ${fingerprint} == "${ORACLE_SSH_FINGERPRINT}" ]]; then
-              printf '%s\n' "${host_key}" >> "${known_hosts}"
-            fi
-          done < "${scanned_hosts}"
-          test -s "${known_hosts}"
-
-          timeout --kill-after=15s 30m ssh \
-            -i "${private_key}" \
-            -o BatchMode=yes \
-            -o IdentitiesOnly=yes \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile="${known_hosts}" \
-            -o ConnectTimeout=30 \
-            -o ServerAliveInterval=15 \
-            -o ServerAliveCountMax=3 \
-            ubuntu@oracle-cloud "deploy ${IMAGE_REF}"
+      - name: Deploy over Tailscale SSH
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: oracle-cloud
+          username: ubuntu
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          script: |
+            /opt/mapleland/update-api.sh
