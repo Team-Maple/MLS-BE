@@ -247,8 +247,8 @@ versioned dashboard JSON과 live Grafana dashboard UID `mapleland-production-ove
 
 다음 항목이 모두 충족돼야 owner에게 배포 승인을 요청할 수 있다.
 
-- [ ] Issue #34와 구현 draft PR에 v1/v2 계약, 점수 공식, DB 전제, rollout/rollback이 기록됨
-- [ ] 독립 코드 리뷰와 위험 리뷰 finding을 한 라운드로 모아 반영하고 재검증함
+- [x] Issue #34와 draft PR #35에 v1/v2 계약, 점수 공식, DB 전제, rollout/rollback이 기록됨
+- [x] 독립 코드 리뷰와 위험 리뷰 finding을 두 수정 라운드 안에 반영하고 최종 actionable P0-P3 0으로 재검증함
 - [x] 전체 Gradle test와 `bootJar`, 관련 배포/observability 계약 test가 성공함
 - [ ] CI가 성공하고 unresolved required review가 없음
 - [ ] mapleland schema PR의 forward/rollback/preflight SQL과 `EXPLAIN` 근거가 검토됨
