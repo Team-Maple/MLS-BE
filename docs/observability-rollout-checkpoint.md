@@ -7,6 +7,8 @@
 - Issue: [#32](https://github.com/Team-Maple/MLS-BE/issues/32)
 - draft PR: [#33](https://github.com/Team-Maple/MLS-BE/pull/33)
 - 관찰 기능 구현 commit: `f4bf228b934959be125a72540c91e43f003b7b6e`
+- 배포 재발 방지 commit: `5975308806791e026aedfb8a93e728bce47e1450`
+- 재발 방지 CI: [29475104502](https://github.com/Team-Maple/MLS-BE/actions/runs/29475104502) `success`; host-preflight test와 공식 Alloy validation 포함
 - 실패한 deploy run: [29470227414](https://github.com/Team-Maple/MLS-BE/actions/runs/29470227414)
 - 실패한 deploy job: [87532062228](https://github.com/Team-Maple/MLS-BE/actions/runs/29470227414/job/87532062228)
 - 실패 원인: 당시 활성 legacy `/opt/mapleland/update-api.sh`가 root-only `/opt/mapleland/.env`를 shell source해 `Permission denied`가 발생했다. Docker pull, container 재생성 또는 애플리케이션 재시작 전 실패했다.
@@ -22,11 +24,10 @@
 
 ## 다음 안전 작업
 
-1. host preflight, Actions production gate, 테스트와 runbook 변경을 commit/push하고 PR CI를 통과시킨다.
-2. 서비스 재시작 없이 reviewed `preflight-host.sh`를 `/opt/mapleland`에 설치하고, Compose/env/log ACL/Alloy 경계를 준비한다.
-3. 저장소 checksum을 입력한 host preflight가 성공하는지 확인한다. 실패 원인을 해결하기 전 workflow를 재실행하지 않는다.
-4. 운영 배포 영향·health/smoke·rollback·Grafana 확인 절차를 다시 보고하고 별도 승인을 받는다.
-5. 승인 후에만 digest-pinned workflow를 실행하고 behavioral evidence를 이 문서와 PR에 추가한다.
+1. 서비스 재시작 없이 reviewed `preflight-host.sh`를 `/opt/mapleland`에 설치하고, Compose/env/log ACL/Alloy 경계를 준비한다.
+2. 저장소 checksum을 입력한 host preflight가 성공하는지 확인한다. 실패 원인을 해결하기 전 workflow를 재실행하지 않는다.
+3. 운영 배포 영향·health/smoke·rollback·Grafana 확인 절차를 다시 보고하고 별도 승인을 받는다.
+4. 승인 후에만 digest-pinned workflow를 실행하고 behavioral evidence를 이 문서와 PR에 추가한다.
 
 ## 재개 규칙
 
