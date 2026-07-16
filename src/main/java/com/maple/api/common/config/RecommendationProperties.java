@@ -14,7 +14,7 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "recommendation")
 public class RecommendationProperties {
 
-    private String v1Engine = RecommendationEngineType.AURA.name();
+    private RecommendationEngineType v1Engine = RecommendationEngineType.AURA;
 
     private boolean v2Enabled = false;
 

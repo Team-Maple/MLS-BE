@@ -28,9 +28,7 @@ public class MapRecommendationService {
             int jobId,
             Integer limit
     ) {
-        RecommendationEngineType engine = RecommendationEngineType
-                .parse(recommendationProperties.getV1Engine())
-                .orElseThrow(() -> ApiException.of(MapException.MAP_RECOMMENDATION_UNAVAILABLE));
+        RecommendationEngineType engine = recommendationProperties.getV1Engine();
         return recommend(memberId, level, jobId, limit, engine, "v1").stream()
                 .map(MapRecommendationDto::toDto)
                 .toList();

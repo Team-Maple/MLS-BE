@@ -100,7 +100,7 @@ class MapRecommendationServiceTest {
 
     @Test
     void v1CanSelectMysqlWithoutDualReadOrFallback() {
-        properties.setV1Engine("mysql");
+        properties.setV1Engine(RecommendationEngineType.MYSQL);
         when(jobRepository.existsById(110)).thenReturn(true);
         when(mysql.findRecommendations(45, 110, 20)).thenReturn(List.of());
         when(enrichmentService.enrich(null, List.of())).thenReturn(List.of());
@@ -179,17 +179,6 @@ class MapRecommendationServiceTest {
                 org.mockito.ArgumentMatchers.same(databaseFailure)
         );
         verifyNoInteractions(aura, enrichmentService);
-    }
-
-    @Test
-    void invalidV1EngineConfigurationFailsOnlyTheEndpoint() {
-        properties.setV1Engine("not-an-engine");
-
-        assertThatThrownBy(() -> service.recommendV1(null, 45, 110, null))
-                .isInstanceOfSatisfying(ApiException.class, exception ->
-                        assertThat(exception.getExceptionCode()).isEqualTo(MapException.MAP_RECOMMENDATION_UNAVAILABLE));
-
-        verifyNoInteractions(jobRepository, aura, mysql, enrichmentService, observability);
     }
 
     @Test
