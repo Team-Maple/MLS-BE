@@ -170,6 +170,7 @@ validate_app_env() {
           || fail '.env contains duplicate MANAGEMENT_SCRAPE_TOKEN'
         [[ -n ${value} && ${#value} -ge 32 && ${value} =~ ^[[:graph:]]+$ ]] \
           || fail '.env MANAGEMENT_SCRAPE_TOKEN must be at least 32 printable characters'
+        management_scrape_token=${value}
         management_token_seen=true
         ;;
       SERVICE_VERSION)
@@ -186,8 +187,17 @@ validate_app_env() {
     || fail '.env must contain MANAGEMENT_SCRAPE_TOKEN and SERVICE_VERSION'
 }
 
+management_scrape_token=''
 validate_ghcr_env
 validate_app_env
+readonly management_scrape_token
+
+curl_management_prometheus() {
+  local escaped_token=${management_scrape_token//\\/\\\\}
+  escaped_token=${escaped_token//\"/\\\"}
+  printf 'header = "Authorization: Bearer %s"\n' "${escaped_token}" |
+    curl --config - "$@" http://127.0.0.1:18080/actuator/prometheus
+}
 
 base_legacy_count=0
 for legacy_key in URL USERNAME PASSWORD; do
@@ -312,9 +322,9 @@ validate_exact_loopback_listener 12345 false
 management_listener=absent
 if validate_exact_loopback_listener 18080 true; then
   management_listener=loopback
-  curl --fail --silent --show-error --max-time 5 \
-    http://127.0.0.1:18080/actuator/health >/dev/null \
-    || fail 'application management health endpoint failed'
+  curl_management_prometheus \
+    --fail --silent --show-error --max-time 5 >/dev/null \
+    || fail 'authenticated application Prometheus endpoint failed'
 fi
 
 app_container_ids=$(docker compose "${COMPOSE_ARGS[@]}" ps -q mapleland-api)

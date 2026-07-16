@@ -557,12 +557,14 @@ sudo /opt/mapleland/preflight-host.sh \
 
 Preflight는 secret 값이나 rendered Compose를 출력하지 않고 non-secret checksum, current image ID와 management listener 상태로 만든 attestation만 출력한다. checksum mismatch, broad env permission, wildcard listener, Compose boundary 누락, Alloy/readiness/ACL 또는 public smoke 실패가 있으면 원인을 해결하기 전 workflow를 재실행하지 않는다. 특히 active script가 저장소와 다르면 legacy script를 실행해 보는 방식으로 확인하지 않는다.
 
+배포 readiness는 전체 `/actuator/health` 집계를 사용하지 않는다. 이 집계는 선택적 Neo4j 같은 외부 dependency 하나가 `DOWN`이어도 503이 되어, JVM·관리 서버·핵심 MySQL API가 정상인 후보를 불필요하게 롤백할 수 있다. 대신 Bearer 인증된 Prometheus endpoint로 실제 Alloy scrape 경계를 확인하고 `/api/v1/jobs`로 공개 서버와 핵심 DB 경계를 함께 확인한다. Token은 curl config stdin으로만 전달하며 argv와 로그에 남기지 않는다.
+
 승인 요청에는 다음 값을 채운다.
 
 - 예상 중단: 기존 기동 17.742초를 기준으로 정상 20~40초의 단일 컨테이너 교체. readiness hard timeout은 90초이며 실패 시 이전 image 자동 복구까지 최악 약 180초
 - 변경 port: 컨테이너 `18080`, 호스트 `127.0.0.1:18080`만 추가; 공개 port 변화 없음
 - artifact: full commit SHA, run-attempt별 publish tag, build job이 확정한 `repository@sha256:<manifest-digest>`, 실행 전후 exact image ID
-- health: `curl -fsS http://127.0.0.1:18080/actuator/health`
+- management readiness: Bearer 인증된 `http://127.0.0.1:18080/actuator/prometheus`가 성공하고 Prometheus text를 반환
 - public smoke: `curl -fsS http://127.0.0.1:8080/api/v1/jobs`
 - rollback: `/root/mapleland-observability-rollback.env`에 기록된 exact local image tag와 Compose/`.env`/script backup으로 아래 명령 실행
 - Grafana 확인: 아래 PromQL/LogQL 및 Production Overview panel

@@ -151,6 +151,7 @@ if grep -Eq 'GRAFANA_CLOUD_(URL|USERNAME|PASSWORD)' \
 fi
 assert_not_contains "${success_output}" 'fixture-ghcr-secret'
 assert_not_contains "${success_output}" 'fixture-legacy-secret'
+assert_not_contains "${success_output}" 'fixture-management-secret'
 
 rollback_root=${WORK_DIR}/rollback
 setup_fixture "${rollback_root}"
@@ -164,6 +165,7 @@ grep -Eq 'GRAFANA_CLOUD_PASSWORD' "${rollback_root}/opt/mapleland/.env" \
   || fail 'failed deployment unexpectedly removed rollback credentials'
 assert_not_contains "${rollback_output}" 'fixture-ghcr-secret'
 assert_not_contains "${rollback_output}" 'fixture-legacy-secret'
+assert_not_contains "${rollback_output}" 'fixture-management-secret'
 
 gateway_sudo=${WORK_DIR}/gateway-sudo
 gateway_log=${WORK_DIR}/gateway.log

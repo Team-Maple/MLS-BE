@@ -89,7 +89,7 @@ readonly EXPECTED_REPOSITORY=ghcr.io/team-maple/mls-be/mapleland-api
 readonly EXPECTED_REPOSITORY_REGEX='ghcr[.]io/team-maple/mls-be/mapleland-api'
 readonly LEGACY_COMPOSE_ENV_REGEX='^[[:space:]]*-[[:space:]]*GRAFANA_CLOUD_(URL|USERNAME|PASSWORD)='
 readonly LEGACY_APP_ENV_REGEX='^GRAFANA_CLOUD_(URL|USERNAME|PASSWORD)='
-readonly MANAGEMENT_HEALTH_URL=http://127.0.0.1:18080/actuator/health
+readonly MANAGEMENT_PROMETHEUS_URL=http://127.0.0.1:18080/actuator/prometheus
 readonly PUBLIC_SMOKE_URL=http://127.0.0.1:8080/api/v1/jobs
 
 if [[ $# -ne 1 ]]; then
@@ -119,11 +119,35 @@ if [[ ! -f ${APP_ENV_FILE} || -L ${APP_ENV_FILE} ]]; then
   echo "${APP_ENV_FILE} must be a regular, non-symlink file" >&2
   exit 1
 fi
+
 if [[ $(stat -c '%u' "${APP_ENV_FILE}") != 0 ]] \
   || [[ $(stat -c '%a' "${APP_ENV_FILE}") != 600 ]]; then
   echo "${APP_ENV_FILE} must be owned by root with mode 0600" >&2
   exit 1
 fi
+
+management_scrape_token=''
+management_token_count=0
+while IFS= read -r app_env_line || [[ -n ${app_env_line} ]]; do
+  if [[ ${app_env_line} == MANAGEMENT_SCRAPE_TOKEN=* ]]; then
+    management_scrape_token=${app_env_line#*=}
+    management_token_count=$((management_token_count + 1))
+  fi
+done < "${APP_ENV_FILE}"
+if (( management_token_count != 1 )) \
+  || [[ -z ${management_scrape_token} || ${#management_scrape_token} -lt 32 \
+    || ! ${management_scrape_token} =~ ^[[:graph:]]+$ ]]; then
+  echo 'exactly one valid MANAGEMENT_SCRAPE_TOKEN is required' >&2
+  exit 1
+fi
+readonly management_scrape_token
+
+curl_management_prometheus() {
+  local escaped_token=${management_scrape_token//\\/\\\\}
+  escaped_token=${escaped_token//\"/\\\"}
+  printf 'header = "Authorization: Bearer %s"\n' "${escaped_token}" |
+    curl --config - "$@" "${MANAGEMENT_PROMETHEUS_URL}"
+}
 
 base_legacy_count=0
 env_legacy_count=0
@@ -229,6 +253,8 @@ wait_for_readiness() {
   local candidate_image_id
   local candidate_state
   local candidate_health
+  local management_status
+  local public_status
 
   while (( SECONDS < deadline )); do
     candidate_container_id=$(docker compose "${COMPOSE_ARGS[@]}" ps -q mapleland-api)
@@ -249,8 +275,8 @@ wait_for_readiness() {
           continue
         fi
         if [[ ${require_management_health} == false ]] \
-          || curl --fail --silent --max-time 5 \
-            "${MANAGEMENT_HEALTH_URL}" >/dev/null; then
+          || curl_management_prometheus \
+            --fail --silent --max-time 5 >/dev/null; then
           if curl --fail --silent --max-time 5 "${PUBLIC_SMOKE_URL}" >/dev/null; then
             return 0
           fi
@@ -260,7 +286,13 @@ wait_for_readiness() {
     sleep 2
   done
 
+  management_status=$(curl_management_prometheus \
+    --silent --output /dev/null --max-time 5 --write-out '%{http_code}' || true)
+  public_status=$(curl --silent --output /dev/null --max-time 5 \
+    --write-out '%{http_code}' "${PUBLIC_SMOKE_URL}" || true)
   echo "mapleland-api did not become ready within ${READINESS_TIMEOUT_SECONDS}s" >&2
+  printf 'readiness diagnostics: management_prometheus_status=%s public_smoke_status=%s\n' \
+    "${management_status:-000}" "${public_status:-000}" >&2
   return 1
 }
 
