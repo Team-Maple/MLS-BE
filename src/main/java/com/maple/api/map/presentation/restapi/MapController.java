@@ -5,8 +5,10 @@ import com.maple.api.common.presentation.restapi.CountResponse;
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.map.application.MapService;
 import com.maple.api.map.application.dto.*;
+import com.maple.api.map.recommendation.application.MapRecommendationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,6 +39,7 @@ import java.util.List;
 public class MapController {
 
     private final MapService mapService;
+    private final MapRecommendationService mapRecommendationService;
 
     @GetMapping
     @Operation(
@@ -128,21 +131,36 @@ public class MapController {
     @GetMapping("/recommendations")
     @Operation(
             summary = "사냥터 추천",
-            description = "레벨과 직업을 이용해 사냥터를 추천합니다."
+            description = "레벨과 직업을 이용해 사냥터를 추천합니다. 응답 score는 선택 엔진의 실제 점수이며, " +
+                    "MySQL 엔진에서는 APPROVED 근거의 signed freshness contribution 합인 evidence net score입니다. " +
+                    "모바일 strict decoder 호환을 위해 v1 item은 mapId, score, iconUrl, nameKr, bookmarkId만 반환합니다."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "사냥터 추천 결과 조회 성공")
+            @ApiResponse(responseCode = "200", description = "사냥터 추천 결과 조회 성공"),
+            @ApiResponse(responseCode = "400", description = "레벨 또는 limit validation 실패"),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 직업"),
+            @ApiResponse(responseCode = "503", description = "선택된 추천 엔진 또는 추천 schema를 사용할 수 없음")
     })
     public ResponseEntity<ResponseTemplate<List<MapRecommendationDto>>> recommendMaps(
             @Parameter(description = "요청 캐릭터 레벨", example = "100")
             @RequestParam @Min(1) @Max(200) int level,
             @Parameter(description = "요청 직업 ID", example = "100")
             @RequestParam int jobId,
-            @Parameter(description = "반환할 추천 개수 (최대 20)", example = "5")
-            @RequestParam(required = false) @Min(1) @Max(20) Integer limit,
+            @Parameter(
+                    description = "최종 정렬 뒤 적용할 반환 개수",
+                    example = "5",
+                    schema = @Schema(
+                            type = "integer",
+                            format = "int32",
+                            defaultValue = "5",
+                            minimum = "1",
+                            maximum = "20"
+                    )
+            )
+            @RequestParam(defaultValue = "5") @Min(1) @Max(20) Integer limit,
             @AuthenticationPrincipal PrincipalDetails principalDetails) {
         String memberId = principalDetails != null ? principalDetails.getProviderId() : null;
-        List<MapRecommendationDto> recommendations = mapService.recommendMaps(memberId, level, jobId, limit);
+        List<MapRecommendationDto> recommendations = mapRecommendationService.recommendV1(memberId, level, jobId, limit);
         return ResponseEntity.ok(ResponseTemplate.success(recommendations));
     }
 }
