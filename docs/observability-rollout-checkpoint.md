@@ -15,6 +15,8 @@
 - 실패한 deploy run: [29470227414](https://github.com/Team-Maple/MLS-BE/actions/runs/29470227414)
 - 실패한 deploy job: [87532062228](https://github.com/Team-Maple/MLS-BE/actions/runs/29470227414/job/87532062228)
 - 실패 원인: 당시 활성 legacy `/opt/mapleland/update-api.sh`가 root-only `/opt/mapleland/.env`를 shell source해 `Permission denied`가 발생했다. Docker pull, container 재생성 또는 애플리케이션 재시작 전 실패했다.
+- 두 번째 service-mutation 전 실패 run: [29478103871](https://github.com/Team-Maple/MLS-BE/actions/runs/29478103871). GitHub CI key의 `authorized_keys`가 `command="/opt/mapleland/update-api.sh"`를 강제해 요청한 preflight 대신 update script를 `ubuntu`로 실행한 것이 원인이다. 두 번 재현됐으며 build/pull/restart는 시작되지 않았다.
+- 강제 command 보존 설계: `update-api.sh`의 non-root gateway가 stdin의 정확한 단일 line `preflight <3 checksums>` 또는 `deploy <3 checksums> <immutable digest>`만 허용하고 `/usr/bin/sudo -n`으로 고정 root script를 호출한다. SSH forwarding/PTY 제한과 forced entrypoint는 그대로 유지한다.
 - 현재 활성 `/opt/mapleland/update-api.sh` SHA-256: `666c5e6d4bdfc51740bbc1f0bb3c7f07a9644d6798e4181aa7cd0923fa103973`
 - 현재 활성 `/opt/mapleland/preflight-host.sh` SHA-256: `20b9f41dc6256457f2e736818d429ed537a409f47ff71ef3dc7348588af677b2`; Compose 2.38.2가 `create_host_path: false`를 JSON에서 `null`로 생략해 첫 실행이 이 한 조건에서 fail closed했다. 서비스 mutation은 없었고 보강본 설치 대기 상태다.
 - 현재 활성 `/opt/mapleland/docker-compose.observability.yml` SHA-256: `7a0a1f77815f19940b71f07921c7411fb91d12336df93046a6de3c676ef9e8c1`
@@ -29,10 +31,10 @@
 
 ## 다음 안전 작업
 
-1. 최종 checkpoint commit SHA를 `.env`의 `SERVICE_VERSION`으로 갱신하고 Compose 2.38.2 보강 `preflight-host.sh`를 checksum 검증 후 재설치한다.
-2. 저장소의 preflight/update/override checksum을 입력한 host preflight가 성공하는지 확인한다. 실패 원인을 해결하기 전 workflow를 재실행하지 않는다.
-3. 운영 배포 영향·health/smoke·rollback·Grafana 확인 절차를 다시 보고하고 별도 승인을 받는다.
-4. 승인 후에만 digest-pinned workflow를 실행하고 behavioral evidence를 이 문서와 PR에 추가한다.
+1. 최종 gateway commit SHA를 `.env`의 `SERVICE_VERSION`으로 갱신하고 checksum 검증한 `update-api.sh`를 재설치한다.
+2. GitHub forced-command 경로에서 host preflight가 성공하는지 확인한다. 실패 원인을 해결하기 전 build/deploy를 진행하지 않는다.
+3. 이미 받은 운영 배포 승인의 영향·health/smoke·rollback 조건을 유지하고 production Environment gate를 통과한다.
+4. digest-pinned workflow와 behavioral evidence를 이 문서와 PR에 추가한다.
 
 ## 재개 규칙
 

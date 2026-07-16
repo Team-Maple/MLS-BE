@@ -1,7 +1,61 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ ${MAPLELAND_UPDATE_TEST_MODE:-0} == 1 ]]; then
+readonly GATEWAY_SHA256_REGEX='[0-9a-f]{64}'
+readonly GATEWAY_IMAGE_REGEX='ghcr[.]io/team-maple/mls-be/mapleland-api@sha256:[0-9a-f]{64}'
+
+dispatch_forced_command() {
+  local sudo_bin=$1
+  local gateway_command
+  local gateway_input
+  local preflight_sha
+  local update_sha
+  local override_sha
+  local image_ref_from_gateway
+
+  IFS= read -r -N 514 gateway_input || true
+  if [[ ${#gateway_input} -gt 513 ]]; then
+    echo 'CI deployment gateway command is too long' >&2
+    exit 1
+  fi
+  gateway_command=${gateway_input%$'\n'}
+  if [[ -z ${gateway_command} || ${#gateway_command} -gt 512 \
+    || ${gateway_command} == *$'\n'* || ${gateway_command} == *$'\r'* ]]; then
+    echo 'invalid CI deployment gateway command' >&2
+    exit 1
+  fi
+
+  if [[ ${gateway_command} =~ ^preflight\ (${GATEWAY_SHA256_REGEX})\ (${GATEWAY_SHA256_REGEX})\ (${GATEWAY_SHA256_REGEX})$ ]]; then
+    preflight_sha=${BASH_REMATCH[1]}
+    update_sha=${BASH_REMATCH[2]}
+    override_sha=${BASH_REMATCH[3]}
+    exec "${sudo_bin}" -n /opt/mapleland/preflight-host.sh \
+      "${preflight_sha}" "${update_sha}" "${override_sha}"
+  fi
+
+  if [[ ${gateway_command} =~ ^deploy\ (${GATEWAY_SHA256_REGEX})\ (${GATEWAY_SHA256_REGEX})\ (${GATEWAY_SHA256_REGEX})\ (${GATEWAY_IMAGE_REGEX})$ ]]; then
+    preflight_sha=${BASH_REMATCH[1]}
+    update_sha=${BASH_REMATCH[2]}
+    override_sha=${BASH_REMATCH[3]}
+    image_ref_from_gateway=${BASH_REMATCH[4]}
+    "${sudo_bin}" -n /opt/mapleland/preflight-host.sh \
+      "${preflight_sha}" "${update_sha}" "${override_sha}"
+    exec "${sudo_bin}" -n /opt/mapleland/update-api.sh "${image_ref_from_gateway}"
+  fi
+
+  echo 'CI deployment gateway command is not allowlisted' >&2
+  exit 1
+}
+
+if [[ ${MAPLELAND_UPDATE_GATEWAY_TEST_MODE:-0} == 1 ]]; then
+  if (( EUID == 0 )); then
+    echo 'gateway test mode is forbidden for root' >&2
+    exit 1
+  fi
+  readonly gateway_sudo_bin=${MAPLELAND_UPDATE_GATEWAY_SUDO_BIN:?gateway test sudo path is required}
+  [[ ${gateway_sudo_bin} == /* && -x ${gateway_sudo_bin} ]]
+  dispatch_forced_command "${gateway_sudo_bin}"
+elif [[ ${MAPLELAND_UPDATE_TEST_MODE:-0} == 1 ]]; then
   if (( EUID == 0 )); then
     echo 'test mode is forbidden for root' >&2
     exit 1
@@ -12,11 +66,9 @@ if [[ ${MAPLELAND_UPDATE_TEST_MODE:-0} == 1 ]]; then
     exit 1
   fi
   readonly READINESS_TIMEOUT_SECONDS=2
+elif (( EUID != 0 )); then
+  dispatch_forced_command /usr/bin/sudo
 else
-  if (( EUID != 0 )); then
-    echo 'update-api.sh must run as root' >&2
-    exit 1
-  fi
   readonly ROOT_PREFIX=''
   readonly READINESS_TIMEOUT_SECONDS=90
 fi

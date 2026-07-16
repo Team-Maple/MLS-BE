@@ -165,4 +165,53 @@ grep -Eq 'GRAFANA_CLOUD_PASSWORD' "${rollback_root}/opt/mapleland/.env" \
 assert_not_contains "${rollback_output}" 'fixture-ghcr-secret'
 assert_not_contains "${rollback_output}" 'fixture-legacy-secret'
 
+gateway_sudo=${WORK_DIR}/gateway-sudo
+gateway_log=${WORK_DIR}/gateway.log
+# The single-quoted body is written to the executable mock.
+# shellcheck disable=SC2016
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'set -euo pipefail' \
+  'printf "%s\\n" "$*" >> "${FAKE_GATEWAY_LOG:?}"' \
+  > "${gateway_sudo}"
+chmod +x "${gateway_sudo}"
+
+preflight_sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+update_sha=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+override_sha=cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+: > "${gateway_log}"
+printf 'preflight %s %s %s\n' \
+  "${preflight_sha}" "${update_sha}" "${override_sha}" |
+  env MAPLELAND_UPDATE_GATEWAY_TEST_MODE=1 \
+    MAPLELAND_UPDATE_GATEWAY_SUDO_BIN="${gateway_sudo}" \
+    FAKE_GATEWAY_LOG="${gateway_log}" \
+    "${BASH}" "${UPDATE_SCRIPT}"
+[[ $(cat "${gateway_log}") == \
+  "-n /opt/mapleland/preflight-host.sh ${preflight_sha} ${update_sha} ${override_sha}" ]] \
+  || fail 'gateway did not dispatch the exact preflight allowlist'
+
+: > "${gateway_log}"
+printf 'deploy %s %s %s %s\n' \
+  "${preflight_sha}" "${update_sha}" "${override_sha}" "${IMAGE_REF}" |
+  env MAPLELAND_UPDATE_GATEWAY_TEST_MODE=1 \
+    MAPLELAND_UPDATE_GATEWAY_SUDO_BIN="${gateway_sudo}" \
+    FAKE_GATEWAY_LOG="${gateway_log}" \
+    "${BASH}" "${UPDATE_SCRIPT}"
+expected_gateway_log=$(printf '%s\n%s' \
+  "-n /opt/mapleland/preflight-host.sh ${preflight_sha} ${update_sha} ${override_sha}" \
+  "-n /opt/mapleland/update-api.sh ${IMAGE_REF}")
+[[ $(cat "${gateway_log}") == "${expected_gateway_log}" ]] \
+  || fail 'gateway did not keep preflight and immutable deploy in the allowlist'
+
+: > "${gateway_log}"
+if printf 'preflight %s %s %s\nuname -a\n' \
+  "${preflight_sha}" "${update_sha}" "${override_sha}" |
+  env MAPLELAND_UPDATE_GATEWAY_TEST_MODE=1 \
+    MAPLELAND_UPDATE_GATEWAY_SUDO_BIN="${gateway_sudo}" \
+    FAKE_GATEWAY_LOG="${gateway_log}" \
+    "${BASH}" "${UPDATE_SCRIPT}" >/dev/null 2>&1; then
+  fail 'gateway should reject multiline input'
+fi
+[[ ! -s ${gateway_log} ]] || fail 'rejected gateway input reached sudo'
+
 echo 'update-api tests passed'
