@@ -561,7 +561,7 @@ Preflight는 secret 값이나 rendered Compose를 출력하지 않고 non-secret
 
 후보가 한 번이라도 자동 재시작되면 startup crash로 간주해 90초를 모두 기다리지 않고 롤백한다. 롤백 전에 해당 컨테이너의 `.State`와 timestamp가 포함된 최근 Docker 로그 500줄을 `/var/log/mapleland-deploy/last-failure/`에 보존한다. 디렉터리는 root 전용 `0700`, 파일은 `0600`이며 같은 경로를 교체하므로 실패마다 무한히 누적되지 않는다. 이 로그는 운영 로그 정책 적용 전 startup 출력이므로 credential이나 식별자가 포함됐다고 가정하고 CI·Issue·PR에 원문을 붙이지 않는다. 원인 분석 후 `sudo rm -rf /var/log/mapleland-deploy/last-failure`로 제거한다.
 
-Paketo image의 application layer는 `1001:1001`, runtime process는 `1002:1001`이다. GitHub Actions가 복원하는 Firebase resource가 `0700/0600`이면 memory calculator가 `/workspace/BOOT-INF/classes/firebase`를 순회하지 못해 JVM 실행 전에 종료된다. Restore 단계는 비어 있지 않은 service-account JSON인지 출력 없이 확인하고 directory `0750`, key file `0640`을 적용한다. bootJar의 Unix mode를 publish 전에 검사하고, publish된 image의 실제 non-root runtime user가 directory를 순회하고 key를 읽을 수 있는지도 container smoke check로 확인한다. 따라서 mutable builder의 UID/GID가 바뀌어도 deploy job 전에 fail closed한다. Key는 world-readable하지 않고 값·내용·checksum을 workflow 출력에 기록하지 않는다.
+Paketo image의 application layer는 `1001:1001`, runtime process는 `1002:1001`이다. GitHub Actions가 복원하는 Firebase resource가 `0700/0600`이면 memory calculator가 `/workspace/BOOT-INF/classes/firebase`를 순회하지 못해 JVM 실행 전에 종료된다. Restore 단계는 비어 있지 않은 service-account JSON인지 출력 없이 확인하고 directory `0750`, key file `0640`을 적용한다. bootJar의 Unix mode를 publish 전에 검사하고, shell이 없는 tiny image는 시작하지 않은 container의 exported metadata에서 실제 `Config.User`, directory/file owner와 mode를 다시 확인한다. 따라서 mutable builder의 UID/GID가 바뀌어도 deploy job 전에 fail closed한다. Key는 world-readable하지 않고 값·내용·checksum을 workflow 출력에 기록하지 않는다.
 
 승인 요청에는 다음 값을 채운다.
 

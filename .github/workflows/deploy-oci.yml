@@ -139,22 +139,40 @@ jobs:
             --platform linux/arm64 \
             --publish
 
-      - name: Verify runtime can read FCM key
+      - name: Verify published image FCM permissions
         shell: bash
         run: |
           set -euo pipefail
           image_ref="${IMAGE_NAME}:${IMAGE_TAG}"
           docker pull "${image_ref}" >/dev/null
           runtime_user="$(docker image inspect --format '{{.Config.User}}' "${image_ref}")"
-          case "${runtime_user}" in
-            ''|0|0:*|root|root:*)
-              echo 'published image must use an explicit non-root runtime user' >&2
-              exit 1
-              ;;
-          esac
-          docker run --rm --entrypoint /bin/sh "${image_ref}" -ceu \
-            'test -x /workspace/BOOT-INF/classes/firebase &&
-             test -r /workspace/BOOT-INF/classes/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json'
+          test "${runtime_user}" = '1002:1001'
+
+          verification_container="fcm-permission-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            docker rm -f "${verification_container}" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker create --name "${verification_container}" "${image_ref}" >/dev/null
+          metadata="$(docker export "${verification_container}" \
+            | tar --numeric-owner -tvf - \
+            | awk '
+                $NF == "workspace/BOOT-INF/classes/firebase/" {
+                  directory_mode = $1; directory_owner = $2
+                }
+                $NF == "workspace/BOOT-INF/classes/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json" {
+                  key_mode = $1; key_owner = $2
+                }
+                END {
+                  if (!directory_mode || !key_mode) exit 1
+                  print directory_mode, directory_owner, key_mode, key_owner
+                }
+              ')"
+          read -r directory_mode directory_owner key_mode key_owner <<< "${metadata}"
+          test "${directory_mode}" = 'drwxr-x---'
+          test "${directory_owner}" = '1001/1001'
+          test "${key_mode}" = '-rw-r-----'
+          test "${key_owner}" = '1001/1001'
 
       - name: Resolve published manifest digest
         id: published_image
