@@ -3,6 +3,10 @@ name: Deploy Spring Boot App to Oracle Cloud
 on:
   workflow_dispatch:
 
+concurrency:
+  group: deploy-oci
+  cancel-in-progress: false
+
 permissions:
   contents: read
   packages: write
@@ -11,18 +15,24 @@ permissions:
 jobs:
   build-and-publish:
     runs-on: ubuntu-24.04-arm
+    outputs:
+      image_ref: ${{ steps.published_image.outputs.image_ref }}
     env:
       IMAGE_NAME: ghcr.io/team-maple/mls-be/mapleland-api
-      IMAGE_TAG: latest-arm64
+      IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-arm64
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Restore FCM key file
+        env:
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
         run: |
+          umask 077
           mkdir -p src/main/resources/firebase
-          echo '${{ secrets.FIREBASE_KEY }}' > src/main/resources/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json
+          printf '%s' "$FIREBASE_KEY" \
+            > src/main/resources/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -54,6 +64,21 @@ jobs:
             --platform linux/arm64 \
             --publish
 
+      - name: Resolve published manifest digest
+        id: published_image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_tag="${IMAGE_NAME}:${IMAGE_TAG}"
+          digest="$(docker buildx imagetools inspect "$image_tag" \
+            --format '{{json .Manifest}}' | jq -er '.digest')"
+          if [[ ! $digest =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "invalid published image digest" >&2
+            exit 1
+          fi
+          docker buildx imagetools inspect "${IMAGE_NAME}@${digest}" >/dev/null
+          printf 'image_ref=%s@%s\n' "$IMAGE_NAME" "$digest" >> "$GITHUB_OUTPUT"
+
   deploy:
     needs: build-and-publish
     runs-on: ubuntu-latest
@@ -61,8 +86,7 @@ jobs:
       id-token: write
       contents: read
     env:
-      IMAGE_NAME: ghcr.io/team-maple/mls-be/mapleland-api
-      IMAGE_TAG: latest-arm64
+      IMAGE_REF: ${{ needs['build-and-publish'].outputs.image_ref }}
 
     steps:
       - name: Connect to Tailscale
@@ -79,4 +103,5 @@ jobs:
           username: ubuntu
           key: ${{ secrets.ORACLE_SSH_KEY }}
           script: |
-            /opt/mapleland/update-api.sh
+            sudo /opt/mapleland/update-api.sh \
+              "${{ env.IMAGE_REF }}"

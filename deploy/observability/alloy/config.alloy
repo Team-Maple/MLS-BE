@@ -1,0 +1,344 @@
+// Mapleland production telemetry pipeline.
+// Validated with Grafana Alloy v1.17.1. Runtime secrets are read from the
+// root-owned /etc/alloy/alloy.env systemd EnvironmentFile.
+
+prometheus.exporter.unix "host" {
+	// Keep only the collectors required by the first-phase dashboard. The
+	// downstream metric allowlist provides a second cardinality boundary.
+	set_collectors = [
+		"cpu",
+		"filesystem",
+		"loadavg",
+		"meminfo",
+		"netdev",
+		"uname",
+	]
+
+	filesystem {
+		fs_types_exclude     = "^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$"
+		mount_points_exclude = "^/(dev|proc|run/credentials/.+|sys|var/lib/docker/.+)($|/)"
+		mount_timeout        = "5s"
+	}
+
+	netdev {
+		// Ignore loopback and ephemeral container/VPN interfaces. The OCI VM's
+		// primary eth*/en* interface remains visible.
+		device_exclude = "^(lo|veth.*|docker.*|br-.*|tailscale.*)$"
+	}
+}
+
+discovery.relabel "host" {
+	targets = prometheus.exporter.unix.host.targets
+
+	rule {
+		target_label = "job"
+		replacement  = "integrations/unix"
+	}
+
+	rule {
+		target_label = "instance"
+		replacement  = sys.env("ALLOY_HOST_NAME")
+	}
+
+	rule {
+		target_label = "service_name"
+		replacement  = "mapleland-host"
+	}
+
+	rule {
+		target_label = "deployment_environment"
+		replacement  = "prod"
+	}
+
+	rule {
+		target_label = "cloud_provider"
+		replacement  = "oci"
+	}
+}
+
+prometheus.scrape "host" {
+	targets         = discovery.relabel.host.output
+	scrape_interval = "60s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.relabel.host.receiver]
+}
+
+prometheus.relabel "host" {
+	forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+
+	rule {
+		action        = "keep"
+		source_labels = ["__name__"]
+		regex         = "^(up|node_cpu_seconds_total|node_load(1|5|15)|node_memory_(MemTotal|MemAvailable|MemFree|Buffers|Cached|SReclaimable)_bytes|node_filesystem_(size|avail|free)_bytes|node_filesystem_readonly|node_network_(receive|transmit)_(bytes|errs|drop)_total|node_uname_info)$"
+	}
+}
+
+prometheus.scrape "application" {
+	targets = [{
+		"__address__"            = "127.0.0.1:18080",
+		"job"                    = "mapleland-api",
+		"instance"               = sys.env("ALLOY_HOST_NAME"),
+		"service_name"           = "mapleland-api",
+		"deployment_environment" = "prod",
+		"cloud_provider"         = "oci",
+	}]
+
+	metrics_path    = "/actuator/prometheus"
+	scrape_interval = "60s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.relabel.application.receiver]
+
+	// Docker publishes the management port on host loopback, while this bearer
+	// token also denies direct access from peers on the container networks.
+	authorization {
+		type        = "Bearer"
+		credentials = sys.env("MANAGEMENT_SCRAPE_TOKEN")
+	}
+}
+
+prometheus.relabel "application" {
+	forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+
+	// Preserve only the metrics needed for RED, JVM, process, and HikariCP
+	// views. Route-template `uri` remains; high-cardinality identifiers do not.
+	rule {
+		action        = "keep"
+		source_labels = ["__name__"]
+		regex         = "^(up|http_server_requests_seconds_(bucket|count|sum|max)|jvm_memory_(used|committed|max)_bytes|jvm_gc_pause_seconds_(bucket|count|sum|max)|jvm_threads_(live|daemon|peak|states)_threads|process_(cpu|memory|resident|virtual|uptime|start|files).*|system_cpu_(usage|count)|hikaricp_connections_(active|idle|pending|max|min|timeout_total|acquire_seconds_(bucket|count|sum|max)|creation_seconds_(bucket|count|sum|max)|usage_seconds_(bucket|count|sum|max)))$"
+	}
+
+	rule {
+		action = "labeldrop"
+		regex  = "(?i)^(member_?id|user_?id|request_?id|trace_?id|span_?id|query(_.*)?|raw_?url)$"
+	}
+}
+
+// Scrape Alloy's own localhost-only endpoint so parse failures, delivery
+// failures, and the agent's CPU/RSS can be observed without exposing its UI.
+prometheus.scrape "alloy" {
+	targets = [{
+		"__address__"            = "127.0.0.1:12345",
+		"job"                    = "alloy",
+		"instance"               = sys.env("ALLOY_HOST_NAME"),
+		"service_name"           = "alloy",
+		"deployment_environment" = "prod",
+		"cloud_provider"         = "oci",
+	}]
+
+	scrape_interval = "60s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.relabel.alloy.receiver]
+}
+
+prometheus.relabel "alloy" {
+	forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+
+	rule {
+		action        = "keep"
+		source_labels = ["__name__"]
+		regex         = "^(up|process_cpu_seconds_total|process_resident_memory_bytes|loki_source_file_(read_lines_total|read_bytes_total|files_active_total)|loki_process_custom_ecs_(log_lines|valid_json_lines)_total|loki_process_truncated_fields_total|loki_write_(batch_retries|dropped_bytes|dropped_entries|sent_bytes|sent_entries)_total|prometheus_remote_storage_.*)$"
+	}
+}
+
+prometheus.remote_write "grafana_cloud" {
+	endpoint {
+		name           = "grafana-cloud-metrics"
+		url            = sys.env("GRAFANA_CLOUD_METRICS_URL")
+		remote_timeout = "30s"
+
+		basic_auth {
+			username = sys.env("GRAFANA_CLOUD_METRICS_USERNAME")
+			password = sys.env("GRAFANA_CLOUD_METRICS_API_TOKEN")
+		}
+	}
+}
+
+loki.source.file "application" {
+	// Only exact active paths are tailed. Rolled files aren't globbed because
+	// positions are keyed by path: a renamed file would otherwise look new and
+	// be read from offset zero, duplicating every line already read while active.
+	targets = [
+		{
+			"__path__"               = "/var/log/mapleland-api/mapleland-api.json",
+			"service_name"           = "mapleland-api",
+			"deployment_environment" = "prod",
+			"cloud_provider"         = "oci",
+		},
+		{
+			// This isolated file is created only for the runbook's rotation test.
+			// Never rename the Spring-owned active application log by hand.
+			"__path__"               = "/var/log/mapleland-api/observability-rotation-test.json",
+			"service_name"           = "mapleland-api",
+			"deployment_environment" = "prod",
+			"cloud_provider"         = "oci",
+		},
+	]
+
+	forward_to    = [loki.process.application.receiver]
+	tail_from_end = false
+	// Prefer a possible duplicate to silently losing unread local data if a
+	// positions entry is corrupt. Normal restarts resume from the saved offset.
+	on_positions_file_error = "restart_from_beginning"
+
+	file_match {
+		enabled           = true
+		sync_period       = "10s"
+		ignore_older_than = "720h"
+	}
+
+	file_watch {
+		min_poll_frequency = "1s"
+		max_poll_frequency = "5s"
+	}
+}
+
+// loki.write has a bounded in-memory retry queue rather than a stable WAL.
+// Operators copy only an incident's unsent time range into this directory for
+// explicit replay; the separate component keeps primary file positions intact.
+loki.source.file "application_recovery" {
+	targets = [{
+		"__path__"               = "/var/lib/alloy/recovery/*.json",
+		"service_name"           = "mapleland-api",
+		"deployment_environment" = "prod",
+		"cloud_provider"         = "oci",
+	}]
+
+	forward_to              = [loki.process.application.receiver]
+	tail_from_end           = false
+	on_positions_file_error = "restart_from_beginning"
+
+	file_match {
+		enabled           = true
+		sync_period       = "10s"
+		ignore_older_than = "720h"
+	}
+
+	file_watch {
+		min_poll_frequency = "1s"
+		max_poll_frequency = "5s"
+	}
+}
+
+loki.process "application" {
+	forward_to = [loki.write.grafana_cloud.receiver]
+
+	stage.json {
+		expressions = {
+			ecs_timestamp                = "\"@timestamp\"",
+			level                        = "\"log.level\"",
+			logger                       = "\"log.logger\"",
+			thread                       = "\"process.thread.name\"",
+			process_pid                  = "\"process.pid\"",
+			service_name                 = "\"service.name\"",
+			deployment_environment       = "\"service.environment\"",
+			service_version              = "\"service.version\"",
+			event_action                 = "\"event.action\"",
+			event_outcome                = "\"event.outcome\"",
+			event_category               = "\"event.category\"",
+			http_request_method          = "\"http.request.method\"",
+			http_response_status_code    = "\"http.response.status_code\"",
+			http_route                   = "\"http.route\"",
+			error_type                   = "\"error.type\"",
+			error_message                = "\"error.message\"",
+			trace_id                     = "\"trace.id\"",
+			span_id                      = "\"span.id\"",
+			request_id                   = "\"request.id\"",
+			mapleland_batch_type         = "\"mapleland.batch.type\"",
+			mapleland_batch_record_count = "\"mapleland.batch.record_count\"",
+			mapleland_external_system    = "\"mapleland.external.system\"",
+		}
+		drop_malformed = false
+	}
+
+	// The delta between these counters is the invalid/unexpected ECS JSON line
+	// count. Both counters have no dynamic labels and are scraped above.
+	stage.metrics {
+		metric.counter {
+			name              = "ecs_log_lines_total"
+			description       = "ECS log lines observed before JSON validation."
+			match_all         = true
+			action            = "inc"
+			max_idle_duration = "24h"
+		}
+
+		metric.counter {
+			name              = "ecs_valid_json_lines_total"
+			description       = "Valid Mapleland ECS JSON lines observed."
+			source            = "service_name"
+			value             = "mapleland-api"
+			action            = "inc"
+			max_idle_duration = "24h"
+		}
+	}
+
+	stage.timestamp {
+		source            = "ecs_timestamp"
+		format            = "RFC3339Nano"
+		fallback_formats  = ["RFC3339"]
+		action_on_failure = "skip"
+	}
+
+	stage.labels {
+		values = {
+			service_name           = "service_name",
+			deployment_environment = "deployment_environment",
+			level                  = "level",
+		}
+	}
+
+	// These fields are queryable without creating indexed Loki streams. The
+	// original ECS JSON line is deliberately retained as the log body, so all
+	// ECS and mapleland.* fields remain available through `| json` as well.
+	stage.structured_metadata {
+		values = {
+			logger                       = "logger",
+			thread                       = "thread",
+			process_pid                  = "process_pid",
+			service_version              = "service_version",
+			event_action                 = "event_action",
+			event_outcome                = "event_outcome",
+			event_category               = "event_category",
+			http_request_method          = "http_request_method",
+			http_response_status_code    = "http_response_status_code",
+			http_route                   = "http_route",
+			error_type                   = "error_type",
+			error_message                = "error_message",
+			trace_id                     = "trace_id",
+			span_id                      = "span_id",
+			request_id                   = "request_id",
+			mapleland_batch_type         = "mapleland_batch_type",
+			mapleland_batch_record_count = "mapleland_batch_record_count",
+			mapleland_external_system    = "mapleland_external_system",
+		}
+	}
+
+	// Cardinality contract: these are the only indexed Loki labels. In
+	// particular, filename, host, request/trace IDs, routes, and user data are
+	// never promoted to labels.
+	stage.label_keep {
+		values = [
+			"service_name",
+			"deployment_environment",
+			"level",
+			"cloud_provider",
+		]
+	}
+}
+
+loki.write "grafana_cloud" {
+	endpoint {
+		name                = "grafana-cloud-logs"
+		url                 = sys.env("GRAFANA_CLOUD_LOGS_URL")
+		batch_size          = "512KiB"
+		batch_wait          = "2s"
+		remote_timeout      = "10s"
+		min_backoff_period  = "500ms"
+		max_backoff_period  = "30s"
+		max_backoff_retries = 10
+
+		basic_auth {
+			username = sys.env("GRAFANA_CLOUD_LOGS_USERNAME")
+			password = sys.env("GRAFANA_CLOUD_LOGS_API_TOKEN")
+		}
+	}
+}

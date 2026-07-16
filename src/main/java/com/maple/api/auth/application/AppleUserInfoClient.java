@@ -2,6 +2,7 @@ package com.maple.api.auth.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.maple.api.common.logging.SafeExceptionLog;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +37,12 @@ public class AppleUserInfoClient {
 
       PublicKey publicKey = getApplePublicKeyByKid(kid);
       if (publicKey == null) {
-        log.warn("Apple public key not found for kid: {}", kid);
+        log.atWarn()
+          .addKeyValue("event.action", "external.identity-token.verify")
+          .addKeyValue("event.outcome", "failure")
+          .addKeyValue("error.type", "apple_public_key_not_found")
+          .addKeyValue("mapleland.external.system", "apple")
+          .log("Apple identity token verification key was not found");
         return null;
       }
 
@@ -48,7 +54,11 @@ public class AppleUserInfoClient {
 
       return claims.getSubject(); // Apple 고유 사용자 ID
     } catch (Exception e) {
-      log.error("Apple ID Token 검증 실패", e);
+      SafeExceptionLog.addException(log.atError(), e)
+        .addKeyValue("event.action", "external.identity-token.verify")
+        .addKeyValue("event.outcome", "failure")
+        .addKeyValue("mapleland.external.system", "apple")
+        .log("Apple identity token verification failed");
       return null;
     }
   }
@@ -91,7 +101,11 @@ public class AppleUserInfoClient {
       JsonNode kidNode = rootNode.get("kid");
       return kidNode != null ? kidNode.asText() : null;
     } catch (Exception e) {
-      log.error("Failed to parse kid from idToken header", e);
+      SafeExceptionLog.addException(log.atWarn(), e)
+        .addKeyValue("event.action", "external.identity-token.parse")
+        .addKeyValue("event.outcome", "failure")
+        .addKeyValue("mapleland.external.system", "apple")
+        .log("Apple identity token header parsing failed");
       return null;
     }
   }

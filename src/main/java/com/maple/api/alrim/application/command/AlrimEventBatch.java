@@ -2,6 +2,7 @@ package com.maple.api.alrim.application.command;
 
 import com.maple.api.alrim.domain.Alrim;
 import com.maple.api.alrim.domain.AlrimType;
+import com.maple.api.common.logging.SafeExceptionLog;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -35,9 +36,18 @@ public class AlrimEventBatch {
       commandBatchMediator.saveAll(noticesWithoutExisting);
       fcmCandidates.addAll(noticesWithoutExisting);
 
-      log.info("공지사항 배치 저장 완료 {}", noticesWithoutExisting.size());
+      log.atInfo()
+        .addKeyValue("event.action", "batch.persist")
+        .addKeyValue("event.outcome", "success")
+        .addKeyValue("mapleland.batch.type", "notice")
+        .addKeyValue("mapleland.batch.record_count", noticesWithoutExisting.size())
+        .log("Notice batch persisted");
     } catch (Exception e) {
-      log.error("공지사항 배치 저장 실패", e);
+      SafeExceptionLog.addException(log.atError(), e)
+        .addKeyValue("event.action", "batch.persist")
+        .addKeyValue("event.outcome", "failure")
+        .addKeyValue("mapleland.batch.type", "notice")
+        .log("Notice batch persistence failed");
     }
 
     // STEP 02. 패치노트
@@ -47,9 +57,18 @@ public class AlrimEventBatch {
       commandBatchMediator.saveAll(patchNotesWithoutExisting);
       fcmCandidates.addAll(patchNotesWithoutExisting);
 
-      log.info("패치노트 배치 저장 완료 {}", patchNotesWithoutExisting.size());
+      log.atInfo()
+        .addKeyValue("event.action", "batch.persist")
+        .addKeyValue("event.outcome", "success")
+        .addKeyValue("mapleland.batch.type", "patch-note")
+        .addKeyValue("mapleland.batch.record_count", patchNotesWithoutExisting.size())
+        .log("Patch note batch persisted");
     } catch (Exception e) {
-      log.error("패치노트 배치 저장 실패", e);
+      SafeExceptionLog.addException(log.atError(), e)
+        .addKeyValue("event.action", "batch.persist")
+        .addKeyValue("event.outcome", "failure")
+        .addKeyValue("mapleland.batch.type", "patch-note")
+        .log("Patch note batch persistence failed");
     }
 
     // STEP 03. 새로운 이벤트 처리
@@ -62,9 +81,18 @@ public class AlrimEventBatch {
       // 종료 상태 반영 및 누락된 진행중 이벤트 종료 처리
       mapleLandAlrimBatchService.syncEventOutdatedStatusFromCrawl(events);
 
-      log.info("이벤트 배치 저장 완료 {}", eventsWithoutExisting.size());
+      log.atInfo()
+        .addKeyValue("event.action", "batch.persist")
+        .addKeyValue("event.outcome", "success")
+        .addKeyValue("mapleland.batch.type", "event")
+        .addKeyValue("mapleland.batch.record_count", eventsWithoutExisting.size())
+        .log("Event batch persisted");
     } catch (Exception e) {
-      log.error("이벤트 배치 저장 실패", e);
+      SafeExceptionLog.addException(log.atError(), e)
+        .addKeyValue("event.action", "batch.persist")
+        .addKeyValue("event.outcome", "failure")
+        .addKeyValue("mapleland.batch.type", "event")
+        .log("Event batch persistence failed");
     }
 
     // STEP 05. Fcm 전송 (FCM 은 도메인 이벤트보다는 어플리케이션 이벤트 레벨로 처리)

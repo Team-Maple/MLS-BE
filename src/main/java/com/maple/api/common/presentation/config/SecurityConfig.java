@@ -12,6 +12,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 
 @Configuration
 @RequiredArgsConstructor
@@ -22,6 +23,7 @@ public class SecurityConfig {
   private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
   private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
   private final JwtSecurityAdapter jwtSecurityAdapter;
+  private final ManagementPrometheusSecurityFilter managementPrometheusSecurityFilter;
 
   @Bean
   public PasswordEncoder passwordEncoder() {
@@ -44,6 +46,8 @@ public class SecurityConfig {
         customizer
           .requestMatchers("/actuator/health").permitAll()
           .requestMatchers("/actuator/info").permitAll()
+          // This endpoint is mapped only on the loopback-bound management server.
+          .requestMatchers("/actuator/prometheus").permitAll()
           .requestMatchers("/api/v1/auth/login/**").permitAll()
           .requestMatchers("/api/v1/auth/signup/**").permitAll()
           .requestMatchers("/api/v1/auth/reissue").permitAll()
@@ -61,6 +65,7 @@ public class SecurityConfig {
           .requestMatchers("/api/v2/alrim/list/**").permitAll()
           .anyRequest().authenticated()
       )
+      .addFilterBefore(managementPrometheusSecurityFilter, AuthorizationFilter.class)
       .with(jwtSecurityAdapter, Customizer.withDefaults());
 
     return http.build();

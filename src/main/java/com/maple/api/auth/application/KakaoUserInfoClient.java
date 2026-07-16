@@ -1,6 +1,7 @@
 package com.maple.api.auth.application;
 
 import com.maple.api.auth.application.dto.KakaoUserInfo;
+import com.maple.api.common.logging.SafeExceptionLog;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -31,7 +32,11 @@ public class KakaoUserInfoClient {
 
       return response.getBody();
     } catch (Exception e) {
-      log.error("카카오 사용자 정보 조회 실패", e);
+      SafeExceptionLog.addException(log.atError(), e)
+        .addKeyValue("event.action", "external.user-info.fetch")
+        .addKeyValue("event.outcome", "failure")
+        .addKeyValue("mapleland.external.system", "kakao")
+        .log("Kakao user information request failed");
       return null;
     }
   }

@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly COMPOSE_FILE=/opt/mapleland/docker-compose.yml
+readonly GHCR_ENV_FILE=/opt/mapleland/ghcr.env
+readonly EXPECTED_REPOSITORY=ghcr.io/team-maple/mls-be/mapleland-api
+readonly EXPECTED_REPOSITORY_REGEX='ghcr[.]io/team-maple/mls-be/mapleland-api'
+readonly READINESS_TIMEOUT_SECONDS=90
+readonly MANAGEMENT_HEALTH_URL=http://127.0.0.1:18080/actuator/health
+readonly PUBLIC_SMOKE_URL=http://127.0.0.1:8080/api/v1/jobs
+
+if [[ ${EUID} -ne 0 ]]; then
+  echo "update-api.sh must run as root" >&2
+  exit 1
+fi
+
+if [[ $# -ne 1 ]]; then
+  echo "usage: update-api.sh <immutable-image-reference>" >&2
+  exit 1
+fi
+
+readonly image_ref=$1
+if [[ ! ${image_ref} =~ ^${EXPECTED_REPOSITORY_REGEX}@sha256:[0-9a-f]{64}$ ]]; then
+  echo "refusing mutable or unexpected image reference" >&2
+  exit 1
+fi
+
+if [[ ! -f ${GHCR_ENV_FILE} || -L ${GHCR_ENV_FILE} ]]; then
+  echo "${GHCR_ENV_FILE} must be a regular, non-symlink file" >&2
+  exit 1
+fi
+if [[ $(stat -c '%u' "${GHCR_ENV_FILE}") != 0 ]] \
+  || [[ $(stat -c '%a' "${GHCR_ENV_FILE}") != 600 ]]; then
+  echo "${GHCR_ENV_FILE} must be owned by root with mode 0600" >&2
+  exit 1
+fi
+
+ghcr_user=''
+ghcr_token=''
+ghcr_user_seen=false
+ghcr_token_seen=false
+while IFS= read -r credential_line || [[ -n ${credential_line} ]]; do
+  case ${credential_line} in
+    ''|'#'*)
+      continue
+      ;;
+  esac
+
+  if [[ ${credential_line} != *=* ]]; then
+    echo "invalid credential line in ${GHCR_ENV_FILE}" >&2
+    exit 1
+  fi
+  credential_key=${credential_line%%=*}
+  credential_value=${credential_line#*=}
+  if [[ -z ${credential_value} || ! ${credential_value} =~ ^[[:graph:]]+$ ]]; then
+    echo "credential values must be non-empty printable tokens" >&2
+    exit 1
+  fi
+
+  case ${credential_key} in
+    GHCR_USER)
+      if [[ ${ghcr_user_seen} == true ]]; then
+        echo "duplicate GHCR_USER in ${GHCR_ENV_FILE}" >&2
+        exit 1
+      fi
+      ghcr_user=${credential_value}
+      ghcr_user_seen=true
+      ;;
+    GHCR_TOKEN)
+      if [[ ${ghcr_token_seen} == true ]]; then
+        echo "duplicate GHCR_TOKEN in ${GHCR_ENV_FILE}" >&2
+        exit 1
+      fi
+      ghcr_token=${credential_value}
+      ghcr_token_seen=true
+      ;;
+    *)
+      echo "unexpected credential key in ${GHCR_ENV_FILE}: ${credential_key}" >&2
+      exit 1
+      ;;
+  esac
+done < "${GHCR_ENV_FILE}"
+
+if [[ ${ghcr_user_seen} != true || ${ghcr_token_seen} != true ]]; then
+  echo "GHCR_USER and GHCR_TOKEN are both required in ${GHCR_ENV_FILE}" >&2
+  exit 1
+fi
+
+compose_image=''
+rollback_tag=''
+rollback_image_id=''
+rollback_armed=false
+
+wait_for_readiness() {
+  local expected_image_id=$1
+  local require_management_health=${2:-true}
+  local deadline=$((SECONDS + READINESS_TIMEOUT_SECONDS))
+  local candidate_container_id
+  local candidate_image_id
+  local candidate_state
+  local candidate_health
+
+  while (( SECONDS < deadline )); do
+    candidate_container_id=$(docker compose -f "${COMPOSE_FILE}" ps -q mapleland-api)
+    if [[ -n ${candidate_container_id} ]]; then
+      candidate_image_id=$(docker inspect "${candidate_container_id}" --format '{{.Image}}')
+      candidate_state=$(docker inspect "${candidate_container_id}" --format '{{.State.Status}}')
+      candidate_health=$(docker inspect "${candidate_container_id}" \
+        --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}')
+
+      if [[ ${candidate_image_id} == "${expected_image_id}" \
+        && ${candidate_state} == running \
+        && ( ${candidate_health} == none || ${candidate_health} == healthy ) ]]; then
+        if [[ ${require_management_health} == false ]] \
+          || curl --fail --silent --max-time 5 \
+            "${MANAGEMENT_HEALTH_URL}" >/dev/null; then
+          if curl --fail --silent --max-time 5 "${PUBLIC_SMOKE_URL}" >/dev/null; then
+            return 0
+          fi
+        fi
+      fi
+    fi
+    sleep 2
+  done
+
+  echo "mapleland-api did not become ready within ${READINESS_TIMEOUT_SECONDS}s" >&2
+  return 1
+}
+
+rollback_deployment() {
+  echo "deployment failed; rolling back to ${rollback_tag}" >&2
+  docker image tag "${rollback_tag}" "${compose_image}" || return 1
+  docker compose -f "${COMPOSE_FILE}" up \
+    -d --no-deps --force-recreate --pull never mapleland-api || return 1
+  wait_for_readiness "${rollback_image_id}" false || return 1
+  echo "mapleland-api rollback completed with exact previous image" >&2
+}
+
+cleanup() {
+  local status=$?
+  trap - EXIT INT TERM
+  if (( status != 0 )) && [[ ${rollback_armed} == true ]]; then
+    if ! rollback_deployment; then
+      echo "automatic rollback failed; operator intervention is required" >&2
+      status=1
+    fi
+  fi
+  docker logout ghcr.io >/dev/null 2>&1 || true
+  exit "${status}"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+printf '%s' "${ghcr_token}" | docker login ghcr.io -u "${ghcr_user}" --password-stdin
+ghcr_token=''
+docker pull "${image_ref}"
+expected_image_id=$(docker image inspect "${image_ref}" --format '{{.Id}}')
+
+mapfile -t configured_images < <(docker compose -f "${COMPOSE_FILE}" config --images)
+for configured_image in "${configured_images[@]}"; do
+  if [[ ${configured_image} == "${EXPECTED_REPOSITORY}:"* ]]; then
+    if [[ -n ${compose_image} ]]; then
+      echo "multiple mapleland-api image references found in Compose configuration" >&2
+      exit 1
+    fi
+    compose_image=${configured_image}
+  fi
+done
+: "${compose_image:?mapleland-api image is missing from Compose configuration}"
+
+previous_container_id=$(docker compose -f "${COMPOSE_FILE}" ps -q mapleland-api)
+if [[ -z ${previous_container_id} ]]; then
+  echo "a running mapleland-api container is required for safe rollback" >&2
+  exit 1
+fi
+rollback_image_id=$(docker inspect "${previous_container_id}" --format '{{.Image}}')
+docker image inspect "${rollback_image_id}" >/dev/null
+rollback_stamp=$(date -u +%Y%m%dT%H%M%S%N)
+rollback_image_short=${rollback_image_id#sha256:}
+rollback_tag="${EXPECTED_REPOSITORY}:rollback-${rollback_stamp}-${rollback_image_short:0:12}-$$"
+docker image tag "${rollback_image_id}" "${rollback_tag}"
+rollback_armed=true
+echo "previous image preserved as ${rollback_tag}"
+
+# Keep the current Compose contract while making its local tag point at the exact
+# digest-pinned image. --pull never prevents a concurrent registry resolution.
+docker image tag "${image_ref}" "${compose_image}"
+docker compose -f "${COMPOSE_FILE}" up \
+  -d --no-deps --force-recreate --pull never mapleland-api
+
+wait_for_readiness "${expected_image_id}" true
+
+echo "mapleland-api is running the requested immutable image"

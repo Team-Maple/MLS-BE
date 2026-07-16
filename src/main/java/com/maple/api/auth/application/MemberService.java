@@ -39,7 +39,9 @@ public class MemberService {
 
   @Transactional
   public MemberDto createMember(CreateMemberRequestDto createMemberRequestDto) {
-    log.info("Create member with memberId: {}", createMemberRequestDto.getProviderId());
+    log.atInfo()
+      .addKeyValue("event.action", "member.create")
+      .log("Member creation requested");
     Member result = memberRepository.save(new Member(
       createMemberRequestDto.getProviderId(),
       createMemberRequestDto.getProvider(),
@@ -52,7 +54,9 @@ public class MemberService {
 
   @Transactional
   public MemberDto updateNickname(String memberId, String nickName) {
-    log.info("Update member with memberId: {} / nickName: {}", memberId, nickName);
+    log.atInfo()
+      .addKeyValue("event.action", "member.nickname.update")
+      .log("Member nickname update requested");
 
     return memberRepository.findById(memberId)
       .map(m -> {
@@ -65,7 +69,9 @@ public class MemberService {
 
   @Transactional
   public MemberDto updateMarketingAgreement(String memberId, Boolean marketingAgreement) {
-    log.info("Update member with memberId: {} / marketingAgreement: {}", memberId, marketingAgreement);
+    log.atInfo()
+      .addKeyValue("event.action", "member.marketing-agreement.update")
+      .log("Member marketing agreement update requested");
 
     return memberRepository.findById(memberId)
       .map(m -> {
@@ -78,7 +84,9 @@ public class MemberService {
 
   @Transactional
   public MemberDto updateFcmToken(String memberId, String fcmToken) {
-    log.info("Update member with memberId: {} / fcmToken: {}", memberId, fcmToken);
+    log.atInfo()
+      .addKeyValue("event.action", "member.notification-token.update")
+      .log("Member notification token update requested");
 
     return memberRepository.findById(memberId)
       .map(m -> {
@@ -128,7 +136,9 @@ public class MemberService {
 
   @Transactional
   public void deleteMember(String memberId) {
-    log.info("Deleting member with memberId: {}", memberId);
+    log.atInfo()
+      .addKeyValue("event.action", "member.delete")
+      .log("Member deletion requested");
     memberRepository.deleteById(memberId);
   }
 }

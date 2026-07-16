@@ -1,5 +1,6 @@
 package com.maple.api.map.application.command;
 
+import com.maple.api.common.logging.SafeExceptionLog;
 import com.maple.api.map.repository.MapRecommendationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,9 +22,17 @@ public class AuraDbKeepAliveBatch {
     public void keepAlive() {
         try {
             mapRecommendationRepository.ping();
-            log.info("AuraDB keep-alive 성공");
+            log.atInfo()
+                .addKeyValue("event.action", "external.keep-alive")
+                .addKeyValue("event.outcome", "success")
+                .addKeyValue("mapleland.batch.type", "auradb-keep-alive")
+                .log("AuraDB keep-alive completed");
         } catch (Exception e) {
-            log.error("AuraDB keep-alive 실패", e);
+            SafeExceptionLog.addException(log.atError(), e)
+                .addKeyValue("event.action", "external.keep-alive")
+                .addKeyValue("event.outcome", "failure")
+                .addKeyValue("mapleland.batch.type", "auradb-keep-alive")
+                .log("AuraDB keep-alive failed");
         }
     }
 }

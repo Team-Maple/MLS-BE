@@ -10,6 +10,7 @@ import com.maple.api.alrim.domain.AlrimType;
 import com.maple.api.alrim.repository.AlrimReadRepository;
 import com.maple.api.alrim.repository.AlrimRepository;
 import com.maple.api.auth.domain.PrincipalDetails;
+import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -83,7 +84,7 @@ public class AlrimControllerE2ETest {
       int size = 5;
 
       // when: 요청 1
-      CursorPage<AlrimDTOWithReadInfo> response = objectMapper.readValue(
+      CursorPage<AlrimDTOWithReadInfo> response = objectMapper.<ResponseTemplate<CursorPage<AlrimDTOWithReadInfo>>>readValue(
         mockMvc.perform(get("/api/v1/alrim/all")
             .param("pageSize", String.valueOf(size))
             .with(user(LoginedUser))
@@ -91,7 +92,7 @@ public class AlrimControllerE2ETest {
           .andExpect(status().isOk())
           .andReturn().getResponse().getContentAsString(),
         new TypeReference<>() {}
-      );
+      ).getData();
 
       // then: 기대값 검증 1
       List<AlrimDTOWithReadInfo> content = response.getContents();
@@ -102,7 +103,7 @@ public class AlrimControllerE2ETest {
       LocalDateTime cursorDate = content.getLast().alrim().date();
 
       // MockMVC 요청 2
-      CursorPage<AlrimDTOWithReadInfo> response2 = objectMapper.readValue(
+      CursorPage<AlrimDTOWithReadInfo> response2 = objectMapper.<ResponseTemplate<CursorPage<AlrimDTOWithReadInfo>>>readValue(
         mockMvc.perform(get("/api/v1/alrim/all")
             .with(user(LoginedUser))
             .param("pageSize", String.valueOf(size))
@@ -112,7 +113,7 @@ public class AlrimControllerE2ETest {
           .andReturn().getResponse().getContentAsString(),
         new TypeReference<>() {
         }
-      );
+      ).getData();
 
       // then: 기대값 검증 2
       assertThat(response2.getContents().getFirst().alrim().date()).isBefore(cursorDate);
@@ -157,11 +158,11 @@ public class AlrimControllerE2ETest {
 
       String json = result.getResponse().getContentAsString();
 
-      CursorPage<AlrimDTOWithReadInfo> response = objectMapper.readValue(
+      CursorPage<AlrimDTOWithReadInfo> response = objectMapper.<ResponseTemplate<CursorPage<AlrimDTOWithReadInfo>>>readValue(
         json,
-        new TypeReference<CursorPage<AlrimDTOWithReadInfo>>() {
+        new TypeReference<>() {
         }
-      );
+      ).getData();
 
       // then: 기대값 검증 1
       List<AlrimDTOWithReadInfo> content = response.getContents();
