@@ -19,9 +19,11 @@
 - 세 번째 service-mutation 전 실패 run: [29478686691](https://github.com/Team-Maple/MLS-BE/actions/runs/29478686691). 강제 entrypoint가 요청 명령을 stdin에서 읽었지만 OpenSSH는 이를 `SSH_ORIGINAL_COMMAND`에 제공하므로 빈 입력으로 거부했다. Build/pull/restart는 시작되지 않았다.
 - 첫 실제 전환 run: [29478910973](https://github.com/Team-Maple/MLS-BE/actions/runs/29478910973). GitHub forced-command preflight와 digest-pinned build/pull은 성공했다. 후보는 실행 중이고 대표 DB API도 응답했지만 기존 management `/actuator/health` readiness 조건이 90초 안에 성공하지 않아 exact 이전 image `sha256:1b9b13b75debfe76ad755f618738bd63972a270b78d03f90d50133ee277fa3af`로 자동 롤백됐으며 공개 API 정상 상태를 재확인했다.
 - readiness 보강: 전체 health는 선택적 외부 contributor 때문에 후보 생존성과 무관하게 503일 수 있다. 후보의 실제 Alloy 경계인 Bearer 인증 `/actuator/prometheus`와 대표 공개 DB API를 함께 확인하도록 변경하며, token은 curl config stdin에만 전달한다. Root health 최소 응답 계약은 통합 테스트로 유지한다.
+- 두 번째 실제 전환 run: [29479980205](https://github.com/Team-Maple/MLS-BE/actions/runs/29479980205). 후보는 약 90초 동안 HTTP listener를 만들지 못했고 Docker journal에서 동일 container task가 반복 종료된 crash loop를 확인했다. `management_prometheus_status=000`, `public_smoke_status=000`이었으며 exact 이전 image로 자동 롤백 후 공개 API 200, restart count 0을 확인했다.
+- 진단 보강 후보: 후보의 첫 restart를 즉시 실패로 판정하고 rollback 전에 root-only `/var/log/mapleland-deploy/last-failure/`에 state와 최근 500줄을 보존한다. CI/PR에는 원문을 출력하지 않으며 다음 진단 rollout 후 root에서만 읽고 제거한다.
 - 강제 command 보존 설계: `update-api.sh`의 non-root gateway가 OpenSSH의 `SSH_ORIGINAL_COMMAND`에서 정확한 단일 line `preflight <3 checksums>` 또는 `deploy <3 checksums> <immutable digest>`만 허용하고 `/usr/bin/sudo -n`으로 고정 root script를 호출한다. SSH forwarding/PTY 제한과 forced entrypoint는 그대로 유지한다.
-- 현재 활성 `/opt/mapleland/update-api.sh` SHA-256: `30f2e84cbb388952a3b0e39427ce54a9542c7609580a30612f7af1b54696f6e7`; authenticated Prometheus readiness 후보 SHA-256은 `062d8cd638c2878f6bcea8c4bf09538ca2038b8e38988994357af1e4438174c6`다.
-- 현재 활성 `/opt/mapleland/preflight-host.sh` SHA-256: `564adb32cd0f028c9b813d4d1d1e1ab02fda615b5caef788339c449eb60d12f1`; authenticated Prometheus preflight 후보 SHA-256은 `860fab026264378684f7d02c373fa7bc8fefb0216a97ffafc866cd5c5093e413`다.
+- 현재 활성 `/opt/mapleland/update-api.sh` SHA-256: `062d8cd638c2878f6bcea8c4bf09538ca2038b8e38988994357af1e4438174c6`; restart-loop 진단 후보 SHA-256은 `74e714fa058a6a2318b8f842de6ef7c0582da4e460446c844af22b12e43efb26`다.
+- 현재 활성 `/opt/mapleland/preflight-host.sh` SHA-256: `860fab026264378684f7d02c373fa7bc8fefb0216a97ffafc866cd5c5093e413`.
 - 현재 활성 `/opt/mapleland/docker-compose.observability.yml` SHA-256: `7a0a1f77815f19940b71f07921c7411fb91d12336df93046a6de3c676ef9e8c1`
 - root-only rollback backup: `/root/mapleland-observability-20260716T063108Z-1466ebe`; `/root/mapleland-observability-rollback.env`와 exact previous-image tag 생성 완료
 - 현재 운영 app image ID: `sha256:1b9b13b75debfe76ad755f618738bd63972a270b78d03f90d50133ee277fa3af`
@@ -34,9 +36,9 @@
 
 ## 다음 안전 작업
 
-1. Authenticated Prometheus readiness 보강을 CI에서 검증하고 최종 commit SHA/checksum으로 active script와 `.env`를 갱신한다.
-2. GitHub forced-command preflight를 재확인한 뒤 기존 영향·smoke·rollback 조건으로 production Environment gate를 통과한다.
-3. 운영 metrics/ECS log/rotation/Alloy 재시작과 Grafana dashboard·alert behavioral evidence를 수집한다.
+1. Restart-loop 진단 보강을 CI에서 검증하고 최종 commit SHA/checksum으로 active update script와 `.env`를 갱신한다.
+2. 승인된 진단 rollout에서 root-only startup 로그를 보존하고 exact image rollback과 공개 API 복구를 확인한다.
+3. 보존 로그로 원인을 수정한 뒤 운영 재적용, metrics/ECS log/rotation/Alloy 재시작과 Grafana dashboard·alert behavioral evidence를 수집한다.
 4. 실패·롤백 및 최종 digest-pinned rollout evidence를 PR에 추가한다.
 
 ## 재개 규칙

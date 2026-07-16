@@ -559,6 +559,8 @@ Preflight는 secret 값이나 rendered Compose를 출력하지 않고 non-secret
 
 배포 readiness는 전체 `/actuator/health` 집계를 사용하지 않는다. 이 집계는 선택적 Neo4j 같은 외부 dependency 하나가 `DOWN`이어도 503이 되어, JVM·관리 서버·핵심 MySQL API가 정상인 후보를 불필요하게 롤백할 수 있다. 대신 Bearer 인증된 Prometheus endpoint로 실제 Alloy scrape 경계를 확인하고 `/api/v1/jobs`로 공개 서버와 핵심 DB 경계를 함께 확인한다. Token은 curl config stdin으로만 전달하며 argv와 로그에 남기지 않는다.
 
+후보가 한 번이라도 자동 재시작되면 startup crash로 간주해 90초를 모두 기다리지 않고 롤백한다. 롤백 전에 해당 컨테이너의 `.State`와 timestamp가 포함된 최근 Docker 로그 500줄을 `/var/log/mapleland-deploy/last-failure/`에 보존한다. 디렉터리는 root 전용 `0700`, 파일은 `0600`이며 같은 경로를 교체하므로 실패마다 무한히 누적되지 않는다. 이 로그는 운영 로그 정책 적용 전 startup 출력이므로 credential이나 식별자가 포함됐다고 가정하고 CI·Issue·PR에 원문을 붙이지 않는다. 원인 분석 후 `sudo rm -rf /var/log/mapleland-deploy/last-failure`로 제거한다.
+
 승인 요청에는 다음 값을 채운다.
 
 - 예상 중단: 기존 기동 17.742초를 기준으로 정상 20~40초의 단일 컨테이너 교체. readiness hard timeout은 90초이며 실패 시 이전 image 자동 복구까지 최악 약 180초

@@ -91,6 +91,8 @@ readonly LEGACY_COMPOSE_ENV_REGEX='^[[:space:]]*-[[:space:]]*GRAFANA_CLOUD_(URL|
 readonly LEGACY_APP_ENV_REGEX='^GRAFANA_CLOUD_(URL|USERNAME|PASSWORD)='
 readonly MANAGEMENT_PROMETHEUS_URL=http://127.0.0.1:18080/actuator/prometheus
 readonly PUBLIC_SMOKE_URL=http://127.0.0.1:8080/api/v1/jobs
+DEPLOY_DIAGNOSTIC_ROOT=$(host_path /var/log/mapleland-deploy)
+readonly DEPLOY_DIAGNOSTIC_ROOT
 
 if [[ $# -ne 1 ]]; then
   echo "usage: update-api.sh <immutable-image-reference>" >&2
@@ -245,22 +247,109 @@ compose_env_file=''
 compose_candidate_file=''
 COMPOSE_ARGS=()
 
+capture_failure_diagnostics() (
+  local container_id=$1
+  local diagnostic_dir=${DEPLOY_DIAGNOSTIC_ROOT}/last-failure
+  local diagnostic_tmp
+
+  umask 077
+  trap 'if [[ -n ${diagnostic_tmp:-} \
+    && ${diagnostic_tmp} == "${DEPLOY_DIAGNOSTIC_ROOT}"/.last-failure.* \
+    && -d ${diagnostic_tmp} && ! -L ${diagnostic_tmp} ]]; then \
+      rm -rf -- "${diagnostic_tmp}"; \
+    fi' EXIT
+
+  if [[ -L ${DEPLOY_DIAGNOSTIC_ROOT} \
+    || ( -e ${DEPLOY_DIAGNOSTIC_ROOT} && ! -d ${DEPLOY_DIAGNOSTIC_ROOT} ) ]]; then
+    echo 'deployment diagnostic root is not a safe directory' >&2
+    return 1
+  fi
+  mkdir -p "${DEPLOY_DIAGNOSTIC_ROOT}" \
+    || { echo 'could not create deployment diagnostic root' >&2; return 1; }
+  chown root:root "${DEPLOY_DIAGNOSTIC_ROOT}" \
+    || { echo 'could not own deployment diagnostic root' >&2; return 1; }
+  chmod 0700 "${DEPLOY_DIAGNOSTIC_ROOT}" \
+    || { echo 'could not protect deployment diagnostic root' >&2; return 1; }
+
+  if [[ -L ${diagnostic_dir} \
+    || ( -e ${diagnostic_dir} && ! -d ${diagnostic_dir} ) ]]; then
+    echo 'deployment diagnostic target is not a safe directory' >&2
+    return 1
+  fi
+
+  diagnostic_tmp=$(mktemp -d "${DEPLOY_DIAGNOSTIC_ROOT}/.last-failure.XXXXXX") \
+    || { echo 'could not create temporary deployment diagnostics' >&2; return 1; }
+  chown root:root "${diagnostic_tmp}" \
+    || { echo 'could not own temporary deployment diagnostics' >&2; return 1; }
+  chmod 0700 "${diagnostic_tmp}" \
+    || { echo 'could not protect temporary deployment diagnostics' >&2; return 1; }
+
+  if ! docker inspect "${container_id}" --format '{{json .State}}' \
+    > "${diagnostic_tmp}/state.json"; then
+    printf '%s\n' '{"diagnostic":"container state unavailable"}' \
+      > "${diagnostic_tmp}/state.json" \
+      || { echo 'could not write fallback container state' >&2; return 1; }
+  fi
+  docker logs --timestamps --tail 500 "${container_id}" \
+    > "${diagnostic_tmp}/container.log" 2>&1 || true
+  printf 'captured_at=%s\ncontainer_id=%s\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${container_id}" \
+    > "${diagnostic_tmp}/metadata" \
+    || { echo 'could not write deployment diagnostic metadata' >&2; return 1; }
+  chmod 0600 \
+    "${diagnostic_tmp}/state.json" \
+    "${diagnostic_tmp}/container.log" \
+    "${diagnostic_tmp}/metadata" \
+    || { echo 'could not protect deployment diagnostic files' >&2; return 1; }
+  chown root:root \
+    "${diagnostic_tmp}/state.json" \
+    "${diagnostic_tmp}/container.log" \
+    "${diagnostic_tmp}/metadata" \
+    || { echo 'could not own deployment diagnostic files' >&2; return 1; }
+
+  rm -rf -- "${diagnostic_dir}" \
+    || { echo 'could not replace prior deployment diagnostics' >&2; return 1; }
+  mv "${diagnostic_tmp}" "${diagnostic_dir}" \
+    || { echo 'could not publish deployment diagnostics' >&2; return 1; }
+  diagnostic_tmp=''
+  echo 'candidate diagnostics saved to /var/log/mapleland-deploy/last-failure' >&2
+)
+
 wait_for_readiness() {
   local expected_image_id=$1
   local require_management_health=${2:-true}
   local deadline=$((SECONDS + READINESS_TIMEOUT_SECONDS))
-  local candidate_container_id
+  local candidate_container_id=''
+  local observed_container_id
   local candidate_image_id
   local candidate_state
   local candidate_health
+  local candidate_restart_count
   local management_status
   local public_status
 
   while (( SECONDS < deadline )); do
-    candidate_container_id=$(docker compose "${COMPOSE_ARGS[@]}" ps -q mapleland-api)
+    observed_container_id=$(docker compose "${COMPOSE_ARGS[@]}" \
+      ps --all -q mapleland-api)
+    if [[ -n ${observed_container_id} ]]; then
+      candidate_container_id=${observed_container_id}
+    fi
     if [[ -n ${candidate_container_id} ]]; then
+      candidate_restart_count=$(docker inspect "${candidate_container_id}" \
+        --format '{{.RestartCount}}')
+      if [[ ${candidate_restart_count} =~ ^[0-9]+$ ]] \
+        && (( candidate_restart_count > 0 )); then
+        capture_failure_diagnostics "${candidate_container_id}" || true
+        echo "candidate entered a restart loop (restart_count=${candidate_restart_count})" >&2
+        return 1
+      fi
       candidate_image_id=$(docker inspect "${candidate_container_id}" --format '{{.Image}}')
       candidate_state=$(docker inspect "${candidate_container_id}" --format '{{.State.Status}}')
+      if [[ ${candidate_state} == exited || ${candidate_state} == dead ]]; then
+        capture_failure_diagnostics "${candidate_container_id}" || true
+        echo "candidate stopped before readiness (state=${candidate_state})" >&2
+        return 1
+      fi
       candidate_health=$(docker inspect "${candidate_container_id}" \
         --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}')
 
@@ -286,6 +375,9 @@ wait_for_readiness() {
     sleep 2
   done
 
+  if [[ -n ${candidate_container_id} ]]; then
+    capture_failure_diagnostics "${candidate_container_id}" || true
+  fi
   management_status=$(curl_management_prometheus \
     --silent --output /dev/null --max-time 5 --write-out '%{http_code}' || true)
   public_status=$(curl --silent --output /dev/null --max-time 5 \

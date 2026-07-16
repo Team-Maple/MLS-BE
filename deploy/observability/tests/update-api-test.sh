@@ -71,7 +71,10 @@ printf '%s\n' \
   '        [[ ${2:-} == --images ]] && printf "%s\\n" ghcr.io/team-maple/mls-be/mapleland-api:latest-arm64' \
   '        exit 0 ;;' \
   '      ps)' \
-  '        [[ $(cat "$state_file") == old ]] && printf "%s\\n" old-container || printf "%s\\n" new-container' \
+  '        all=false' \
+  '        shift' \
+  '        for argument in "$@"; do [[ $argument == --all ]] && all=true; done' \
+  '        if [[ $(cat "$state_file") == old ]]; then printf "%s\\n" old-container; elif [[ ${FAKE_NEW_STATE:-running} != exited || $all == true ]]; then printf "%s\\n" new-container; fi' \
   '        exit 0 ;;' \
   '      up)' \
   '        if [[ $combined == true ]]; then printf "%s\\n" combined >> "$up_log"; printf "%s\\n" new > "$state_file"; else printf "%s\\n" base >> "$up_log"; printf "%s\\n" old > "$state_file"; fi' \
@@ -81,13 +84,16 @@ printf '%s\n' \
   '    target=${2:-}' \
   '    format=${4:-}' \
   '    case $format in' \
-  '      *State.Status*) printf "%s\\n" running ;;' \
+  '      *RestartCount*) if [[ $(cat "$state_file") == new ]]; then printf "%s\\n" "${FAKE_NEW_RESTART_COUNT:-0}"; else printf "%s\\n" 0; fi ;;' \
+  '      *json*.State*) printf "%s\\n" "{\\"Status\\":\\"running\\",\\"ExitCode\\":0,\\"OOMKilled\\":false}" ;;' \
+  '      *State.Status*) if [[ $(cat "$state_file") == new ]]; then printf "%s\\n" "${FAKE_NEW_STATE:-running}"; else printf "%s\\n" running; fi ;;' \
   '      *State.Health*) printf "%s\\n" healthy ;;' \
   '      *Config.Env*)' \
   '        if [[ $target == new-container && ${FAKE_NEW_HAS_LEGACY:-0} == 1 ]]; then printf "%s\\n" GRAFANA_CLOUD_PASSWORD=fixture-legacy-secret; else printf "%s\\n" SPRING_PROFILES_ACTIVE=prod; fi ;;' \
   '      *.Image*) [[ $target == old-container ]] && printf "%s\\n" sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa || printf "%s\\n" sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb ;;' \
   '    esac' \
   '    exit 0 ;;' \
+  '  logs) printf "%s\\n" "fixture startup failure"; exit 0 ;;' \
   'esac' \
   'exit 1' > "${FAKE_BIN}/docker"
 
@@ -166,6 +172,37 @@ grep -Eq 'GRAFANA_CLOUD_PASSWORD' "${rollback_root}/opt/mapleland/.env" \
 assert_not_contains "${rollback_output}" 'fixture-ghcr-secret'
 assert_not_contains "${rollback_output}" 'fixture-legacy-secret'
 assert_not_contains "${rollback_output}" 'fixture-management-secret'
+[[ -f ${rollback_root}/var/log/mapleland-deploy/last-failure/state.json ]] \
+  || fail 'failed candidate state was not preserved before rollback'
+[[ $(cat "${rollback_root}/var/log/mapleland-deploy/last-failure/container.log") == \
+  'fixture startup failure' ]] \
+  || fail 'failed candidate logs were not preserved before rollback'
+
+restart_root=${WORK_DIR}/restart
+setup_fixture "${restart_root}"
+if restart_output=$(run_update "${restart_root}" FAKE_NEW_RESTART_COUNT=1 2>&1); then
+  fail 'a candidate restart should fail the deployment'
+fi
+[[ $(cat "${restart_root}/state") == old ]] \
+  || fail 'restarted candidate did not roll back to the previous image'
+[[ ${restart_output} == *'candidate entered a restart loop (restart_count=1)'* ]] \
+  || fail 'candidate restart was not diagnosed explicitly'
+[[ -f ${restart_root}/var/log/mapleland-deploy/last-failure/container.log ]] \
+  || fail 'restart-loop diagnostics were not preserved before rollback'
+assert_not_contains "${restart_output}" 'fixture-management-secret'
+
+exited_root=${WORK_DIR}/exited
+setup_fixture "${exited_root}"
+if exited_output=$(run_update "${exited_root}" FAKE_NEW_STATE=exited 2>&1); then
+  fail 'an exited candidate should fail the deployment'
+fi
+[[ $(cat "${exited_root}/state") == old ]] \
+  || fail 'exited candidate did not roll back to the previous image'
+[[ ${exited_output} == *'candidate stopped before readiness (state=exited)'* ]] \
+  || fail 'exited candidate was not diagnosed explicitly'
+[[ -f ${exited_root}/var/log/mapleland-deploy/last-failure/container.log ]] \
+  || fail 'exited candidate diagnostics were not preserved before rollback'
+assert_not_contains "${exited_output}" 'fixture-management-secret'
 
 gateway_sudo=${WORK_DIR}/gateway-sudo
 gateway_log=${WORK_DIR}/gateway.log
