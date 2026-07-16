@@ -65,6 +65,9 @@ dependencies {
   testImplementation 'com.h2database:h2'
   testImplementation 'org.springframework.boot:spring-boot-starter-test'
   testImplementation 'org.springframework.security:spring-security-test'
+  testImplementation 'org.testcontainers:junit-jupiter'
+  testImplementation 'org.testcontainers:mysql'
+  testImplementation 'net.ttddyy:datasource-proxy:1.10.1'
   testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
@@ -81,7 +84,26 @@ sourceSets {
   }
 }
 
+// JGit bundled by gradle-git-properties 2.4.1 treats a linked-worktree `.git`
+// pointer file as a directory. CI/release checkouts still generate git.properties;
+// linked worktrees skip only that metadata task so the required clean test/bootJar
+// validation can run from an isolated feature worktree.
+if (file('.git').isFile()) {
+  def commonGitDir = providers.exec {
+    commandLine 'git', 'rev-parse', '--path-format=absolute', '--git-common-dir'
+  }.standardOutput.asText.get().trim()
+  gitProperties {
+    dotGitDirectory.set(file(commonGitDir))
+  }
+  tasks.named('generateGitProperties') {
+    enabled = false
+  }
+}
 
 tasks.named('test') {
   useJUnitPlatform()
+  // Testcontainers 1.20.6 defaults to an API older than Docker Engine 29's
+  // supported floor. API 1.40 is accepted by both current CI engines and
+  // Docker 29; callers can still override it with -Dapi.version.
+  systemProperty 'api.version', System.getProperty('api.version', '1.40')
 }
