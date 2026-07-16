@@ -478,11 +478,17 @@ wait "${hup_closed_pipe_reader}" || true
 
 for signal in HUP PIPE; do
   signal_root=${WORK_DIR}/signal-${signal}
+  signal_output_file=${signal_root}/output.log
   setup_fixture "${signal_root}"
-  if signal_output=$(run_update "${signal_root}" \
-      FAKE_SIGNAL_PARENT="${signal}" 2>&1); then
+  # A command substitution captures output through a pipe. Some Bash/Linux
+  # combinations start that subshell with SIGPIPE ignored, which is inherited
+  # by the runner and makes the PIPE case test the harness instead of the trap.
+  # A regular file keeps the signal disposition identical to an SSH session.
+  if run_update "${signal_root}" FAKE_SIGNAL_PARENT="${signal}" \
+      >"${signal_output_file}" 2>&1; then
     fail "${signal} during candidate recreation should fail the deployment"
   fi
+  signal_output=$(<"${signal_output_file}")
   [[ $(cat "${signal_root}/state") == old ]] \
     || fail "${signal} during candidate recreation prevented automatic rollback"
   assert_contains "${signal_output}" 'deployment outcome=rolled_back'
