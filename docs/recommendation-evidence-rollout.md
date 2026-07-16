@@ -20,6 +20,8 @@ MLS-BE는 mapleland의 HTTP test endpoint를 호출하지 않는다. 같은 MySQ
 
 MLS-BE adaptation은 다음 차이를 의도적으로 둔다.
 
+- mapleland의 hexagonal package를 복제하지 않고 MLS-BE의 기존 `application`/`domain`/`repository` 계층과 DTO `toDto` 정적 팩터리 관례를 따른다.
+- 엔진 교체 경계는 `MapRecommendationRepository`와 `MapRecommendationEngineRouter`로 유지하되 별도 `port`/`adapter` package는 만들지 않는다.
 - Job lineage를 MySQL 8 recursive CTE 한 번으로 읽는다.
 - claim별 patch count, 조상별 claim, claim별 reason 쿼리를 하나의 scoring 쿼리로 합친다.
 - map과 로그인 사용자의 bookmark는 각각 bulk 조회한다.
@@ -208,7 +210,7 @@ schema PR preflight는 reason table/column/index, polarity·facet allowlist, MLS
 | canonical map bulk 조회 | 1 | 후보가 있을 때 |
 | bookmark bulk 조회 | 1 | 후보가 있고 로그인했을 때 |
 
-따라서 MySQL 추천은 후보·evidence 수와 무관하게 로그인 결과 요청 최대 4회, 익명 결과 요청 최대 3회다. 빈 후보는 enrichment 쿼리를 생략한다. adapter integration query counter는 scorer가 요청당 정확히 1회임을 cold 1회와 warm 40회 모두 확인했고, enrichment unit test는 map과 bookmark bulk port가 각각 한 번만 호출되고 scorer 정렬 순서를 보존함을 확인했다. 단일 proxy가 controller 전체 DB 호출을 합산하는 end-to-end 계측은 아직 별도 증거가 없으므로 위 전체 횟수는 각 검증된 경계를 합친 query budget이다.
+따라서 MySQL 추천은 후보·evidence 수와 무관하게 로그인 결과 요청 최대 4회, 익명 결과 요청 최대 3회다. 빈 후보는 enrichment 쿼리를 생략한다. repository integration query counter는 scorer가 요청당 정확히 1회임을 cold 1회와 warm 40회 모두 확인했고, enrichment unit test는 map과 bookmark bulk 조회가 각각 한 번만 호출되고 scorer 정렬 순서를 보존함을 확인했다. 단일 proxy가 controller 전체 DB 호출을 합산하는 end-to-end 계측은 아직 별도 증거가 없으므로 위 전체 횟수는 각 검증된 경계를 합친 query budget이다.
 
 MySQL scoring JDBC statement와 이를 감싸는 read-only transaction에는 같은 configurable 10초 timeout을 적용한다. Testcontainers의 `SELECT SLEEP(3)`를 1초 statement timeout으로 취소하는 계약 테스트를 포함한다. 기존 Aura v1의 relational transaction에는 이 새 timeout을 적용하지 않아 slow Aura 호출 뒤 enrichment가 임의로 503이 되는 호환 회귀를 막는다. v2 default-off kill switch는 긴급 MySQL traffic drain에 사용한다. reverse proxy의 recommendation 전용 rate-limit 설정은 현재 저장소/접근 범위에서 입증하지 못했으므로 이를 확인하기 전에는 v2를 운영 공개하지 않는다. 측정 없이 cache를 추가하지 않았다.
 

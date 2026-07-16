@@ -3,7 +3,7 @@ package com.maple.api.map.presentation.restapi;
 import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.map.application.dto.MapRecommendationV2Dto;
-import com.maple.api.map.recommendation.application.MapRecommendationService;
+import com.maple.api.map.application.MapRecommendationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;

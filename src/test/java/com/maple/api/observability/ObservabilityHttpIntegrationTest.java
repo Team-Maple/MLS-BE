@@ -1,7 +1,7 @@
 package com.maple.api.observability;
 
-import com.maple.api.map.recommendation.application.RecommendationObservability;
-import com.maple.api.map.recommendation.port.RecommendationEngineType;
+import com.maple.api.map.application.MapRecommendationObservability;
+import com.maple.api.map.domain.RecommendationEngineType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,7 +48,7 @@ class ObservabilityHttpIntegrationTest {
     private TestRestTemplate http;
 
     @Autowired
-    private RecommendationObservability recommendationObservability;
+    private MapRecommendationObservability recommendationObservability;
 
     @BeforeAll
     static void useLoopbackForHttpClient() {

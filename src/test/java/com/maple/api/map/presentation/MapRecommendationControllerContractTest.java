@@ -9,7 +9,7 @@ import com.maple.api.map.application.dto.MapRecommendationDto;
 import com.maple.api.map.application.dto.MapRecommendationReasonDto;
 import com.maple.api.map.application.dto.MapRecommendationV2Dto;
 import com.maple.api.map.exception.MapException;
-import com.maple.api.map.recommendation.application.MapRecommendationService;
+import com.maple.api.map.application.MapRecommendationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

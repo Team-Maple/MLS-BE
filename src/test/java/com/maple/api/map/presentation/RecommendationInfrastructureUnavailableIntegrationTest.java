@@ -1,7 +1,7 @@
 package com.maple.api.map.presentation;
 
 import com.maple.api.map.exception.MapException;
-import com.maple.api.map.recommendation.application.RecommendationQueryExecutor;
+import com.maple.api.map.application.MapRecommendationQueryExecutor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +29,7 @@ class RecommendationInfrastructureUnavailableIntegrationTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private RecommendationQueryExecutor queryExecutor;
+    private MapRecommendationQueryExecutor queryExecutor;
 
     @BeforeEach
     void failAtTransactionalProxyBoundary() {

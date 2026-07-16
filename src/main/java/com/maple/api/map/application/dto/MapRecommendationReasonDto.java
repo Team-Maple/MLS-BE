@@ -1,5 +1,6 @@
 package com.maple.api.map.application.dto;
 
+import com.maple.api.map.domain.RecommendationReason;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "추천 근거 코드. axis/value 조합은 문서화된 고정 코드만 사용합니다.")
@@ -18,4 +19,7 @@ public record MapRecommendationReasonDto(
         )
         String value
 ) {
+    public static MapRecommendationReasonDto toDto(RecommendationReason reason) {
+        return new MapRecommendationReasonDto(reason.axis(), reason.value());
+    }
 }

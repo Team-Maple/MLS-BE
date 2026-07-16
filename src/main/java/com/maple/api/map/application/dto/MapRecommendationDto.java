@@ -25,4 +25,14 @@ public record MapRecommendationDto(
     public MapRecommendationDto(Integer mapId, double score) {
         this(mapId, score, null, null, null);
     }
+
+    public static MapRecommendationDto toDto(MapRecommendationResultDto result) {
+        return new MapRecommendationDto(
+                result.mapId(),
+                result.score(),
+                result.iconUrl(),
+                result.nameKr(),
+                result.bookmarkId()
+        );
+    }
 }

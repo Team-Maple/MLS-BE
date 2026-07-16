@@ -34,4 +34,17 @@ public record MapRecommendationV2Dto(
     public MapRecommendationV2Dto {
         reasons = reasons == null ? List.of() : List.copyOf(reasons);
     }
+
+    public static MapRecommendationV2Dto toDto(MapRecommendationResultDto result) {
+        return new MapRecommendationV2Dto(
+                result.mapId(),
+                result.score(),
+                result.iconUrl(),
+                result.nameKr(),
+                result.bookmarkId(),
+                result.reasons().stream()
+                        .map(MapRecommendationReasonDto::toDto)
+                        .toList()
+        );
+    }
 }

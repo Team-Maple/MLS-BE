@@ -5,7 +5,7 @@ import com.maple.api.common.presentation.restapi.CountResponse;
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import com.maple.api.map.application.MapService;
 import com.maple.api.map.application.dto.*;
-import com.maple.api.map.recommendation.application.MapRecommendationService;
+import com.maple.api.map.application.MapRecommendationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
