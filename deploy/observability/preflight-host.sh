@@ -249,7 +249,7 @@ if ! printf '%s' "${compose_json}" | jq -e --arg repository "${EXPECTED_REPOSITO
     .type == "bind" and
     .source == "/var/log/mapleland-api" and
     .target == "/workspace/logs" and
-    .bind.create_host_path == false))
+    ((.bind.create_host_path // false) == false)))
 ' >/dev/null; then
   compose_json=''
   fail 'Compose observability contract is incomplete or exposes the management boundary'

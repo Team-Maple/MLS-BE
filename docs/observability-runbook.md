@@ -520,6 +520,8 @@ sudoedit /opt/mapleland/ghcr.env
 
 `sudo`는 Docker 접근을 위한 것이 아니라 root-only deployment state를 위한 것이다. Script는 mode `0600`인 `.env`/`ghcr.env`를 읽고 mode `0640`인 Compose 계약을 검증·교체하므로 EUID 0이 아니면 중단한다. Workflow가 상승시키는 범위는 checksum이 preflight에서 검증된 `/opt/mapleland/update-api.sh` 실행 한 번이며, 일반 사용자에게 secret read나 Compose write 권한을 부여하지 않는다.
 
+운영 Docker Compose 2.38.2는 long bind syntax의 `create_host_path: false`를 적용하면서도 `config --format json`에서는 false 기본값을 `null`로 생략한다. Preflight는 active override의 SHA-256을 reviewed source와 먼저 대조하므로 해당 source가 `create_host_path: false`임을 바이트 단위로 고정하고, rendered model에서는 bind type/source/target과 `create_host_path`가 `true`가 아님을 확인한다. `true`, 다른 source/target 또는 checksum 불일치는 모두 fail closed다.
+
 ```bash
 sudo chown root:root /opt/mapleland/.env
 sudo chmod 0600 /opt/mapleland/.env
