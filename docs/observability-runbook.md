@@ -463,10 +463,11 @@ Repository의 host preflight와 update runner를 동기화하거나 설치하지
 운영 dispatch는 owner의 명시적 승인 뒤에만 수행하고, Actions 종료 후 기존 dashboard와 공개
 API를 수동 확인한다. Host script 변경은 이 runbook의 routine deploy 범위가 아니다.
 
-마지막 checkpoint의 active host script SHA-256
-`74e714fa058a6a2318b8f842de6ef7c0582da4e460446c844af22b12e43efb26`는 no-arg 실행과 호환되지
-않는다. Read-only host attestation에서 다른 호환 script가 확인되거나 owner 승인 maintenance로
-legacy script를 복원하기 전에는 이 workflow를 dispatch하지 않는다.
+Owner 승인 maintenance에서 active host script가 legacy no-arg 계약이고 SHA-256이
+`76650cef0cac9edf426bbc67203f4a967bb10a7b353128c6ac53aba65cc63b77`임을 확인했다. CI key의
+forced command는 `command="/usr/bin/sudo -n /opt/mapleland/update-api.sh"`이며, script와 `.env`는
+각각 `root:root 0755`, `root:root 0600`을 유지한다. Host의 기존 broad `NOPASSWD: ALL`은 이번
+maintenance에서 변경하지 않았다. 상세 backup과 검증 결과는 checkpoint를 따른다.
 또한 첫 dispatch 전에 exact previous image의 존재와 현재 host script에 맞는 수동 rollback 명령을
 read-only로 확인해 checkpoint에 기록한다. 폐기된 immutable runner의 `rollback_tag` 절차를
 legacy workflow에 사용하지 않는다.

@@ -251,13 +251,13 @@ versioned dashboard JSON과 live Grafana dashboard UID `mapleland-production-ove
 않는다. 다음 항목이 모두 충족돼야 이 initial image 배포 승인을 요청할 수 있다.
 
 - [x] Issue #34와 draft PR #35에 v1/v2 계약, 점수 공식, DB 전제, rollout/rollback이 기록됨
-- [ ] legacy OCI workflow 복원 변경을 검토하고 `c49ee3255afb4ddfa0168ce91783fff368864a4d`의 구조 및 concurrency/least-privilege adaptation을 재검증함
+- [x] legacy OCI workflow 복원 변경을 검토하고 `c49ee3255afb4ddfa0168ce91783fff368864a4d`의 구조 및 concurrency/least-privilege adaptation을 재검증함
 - [ ] 최신 `./gradlew clean test` 전체 실행이 성공함. 현재 외부 실사이트 crawler 3건의 timeout 재확인과 CI가 남아 있음
 - [ ] CI가 성공하고 unresolved required review가 없음
 - [ ] legacy workflow가 사용하는 repository secret `FIREBASE_KEY`, `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `ORACLE_SSH_KEY`의 존재와 접근 범위를 owner가 확인함
 - [ ] Firebase key가 image layer에 포함되는 기존 잔여 위험을 owner가 명시적으로 수용하거나 runtime secret mount 전환과 key rotation을 완료함
 - [ ] 삭제 대상 legacy EC2 경로가 DNS/LB/failover/DR에서 쓰이지 않음을 운영 inventory로 확인하고 HOST/USERNAME/KEY/PORT/GHCR credential revoke·rotation·secret 제거를 완료함
-- [ ] host의 기존 `/opt/mapleland/update-api.sh`가 `latest-arm64` 배포 계약을 계속 지원하는지 owner가 확인함
+- [x] host의 기존 `/opt/mapleland/update-api.sh`가 legacy no-arg 계약이고 CI forced command가 이를 `sudo -n`으로 실행하도록 owner 승인 maintenance와 read-only 검증을 완료함
 - [ ] read-only host attestation으로 exact previous image와 legacy host script에 맞는 수동 rollback 명령을 확인해 checkpoint에 기록함
 - [x] Grafana versioned JSON과 live dashboard UID/version이 일치하고 새 panel query가 오류 없이 완료됨. 실제 series 검증은 배포 후 smoke gate로 남음
 - [ ] merge와 운영 배포에 대한 owner의 명시적 승인이 있음
