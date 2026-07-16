@@ -16,9 +16,10 @@
 - 실패한 deploy job: [87532062228](https://github.com/Team-Maple/MLS-BE/actions/runs/29470227414/job/87532062228)
 - 실패 원인: 당시 활성 legacy `/opt/mapleland/update-api.sh`가 root-only `/opt/mapleland/.env`를 shell source해 `Permission denied`가 발생했다. Docker pull, container 재생성 또는 애플리케이션 재시작 전 실패했다.
 - 두 번째 service-mutation 전 실패 run: [29478103871](https://github.com/Team-Maple/MLS-BE/actions/runs/29478103871). GitHub CI key의 `authorized_keys`가 `command="/opt/mapleland/update-api.sh"`를 강제해 요청한 preflight 대신 update script를 `ubuntu`로 실행한 것이 원인이다. 두 번 재현됐으며 build/pull/restart는 시작되지 않았다.
-- 강제 command 보존 설계: `update-api.sh`의 non-root gateway가 stdin의 정확한 단일 line `preflight <3 checksums>` 또는 `deploy <3 checksums> <immutable digest>`만 허용하고 `/usr/bin/sudo -n`으로 고정 root script를 호출한다. SSH forwarding/PTY 제한과 forced entrypoint는 그대로 유지한다.
-- 현재 활성 `/opt/mapleland/update-api.sh` SHA-256: `666c5e6d4bdfc51740bbc1f0bb3c7f07a9644d6798e4181aa7cd0923fa103973`
-- 현재 활성 `/opt/mapleland/preflight-host.sh` SHA-256: `20b9f41dc6256457f2e736818d429ed537a409f47ff71ef3dc7348588af677b2`; Compose 2.38.2가 `create_host_path: false`를 JSON에서 `null`로 생략해 첫 실행이 이 한 조건에서 fail closed했다. 서비스 mutation은 없었고 보강본 설치 대기 상태다.
+- 세 번째 service-mutation 전 실패 run: [29478686691](https://github.com/Team-Maple/MLS-BE/actions/runs/29478686691). 강제 entrypoint가 요청 명령을 stdin에서 읽었지만 OpenSSH는 이를 `SSH_ORIGINAL_COMMAND`에 제공하므로 빈 입력으로 거부했다. Build/pull/restart는 시작되지 않았다.
+- 강제 command 보존 설계: `update-api.sh`의 non-root gateway가 OpenSSH의 `SSH_ORIGINAL_COMMAND`에서 정확한 단일 line `preflight <3 checksums>` 또는 `deploy <3 checksums> <immutable digest>`만 허용하고 `/usr/bin/sudo -n`으로 고정 root script를 호출한다. SSH forwarding/PTY 제한과 forced entrypoint는 그대로 유지한다.
+- 현재 활성 `/opt/mapleland/update-api.sh` SHA-256: `9bbb1fa3aa485b98e6435109a13ce961bc729d61f1969cf37f01341cfa6c4b94`; `SSH_ORIGINAL_COMMAND` 보강 후보 SHA-256은 `30f2e84cbb388952a3b0e39427ce54a9542c7609580a30612f7af1b54696f6e7`이다.
+- 현재 활성 `/opt/mapleland/preflight-host.sh` SHA-256: `564adb32cd0f028c9b813d4d1d1e1ab02fda615b5caef788339c449eb60d12f1`; Compose 2.38.2가 `create_host_path: false`를 JSON에서 `null`로 생략하는 동작을 source checksum 고정과 함께 안전하게 수용한다.
 - 현재 활성 `/opt/mapleland/docker-compose.observability.yml` SHA-256: `7a0a1f77815f19940b71f07921c7411fb91d12336df93046a6de3c676ef9e8c1`
 - root-only rollback backup: `/root/mapleland-observability-20260716T063108Z-1466ebe`; `/root/mapleland-observability-rollback.env`와 exact previous-image tag 생성 완료
 - 현재 운영 app image ID: `sha256:1b9b13b75debfe76ad755f618738bd63972a270b78d03f90d50133ee277fa3af`

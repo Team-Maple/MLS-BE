@@ -180,9 +180,8 @@ preflight_sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 update_sha=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 override_sha=cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 : > "${gateway_log}"
-printf 'preflight %s %s %s\n' \
-  "${preflight_sha}" "${update_sha}" "${override_sha}" |
-  env MAPLELAND_UPDATE_GATEWAY_TEST_MODE=1 \
+env SSH_ORIGINAL_COMMAND="preflight ${preflight_sha} ${update_sha} ${override_sha}" \
+    MAPLELAND_UPDATE_GATEWAY_TEST_MODE=1 \
     MAPLELAND_UPDATE_GATEWAY_SUDO_BIN="${gateway_sudo}" \
     FAKE_GATEWAY_LOG="${gateway_log}" \
     "${BASH}" "${UPDATE_SCRIPT}"
@@ -191,9 +190,8 @@ printf 'preflight %s %s %s\n' \
   || fail 'gateway did not dispatch the exact preflight allowlist'
 
 : > "${gateway_log}"
-printf 'deploy %s %s %s %s\n' \
-  "${preflight_sha}" "${update_sha}" "${override_sha}" "${IMAGE_REF}" |
-  env MAPLELAND_UPDATE_GATEWAY_TEST_MODE=1 \
+env SSH_ORIGINAL_COMMAND="deploy ${preflight_sha} ${update_sha} ${override_sha} ${IMAGE_REF}" \
+    MAPLELAND_UPDATE_GATEWAY_TEST_MODE=1 \
     MAPLELAND_UPDATE_GATEWAY_SUDO_BIN="${gateway_sudo}" \
     FAKE_GATEWAY_LOG="${gateway_log}" \
     "${BASH}" "${UPDATE_SCRIPT}"
@@ -204,14 +202,25 @@ expected_gateway_log=$(printf '%s\n%s' \
   || fail 'gateway did not keep preflight and immutable deploy in the allowlist'
 
 : > "${gateway_log}"
-if printf 'preflight %s %s %s\nuname -a\n' \
-  "${preflight_sha}" "${update_sha}" "${override_sha}" |
-  env MAPLELAND_UPDATE_GATEWAY_TEST_MODE=1 \
+if env SSH_ORIGINAL_COMMAND="preflight ${preflight_sha} ${update_sha} ${override_sha}"$'\nuname -a' \
+    MAPLELAND_UPDATE_GATEWAY_TEST_MODE=1 \
     MAPLELAND_UPDATE_GATEWAY_SUDO_BIN="${gateway_sudo}" \
     FAKE_GATEWAY_LOG="${gateway_log}" \
     "${BASH}" "${UPDATE_SCRIPT}" >/dev/null 2>&1; then
   fail 'gateway should reject multiline input'
 fi
 [[ ! -s ${gateway_log} ]] || fail 'rejected gateway input reached sudo'
+
+: > "${gateway_log}"
+if printf 'preflight %s %s %s\n' \
+    "${preflight_sha}" "${update_sha}" "${override_sha}" |
+  env SSH_ORIGINAL_COMMAND='uname -a' \
+    MAPLELAND_UPDATE_GATEWAY_TEST_MODE=1 \
+    MAPLELAND_UPDATE_GATEWAY_SUDO_BIN="${gateway_sudo}" \
+    FAKE_GATEWAY_LOG="${gateway_log}" \
+    "${BASH}" "${UPDATE_SCRIPT}" >/dev/null 2>&1; then
+  fail 'gateway should not accept an allowlisted command from stdin'
+fi
+[[ ! -s ${gateway_log} ]] || fail 'stdin bypass reached sudo'
 
 echo 'update-api tests passed'

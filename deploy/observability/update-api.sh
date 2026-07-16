@@ -13,13 +13,13 @@ dispatch_forced_command() {
   local override_sha
   local image_ref_from_gateway
 
-  IFS= read -r -N 514 gateway_input || true
-  if [[ ${#gateway_input} -gt 513 ]]; then
+  gateway_input=${SSH_ORIGINAL_COMMAND:-}
+  if [[ ${#gateway_input} -gt 512 ]]; then
     echo 'CI deployment gateway command is too long' >&2
     exit 1
   fi
-  gateway_command=${gateway_input%$'\n'}
-  if [[ -z ${gateway_command} || ${#gateway_command} -gt 512 \
+  gateway_command=${gateway_input}
+  if [[ -z ${gateway_command} \
     || ${gateway_command} == *$'\n'* || ${gateway_command} == *$'\r'* ]]; then
     echo 'invalid CI deployment gateway command' >&2
     exit 1
