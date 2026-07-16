@@ -7,7 +7,8 @@
 - Issue: [#32](https://github.com/Team-Maple/MLS-BE/issues/32)
 - draft PR: [#33](https://github.com/Team-Maple/MLS-BE/pull/33)
 - 운영 애플리케이션 commit: `949976f0fd46ff60094c54e5b3df8433a6e4de59`
-- 최종 CI: [29490705349](https://github.com/Team-Maple/MLS-BE/actions/runs/29490705349) `success`; Gradle regression, Alloy 공식 validation, 운영 script/preflight/deploy/rollback 계약과 Grafana JSON 검증 포함
+- 운영 애플리케이션 CI: [29490705349](https://github.com/Team-Maple/MLS-BE/actions/runs/29490705349) `success`; Gradle regression, Alloy 공식 validation, 운영 script/preflight/deploy/rollback 계약과 Grafana JSON 검증 포함
+- 운영 commit 이후 PR 변경은 이 최종 증거와 runbook의 live resource 구분을 명확히 하는 문서뿐이다. 운영 바이너리와 설정은 위 commit 상태를 유지하며 PR HEAD CI 결과는 PR #33을 source of truth로 확인한다.
 - 운영 배포: [29490895778](https://github.com/Team-Maple/MLS-BE/actions/runs/29490895778) `success`; host-preflight, build-and-publish, production 승인, deploy 모두 성공
 - 운영 image digest: `sha256:0560502466a7b54f2bea0596e1963f68197e1bb085be42d99cd17ae959409875`; 실행 container RepoDigest와 일치
 - 이전 image ID `sha256:1b9b13b75debfe76ad755f618738bd63972a270b78d03f90d50133ee277fa3af`는 rollback tag `rollback-20260716T105725955628686-1b9b13b75deb-351732`로 보존했다. 최종 배포에서 rollback은 실행되지 않았다.
@@ -52,15 +53,15 @@
 - 권한 수정 후보: FCM restore 입력이 비어 있지 않은 service-account JSON인지 출력 없이 확인하고 `0750/0640`으로 제한한다. `zipinfo` 기준 bootJar entry가 `-rwxr-x---`/`-rw-r-----`인지 publish 전에 검증하며 directory entry는 trailing slash로 식별한다. Publish 뒤에는 shell이 없는 tiny image를 실행하지 않고 stopped container의 exported metadata에서 `Config.User=1002:1001`, directory/key `1001:1001 0750/0640`을 다시 검증해 builder UID/GID 변경도 deploy 전에 차단한다. Secret 내용과 checksum은 출력하지 않는다.
 - Publish gate dry run: [29490350958](https://github.com/Team-Maple/MLS-BE/actions/runs/29490350958). FCM JSON/bootJar mode와 image publish까지 성공했지만 tiny image에 `/bin/sh`가 없어 최초 runtime read probe가 exit 127로 중단됐다. Digest resolve와 deploy job은 시작되지 않아 운영 재시작은 없었다. 검증 방식은 image를 실행하지 않는 metadata gate로 교체했다.
 - 강제 command 보존 설계: `update-api.sh`의 non-root gateway가 OpenSSH의 `SSH_ORIGINAL_COMMAND`에서 정확한 단일 line `preflight <3 checksums>` 또는 `deploy <3 checksums> <immutable digest>`만 허용하고 `/usr/bin/sudo -n`으로 고정 root script를 호출한다. SSH forwarding/PTY 제한과 forced entrypoint는 그대로 유지한다.
-- 현재 활성 `/opt/mapleland/update-api.sh` SHA-256: `74e714fa058a6a2318b8f842de6ef7c0582da4e460446c844af22b12e43efb26` (restart-loop fail-fast와 root-only 진단 보존 포함).
-- 현재 활성 `/opt/mapleland/preflight-host.sh` SHA-256: `860fab026264378684f7d02c373fa7bc8fefb0216a97ffafc866cd5c5093e413`.
-- 현재 활성 `/opt/mapleland/docker-compose.observability.yml` SHA-256: `7a0a1f77815f19940b71f07921c7411fb91d12336df93046a6de3c676ef9e8c1`
+- 당시 활성 `/opt/mapleland/update-api.sh` SHA-256: `74e714fa058a6a2318b8f842de6ef7c0582da4e460446c844af22b12e43efb26` (restart-loop fail-fast와 root-only 진단 보존 포함).
+- 당시 활성 `/opt/mapleland/preflight-host.sh` SHA-256: `860fab026264378684f7d02c373fa7bc8fefb0216a97ffafc866cd5c5093e413`.
+- 당시 활성 `/opt/mapleland/docker-compose.observability.yml` SHA-256: `7a0a1f77815f19940b71f07921c7411fb91d12336df93046a6de3c676ef9e8c1`
 - root-only rollback backup: `/root/mapleland-observability-20260716T063108Z-1466ebe`; `/root/mapleland-observability-rollback.env`와 exact previous-image tag 생성 완료
-- 현재 운영 app image ID: `sha256:1b9b13b75debfe76ad755f618738bd63972a270b78d03f90d50133ee277fa3af`
-- 현재 운영 app은 exact 이전 image로 자동 롤백되어 상태 `running`; 공개 `/api/v1/jobs` smoke 성공
-- Alloy: 설치 완료, `active`; 애플리케이션 Observability image는 아직 미배포
-- base Compose는 `root:root 0640`, `.env`는 `root:root 0600`이며 active override, update/preflight script와 `SERVICE_VERSION` 준비가 완료됐다. 실행 중 container에는 아직 적용되지 않았고 `18080` listener도 없으므로 서비스 재시작은 발생하지 않았다.
-- Grafana Cloud MCP: 기존 단일 연결 재로그인은 완료됐지만 현재 Codex 세션에는 Grafana 도구가 노출되지 않는다. 연결을 추가·삭제하지 않고 기존 로그인 세션의 UI 또는 공식 API만 fallback으로 사용한다. Dashboard/alert live 생성과 app metrics/ECS log 검증은 아직 완료되지 않음
+- 당시 운영 app image ID: `sha256:1b9b13b75debfe76ad755f618738bd63972a270b78d03f90d50133ee277fa3af`
+- 당시 운영 app은 exact 이전 image로 자동 롤백되어 상태 `running`; 공개 `/api/v1/jobs` smoke 성공
+- 당시 Alloy는 설치 완료, `active`였지만 애플리케이션 Observability image는 미배포 상태였다.
+- 당시 base Compose는 `root:root 0640`, `.env`는 `root:root 0600`이며 active override, update/preflight script와 `SERVICE_VERSION` 준비만 완료됐다. 실행 중 container에는 적용되지 않았고 `18080` listener도 없어서 서비스 재시작이 발생하지 않았다.
+- 당시 Grafana Cloud MCP는 기존 단일 연결 재로그인 뒤에도 Codex 세션에 도구가 노출되지 않았다. 연결을 추가·삭제하지 않고 기존 로그인 세션 UI를 fallback으로 사용했으며 Dashboard/alert와 app metrics/ECS log live 검증 전 상태였다.
 - GitHub `production` Environment: 생성 완료. required reviewer는 `mungmnb777`, self-review 허용, 배포 branch는 `main`과 `feature/observability-phase-1`만 허용
 - 실패 전환은 자동 롤백 완료; public port와 firewall 변경 없음
 

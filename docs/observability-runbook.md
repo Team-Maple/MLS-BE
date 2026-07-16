@@ -781,7 +781,8 @@ increase(loki_process_custom_ecs_log_lines_total{job="alloy"}[30m])
 
 ## Dashboard와 alert
 
-- folder UID/title: `mapleland` / `Mapleland`
+- folder title과 repository logical identifier: `Mapleland` / `mapleland`
+- 2026-07-16 Grafana UI가 생성한 live folder UID: `fnp4gz`. 이후 write 전에 checkpoint와 Grafana의 실제 UID를 다시 조회하며 logical identifier로 blind create하지 않는다.
 - dashboard UID/title: `mapleland-production-overview` / `Mapleland / Production Overview`
 - datasource: `grafanacloud-prom`, `grafanacloud-logs`
 - source: `deploy/observability/grafana/`
