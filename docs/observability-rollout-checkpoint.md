@@ -2,6 +2,22 @@
 
 이 문서는 Codex task, OAuth 또는 로컬 앱이 재시작돼도 운영 상태를 추측하거나 이미 끝난 작업을 반복하지 않기 위한 비밀값 없는 재개 기준이다. 외부 상태를 변경한 뒤에는 해당 operation의 URL·commit·checksum·검증 결과와 다음 안전 작업을 갱신한다. token, credential, 원본 환경 파일 내용은 기록하지 않는다.
 
+## 2026-07-17 애플리케이션 배포 경로 단순화 (아직 운영 미적용)
+
+- 추천 branch의 [deploy run 29531165131](https://github.com/Team-Maple/MLS-BE/actions/runs/29531165131)은 host의 기존 `preflight-host.sh` checksum과 branch의 변경본이 달라 `host-preflight`에서 실패했다. Build, image publish, container pull/recreate와 운영 설정 변경은 시작되지 않았다.
+- 파일 checksum을 확인하는 host script 자체가 새 checksum 계약을 알아야 하는 순환 bootstrap이 원인이었다. 애플리케이션 상태나 추천 코드 문제가 아니다.
+- PR #35에서는 routine workflow를 `build-and-publish -> production approval -> deploy <immutable digest>`로 줄이고, `preflight-host.sh`와 세 checksum 전달을 제거한다. Main-only `production-build` job은 image를 publish하되 deployment record를 만들지 않고, 별도 최소권한 deploy job 하나만 `production` 승인을 받는다. Runner에는 digest allowlist, 동시 배포 lock, exact previous-image 보존, bounded public·management smoke, 자동 rollback과 root-only 실패 진단만 유지한다.
+- Build가 publish tag를 한 번 digest로 해소한 뒤 FCM permission, OCI revision, run-image와 deploy output을 같은 digest로 검증하도록 바꿨다. Gradle 8.13 distribution, arm64 build runner의 pack 0.40.0 archive와 x64 deploy runner의 Tailscale 1.94.2 archive는 architecture별 공식 SHA-256으로 고정했다. Production SSH는 release binary를 다시 내려받는 third-party action 대신 runner 기본 OpenSSH와 reviewed host-key fingerprint를 사용한다.
+- 현재 host의 forced-command runner는 이전 command 문법을 사용하고 active Compose override에는 recommendation 환경 전달이 없다. 새 workflow를 실행하기 전에 owner 승인 change window에서 merged `main`의 reviewed `update-api.sh`와 override를 각각 `/opt/mapleland/update-api.sh`, `/opt/mapleland/docker-compose.observability.yml`에 한 번 설치해야 한다. 이 host 변경은 아직 수행하지 않았다.
+- Workflow가 읽는 `FIREBASE_KEY`, `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `ORACLE_SSH_KEY`는 현재 repository secret이고 Environment secret은 비어 있다. 첫 실행 전에 owner가 Firebase key를 새 `production-build`, Tailscale/SSH credential을 `production` scope로 재발급·이전하고 repository 사본을 제거해야 한다. 이 secret 변경은 아직 수행하지 않았다.
+- `production` Environment variable `ORACLE_SSH_FINGERPRINT`도 아직 없다. Owner가 host console에서 확인한 SHA256 host-key fingerprint를 등록하기 전에는 deploy job이 실패하도록 고정했다.
+- 삭제되는 legacy EC2 workflow가 참조하던 `HOST`, `USERNAME`, `KEY`, `PORT`, `GHCR_TOKEN`, `GHCR_USERNAME` repository secret도 남아 있다. 다른 consumer가 없는지 확인한 뒤 credential revoke/rotation과 secret 제거가 필요하며 아직 수행하지 않았다.
+- `production` Environment는 owner required reviewer와 self-review 허용 상태지만 admin bypass가 가능하고 branch policy에 오래된 `feature/observability-phase-1`가 남아 있다. `production-build` Environment도 아직 없다. 첫 실행 전에 owner 승인으로 두 Environment를 `main`만 허용하고 production admin bypass를 비활성화해야 한다. 이 설정 변경은 아직 수행하지 않았다.
+- 기존 mutable `:latest` EC2 workflow는 2026-04-07 이후 실행 이력이 없고 OCI 승인·rollback 경계를 우회하므로 PR #35에서 제거한다. Merge 전까지 GitHub 기본 branch에는 그대로 존재한다.
+- Legacy workflow의 최근 10회 이력은 2026-01-27~2026-04-07이고 마지막 run 24086529960은 성공이다. Public API DNS는 Cloudflare proxy 주소만 보여 EC2 origin/DR 의존성 부재를 입증하지 못했다. Owner의 DNS/LB/failover 운영 inventory 확인 전에는 workflow 삭제와 legacy credential 폐기를 승인 완료로 보지 않는다.
+- `production` Environment의 현재 branch policy에는 recommendation branch가 없다. Merge·runner 전환·운영 배포는 각각 owner의 명시적 승인 전에는 수행하지 않는다.
+- 기존 Firebase key는 build 과정에서 bootJar/image layer에 포함돼 GHCR read 권한자가 읽을 수 있는 잔여 위험이 있다. 이번 배포 단순화 범위에서 runtime secret mount로 바꾸지 않았으며, 첫 배포 전에 owner risk acceptance 또는 별도 mount 전환·key rotation이 필요하다.
+
 ## 2026-07-16 추천 dashboard 사전 갱신
 
 - 구현 작업은 [Issue #34](https://github.com/Team-Maple/MLS-BE/issues/34), [draft PR #35](https://github.com/Team-Maple/MLS-BE/pull/35)의 branch `feature/mysql-evidence-recommendations`에 있다. 구현/계약/관측 커밋은 각각 `79d2dff`, `037ad30`, `49bec1e`이며 애플리케이션 merge·배포와 v1 MySQL 전환은 수행하지 않았다.
@@ -77,14 +93,14 @@
 
 ## 다음 안전 작업
 
-1. PR #33의 최종 CI와 리뷰를 확인한 뒤 별도 요청이 있을 때만 merge한다.
+1. PR #35의 최종 CI와 리뷰를 확인하되 owner의 별도 요청 전에는 merge, host runner 전환 또는 운영 배포를 수행하지 않는다.
 2. 반복됐던 Hikari connection validation warning의 발생량과 DB/server timeout·`maxLifetime` 정합성을 별도 후속 작업으로 조사한다.
 3. 인증 재발급 경로의 NullPointerException 재현 조건과 null contract를 별도 후속 작업으로 조사한다.
 4. 운영 traffic이 늘면 active series, Loki 일일 환산량, Alloy RSS/CPU와 alert noise를 같은 30분 gate로 다시 측정한다.
 
 ## 재개 규칙
 
-- GitHub Actions는 `host-preflight -> build-and-publish -> production approval -> host-preflight recheck -> deploy` 순서를 벗어나지 않는다.
+- Routine GitHub Actions는 `build-and-publish -> production approval -> deploy immutable digest` 순서를 사용하며 production 승인은 deploy job에서 한 번만 받는다. Build와 deploy는 secret·권한·workspace를 공유하지 않는다. Runner·Compose override 자체 변경은 application deploy와 분리한 owner 승인 host maintenance로 수행한다.
 - manual OCI 작업은 1Password 앱 잠금 상태를 추측하지 않는다. 정확한 SSH alias `OracleCloud`를 사용하고 명시적 `SSH_AUTH_SOCK`으로 `ssh-add -l`을 확인한다. 서명 승인 상태가 불명확하면 TTY에서 `ssh-add -T ~/.ssh/1Password/SHA256_QoL9bUNkoXz+boL+ozfL1CHCMCaDSZWulM8S2cVMTWs.pub`를 먼저 실행해 1Password 승인을 받은 뒤 `BatchMode` SSH 연결을 검증한다. `oracle-cloud`처럼 다른 대소문자의 host를 사용해 identity 규칙을 우회하지 않는다.
 - routine deploy는 GitHub Actions의 `ORACLE_SSH_KEY`를 사용한다. 1Password SSH agent는 manual host preparation과 break-glass 확인에만 사용한다.
 - Grafana Cloud MCP는 한 Codex task만 사용한다. 병렬 agent를 시작한 상태에서 Grafana MCP를 초기화하거나 OAuth 재로그인을 반복하지 않는다.

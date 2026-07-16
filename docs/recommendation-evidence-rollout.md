@@ -212,13 +212,13 @@ schema PR preflight는 reason table/column/index, polarity·facet allowlist, MLS
 
 따라서 MySQL 추천은 후보·evidence 수와 무관하게 로그인 결과 요청 최대 4회, 익명 결과 요청 최대 3회다. 빈 후보는 enrichment 쿼리를 생략한다. repository integration query counter는 scorer가 요청당 정확히 1회임을 cold 1회와 warm 40회 모두 확인했고, enrichment unit test는 map과 bookmark bulk 조회가 각각 한 번만 호출되고 scorer 정렬 순서를 보존함을 확인했다. 단일 proxy가 controller 전체 DB 호출을 합산하는 end-to-end 계측은 아직 별도 증거가 없으므로 위 전체 횟수는 각 검증된 경계를 합친 query budget이다.
 
-MySQL scoring JDBC statement와 이를 감싸는 read-only transaction에는 같은 configurable 10초 timeout을 적용한다. Testcontainers의 `SELECT SLEEP(3)`를 1초 statement timeout으로 취소하는 계약 테스트를 포함한다. 기존 Aura v1의 relational transaction에는 이 새 timeout을 적용하지 않아 slow Aura 호출 뒤 enrichment가 임의로 503이 되는 호환 회귀를 막는다. v2 default-off kill switch는 긴급 MySQL traffic drain에 사용한다. reverse proxy의 recommendation 전용 rate-limit 설정은 현재 저장소/접근 범위에서 입증하지 못했으므로 이를 확인하기 전에는 v2를 운영 공개하지 않는다. 측정 없이 cache를 추가하지 않았다.
+MySQL scoring JDBC statement와 이를 감싸는 read-only transaction에는 같은 configurable 10초 timeout을 적용한다. Testcontainers의 `SELECT SLEEP(3)`를 1초 statement timeout으로 취소하는 계약 테스트를 포함한다. 이 값은 connection-pool 획득 전 대기까지 포함한 endpoint 전체 wall-clock 제한은 아니므로, 운영 전환 전에 기존 Hikari pool saturation과 HTTP latency도 함께 확인한다. 기존 Aura v1의 relational transaction에는 이 새 timeout을 적용하지 않아 slow Aura 호출 뒤 enrichment가 임의로 503이 되는 호환 회귀를 막는다. v2 default-off kill switch는 긴급 MySQL traffic drain에 사용한다. reverse proxy의 recommendation 전용 rate-limit 설정은 현재 저장소/접근 범위에서 입증하지 못했으므로 이를 확인하기 전에는 v2를 운영 공개하지 않는다. 측정 없이 cache를 추가하지 않았다.
 
 로컬 Testcontainers `mysql:8.4`의 대표 fixture 측정값은 다음과 같다.
 
 | evidence rows | candidate maps | final results | scorer queries/request | cold | warm p50 | warm p95 | warm p99 |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 3,000 | 100 | 20 | 1 | 58.938 ms | 25.266 ms | 38.832 ms | 45.933 ms |
+| 3,000 | 100 | 20 | 1 | 90.896 ms | 33.618 ms | 60.479 ms | 70.781 ms |
 
 이 수치는 개발 machine의 단일 container 측정이며 production SLO나 alert threshold가 아니다. MySQL 8 recursive CTE/window 실행, 결과 수와 고정 query count를 검증한 characterization evidence다. 같은 fixture의 tabular plan summary는 다음과 같았다.
 
@@ -227,7 +227,7 @@ MySQL scoring JDBC statement와 이를 감싸는 read-only transaction에는 같
 <derived8>:ref:<auto_key0>, <derived3>:ALL:null,
 patch:ref:idx_alrim_type_date, rc:ALL:null, ec:eq_ref:PRIMARY,
 canonical_map:eq_ref:PRIMARY, <derived4>:ref:<auto_key0>,
-j:const:PRIMARY, lineage:ALL:null, parent:eq_ref:PRIMARY
+j:const:PRIMARY, lineage:ALL:null, parent:ALL:null
 ```
 
 `idx_alrim_type_date`는 선택됐지만 `idx_recommendation_reviewed_claims_scoring`은 JSON의 possible key로만 나타났고, 위 fixture 특성 때문에 optimizer가 `rc:ALL`을 선택했다. production에서 DDL을 승인·적용한 뒤 실제 분포로 다시 실행한 `EXPLAIN`은 아직 없다. 운영 latency와 Aura baseline 비교는 production topology 확인과 안전한 v2 smoke 뒤 기존 `http.server.requests` 표본으로 수행한다. 표본이 부족하면 부족하다고 기록하며 운영 traffic을 부하 테스트에 사용하지 않는다.
@@ -245,21 +245,35 @@ j:const:PRIMARY, lineage:ALL:null, parent:eq_ref:PRIMARY
 
 versioned dashboard JSON과 live Grafana dashboard UID `mapleland-production-overview`는 recommendation row의 실제 v1/v2 HTTP request rate, 기존 HTTP p95, HTTP error와 custom empty/unavailable outcome, 관찰된 engine, 평균 result count 쿼리를 포함하도록 함께 갱신했다. total request/error에는 `http.server.requests` route/status를 사용하므로 config parsing, validation, 404도 빠지지 않는다. custom counter는 scorer 처리 outcome 의미로만 사용한다. panel 24개를 유지하며 기존 UID와 `Dashboards` folder를 create-or-update했다. live version history에서 source와 같은 version `3`이 `2026-07-16 23:21:43 KST`의 Latest이고 version 2/1이 restore 가능한 상태임을 확인했다. 애플리케이션/Alloy 변경이 아직 배포되지 않았고 route traffic 표본도 없으므로 pre-deployment panel 렌더링은 live metric series 검증이 아니다. folder/datasource/contact point/notification policy/unrelated alert는 변경하지 않았고 baseline 없이 alert threshold를 추가하지 않았다.
 
-## 배포 전 게이트
+## 초기 image 배포 게이트
 
-다음 항목이 모두 충족돼야 owner에게 배포 승인을 요청할 수 있다.
+초기 배포는 v1 `AURA`, v2 `false`, query timeout `10`의 안전값으로 MySQL traffic을 만들지
+않는다. 다음 항목이 모두 충족돼야 이 initial image 배포 승인을 요청할 수 있다.
 
 - [x] Issue #34와 draft PR #35에 v1/v2 계약, 점수 공식, DB 전제, rollout/rollback이 기록됨
-- [x] 독립 코드 리뷰와 위험 리뷰 finding을 두 수정 라운드 안에 반영하고 최종 actionable P0-P3 0으로 재검증함
-- [x] 전체 Gradle test와 `bootJar`, 관련 배포/observability 계약 test가 성공함
+- [ ] 배포 단순화 변경의 독립 코드 리뷰와 위험 리뷰 finding을 반영하고 최종 actionable P0-P3 0으로 재검증함
+- [ ] 최신 `./gradlew clean test` 전체 실행이 성공함. 현재 외부 실사이트 crawler 3건의 timeout 재확인과 CI가 남아 있음
 - [ ] CI가 성공하고 unresolved required review가 없음
-- [ ] mapleland schema PR의 forward/rollback/preflight SQL과 `EXPLAIN` 근거가 검토됨
-- [ ] MLS-BE production DB topology blocker가 해소됨
-- [ ] production reverse proxy의 recommendation route rate-limit이 확인되고 v2 공개량이 승인됨
-- [ ] host `.env`, rendered Compose, candidate container에서 v1 engine/v2 enable/query timeout이 동일함을 값 노출 없이 검증함
-- [ ] production DDL이 필요하면 owner가 별도로 승인함
+- [ ] Firebase key는 main-only `production-build`, Tailscale/SSH credential은 `production` Environment secret으로 재발급·이전하고 repository/organization 사본을 제거함
+- [ ] Firebase key가 image layer에 포함되는 기존 잔여 위험을 owner가 명시적으로 수용하거나 runtime secret mount 전환과 key rotation을 완료함
+- [ ] 검증한 Oracle SSH host-key SHA256 fingerprint를 `production` Environment variable로 등록함
+- [ ] 삭제 대상 legacy EC2 경로가 DNS/LB/failover/DR에서 쓰이지 않음을 운영 inventory로 확인하고 HOST/USERNAME/KEY/PORT/GHCR credential revoke·rotation·secret 제거를 완료함
+- [ ] `production-build`와 `production` branch를 `main`만 허용하고 production administrator bypass를 비활성화함
+- [ ] owner 승인 아래 host runner와 Compose override를 새 `deploy <immutable digest>` 계약으로 한 번 전환하고 rollback backup을 남김
 - [x] Grafana versioned JSON과 live dashboard UID/version이 일치하고 새 panel query가 오류 없이 완료됨. 실제 series 검증은 배포 후 smoke gate로 남음
 - [ ] merge와 운영 배포에 대한 owner의 명시적 승인이 있음
+
+## MySQL 활성화 게이트
+
+다음 항목은 initial AURA/default-off image merge를 막지 않지만, v2를 켜거나 v1을 MySQL로
+전환하기 전에는 모두 P1 blocker다.
+
+- [ ] mapleland schema PR의 forward/rollback/preflight SQL과 `EXPLAIN` 근거가 검토됨
+- [ ] MLS-BE production DB topology와 SELECT 권한 blocker가 해소됨
+- [ ] production reverse proxy의 recommendation route rate-limit이 확인되고 v2 공개량이 승인됨
+- [ ] Hikari connection 획득 대기 상한과 pool saturation 대응을 결정하고 운영 metric으로 확인함
+- [ ] production DDL이 필요하면 owner가 별도로 승인하고 적용 결과·rollback 기준을 기록함
+- [ ] initial image 뒤 Grafana scrape와 recommendation metric live series를 확인함
 
 최소 로컬 검증 명령은 다음과 같다.
 
@@ -271,24 +285,26 @@ jq empty deploy/observability/grafana/alert-rules.json
 bash deploy/observability/alloy/validate.sh
 ```
 
-2026-07-16 최종 로컬 트리에서 `./gradlew clean test`는 88 tests, failure/error/skip 0으로 성공했고 `./gradlew bootJar`, 두 Grafana JSON `jq empty`, Alloy 공식 container validation, host preflight/update 계약 test, recommendation asset test, shell syntax·executable 검증도 성공했다. CI 결과와 run URL은 draft PR 생성 뒤 별도로 기록한다.
+2026-07-16 최종 로컬 트리에서 `./gradlew clean test`는 88 tests, failure/error/skip 0으로 성공했고 `./gradlew bootJar`, 두 Grafana JSON `jq empty`, Alloy 공식 container validation, immutable deploy/rollback 계약 test, recommendation asset test, shell syntax·executable 검증도 성공했다. 배포 runner 단순화 뒤 전체 검증과 CI 결과는 PR #35에 별도로 기록한다.
+
+2026-07-17 배포 runner 단순화 뒤 `bootJar`, 추천/설정 바인딩 테스트군, immutable deploy/rollback 계약 test, recommendation asset test, 두 Grafana JSON과 Alloy validation은 성공했다. `./gradlew clean test`는 91개 중 88개가 통과했고, 운영 외부 사이트를 직접 호출하는 기존 `NoticeApiTest` 세 건만 `SocketTimeoutException`으로 실패했다. 이 테스트를 우회하거나 배포 변경에 unrelated한 crawler 코드를 수정하지 않으며 GitHub CI에서 재확인한다.
 
 ## 권장 rollout
 
 1. 구현 PR을 merge하지 않은 상태에서 전체 test, 독립 코드 리뷰, 위험 리뷰, CI를 완료한다.
-2. mapleland schema PR을 별도로 검토하고 topology equality와 운영 read 권한을 확인한다.
-3. 필요 index의 production preflight와 `EXPLAIN`을 수행한다. DDL이 필요하면 owner 승인 뒤 forward SQL만 실행하고 결과를 기록한다.
-4. host의 reviewed Compose override와 root-only `.env`에 `RECOMMENDATION_V1_ENGINE=AURA`, `RECOMMENDATION_V2_ENABLED=false`, `RECOMMENDATION_QUERY_TIMEOUT_SECONDS=10`을 명시하고 preflight가 rendered model을 검증하게 한다.
-5. 구현 image를 위 설정으로 배포한다. candidate readiness는 실제 container env가 attested 설정과 같은지도 값 노출 없이 검증한다. 이 단계에서 v1은 기존 Aura 동작을 유지하고 v2는 DB를 읽지 않는 503 kill-switch 상태다.
-6. topology/schema/full-plan, SELECT 권한, reverse-proxy rate-limit을 확인한 뒤 owner 승인으로 `RECOMMENDATION_V2_ENABLED=true`를 적용한다. v2 익명/로그인 smoke를 소량 수행해 exact contract, bookmark, score/reasons, empty, invalid input, missing Job, 503을 확인한다. 운영 부하 테스트는 하지 않는다.
-7. 기존 dashboard UID를 create-or-update하고 v1/v2 rate, p95, error/empty, engine, result count를 관찰한다. 충분한 표본이 생길 때까지 임의 threshold를 만들지 않는다.
-8. DB preflight, v2 결과, latency와 오류율을 owner가 승인한 뒤 별도 config change로 `RECOMMENDATION_V1_ENGINE=MYSQL`을 적용한다.
-9. v1 exact five-key contract와 evidence score semantic change를 다시 smoke하고 bounded metric/log만 생성되는지 확인한다.
+2. `production-build`/`production` Environment, secret scope·rotation, main-only policy, SSH fingerprint와 legacy credential 폐기를 완료한다.
+3. 새 workflow를 처음 사용하기 전에 owner 승인 change window에서 merged `main`의 reviewed runner와 Compose override를 host에 한 번 설치한다. 추천 설정을 생략하면 application과 Compose의 안전 기본값 `AURA`, `false`, `10`을 사용한다.
+4. 구현 image를 immutable digest로 배포한다. Runner는 exact image ID, service version, container state/health와 공개 `/api/v1/jobs`, loopback `/actuator/info`, authenticated `/actuator/prometheus` exact-200 smoke를 확인하며 설정 파일을 수정하거나 recommendation 값을 해석하지 않는다. 이 단계에서 v1은 기존 Aura 동작을 유지하고 v2는 DB를 읽지 않는 503 kill-switch 상태다.
+5. 기존 dashboard에서 application scrape와 recommendation panel의 배포 후 상태를 확인한다. 이 확인 전에는 initial rollout을 완료로 표시하지 않는다.
+6. mapleland schema PR, topology equality, 운영 SELECT 권한, full query plan, reverse-proxy rate-limit, Hikari connection 획득 대기 상한과 pool saturation 대응을 검토한다. DDL이 필요하면 owner 승인 뒤 forward SQL만 실행하고 결과를 기록한다.
+7. MySQL 활성화 게이트를 모두 통과한 뒤 owner 승인 host maintenance로 `.env` backup을 남기고 `RECOMMENDATION_V2_ENABLED=true`를 원자적으로 적용한다. Compose rendering을 확인한 뒤 같은 workflow로 재생성해야 running container에 반영된다. v2 익명/로그인 smoke를 소량 수행해 exact contract, bookmark, score/reasons, empty, invalid input, missing Job, 503을 확인한다. 운영 부하 테스트는 하지 않는다.
+8. 기존 dashboard UID에서 v1/v2 rate, p95, error/empty, engine, result count를 관찰한다. 충분한 표본이 생길 때까지 임의 threshold를 만들지 않는다.
+9. v2 결과, latency와 오류율을 owner가 승인한 뒤 같은 backup·원자 교체·Compose rendering·workflow 재생성 절차로 `RECOMMENDATION_V1_ENGINE=MYSQL`을 적용하고 v1 exact five-key contract와 evidence score semantic change를 다시 smoke한다.
 10. 안정화 기간 뒤 Aura dependency/config/keep-alive/secret 제거를 별도 Issue/PR로 진행한다.
 
 ## rollback
 
-문제가 생기면 request 단위 fallback을 추가하지 않는다. 먼저 `RECOMMENDATION_V1_ENGINE=AURA`, `RECOMMENDATION_V2_ENABLED=false`로 attested config를 적용해 MySQL recommendation traffic을 drain한다. v2를 Aura로 의미 변경하지 않는다. 구현 자체의 회귀라면 승인된 이전 immutable image로 애플리케이션을 rollback한다.
+문제가 생기면 request 단위 fallback을 추가하지 않는다. 먼저 root-only 운영 설정의 승인된 backup을 복원하거나 `RECOMMENDATION_V1_ENGINE=AURA`, `RECOMMENDATION_V2_ENABLED=false`를 원자적으로 적용하고 승인된 현재 immutable digest를 runner에 다시 전달해 container 재생성을 완료한 뒤 MySQL recommendation traffic을 drain한다. 이 break-glass config 복구는 image rebuild를 기다리지 않는다. `.env` 편집만으로는 실행 중 process가 바뀌지 않는다. Runner의 자동 image rollback도 현재 config를 재사용하므로 config 오류로 rollback이 실패했다면 config를 먼저 복원한 뒤 승인된 immutable image를 다시 실행한다. 과거 정상 배포 readiness는 21.680초였지만 runner의 polling deadline은 90초이고 config 복구 RTO를 별도로 측정하지 않았으므로 21.680초를 보장값으로 사용하지 않는다. v2를 Aura로 의미 변경하지 않는다. 구현 자체의 회귀라면 승인된 이전 immutable image로 애플리케이션을 rollback한다.
 
 index rollback은 애플리케이션 rollback과 분리한다. scoring traffic drain과 실행 계획을 확인하고 owner가 승인한 경우에만 schema Issue #131의 rollback SQL을 사용한다. topology 차이를 credential 추가, cross-schema grant, 임시 복제 table로 우회하지 않는다.
 
@@ -296,8 +312,14 @@ index rollback은 애플리케이션 rollback과 분리한다. scoring traffic d
 
 - MLS-BE production DB와 mapleland DB의 endpoint/schema equality가 확인되지 않았다.
 - production reverse proxy의 recommendation 전용 rate-limit은 확인되지 않아 v2는 default-off다.
+- Hikari connection 획득 대기 상한과 pool saturation 대응은 결정되지 않아 statement timeout만으로 endpoint 전체 wall-clock을 보장하지 않는다.
+- deploy credential은 아직 repository scope에 있고 `production-build`/`production` Environment 이전·rotation은 수행하지 않았다.
+- 삭제되는 legacy workflow의 SSH/GHCR repository secret revoke·제거도 아직 수행하지 않았다.
+- `production-build` Environment 생성과 두 Environment의 main-only/admin-bypass hardening은 아직 수행하지 않았다.
+- Runner는 rollback image를 자동 prune하지 않으며 host disk alert를 기준으로 한 owner 승인 retention maintenance가 필요하다.
+- Firebase service-account key는 기존 방식대로 image layer에 포함되므로 GHCR package read 권한을 key 접근 권한으로 취급해야 한다. Runtime secret mount 전환과 key rotation은 별도 보안 작업이다.
 - production index DDL은 실행하지 않았다.
 - live Grafana dashboard layout/version 갱신은 완료했지만 배포 전이므로 recommendation metric의 live series 검증은 남아 있다.
-- 로컬 전체 test는 성공했지만 CI/required review의 최종 결과는 draft PR 생성 뒤 확인해야 한다.
+- 로컬 전체 test는 기존 외부 실사이트 crawler 3건의 timeout 때문에 91개 중 88개 성공 상태이며 CI/required review의 최종 결과도 확인해야 한다. 추천/설정 바인딩 테스트군과 패키징은 성공했다.
 - Testcontainers 수치는 local characterization이며 production latency 표본이 아니다.
 - 이 문서 작성 시점에는 구현 merge, v1 MySQL 설정 전환, 운영 배포, Aura 제거를 수행하지 않았다.
