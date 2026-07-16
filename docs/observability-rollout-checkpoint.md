@@ -2,7 +2,34 @@
 
 이 문서는 Codex task, OAuth 또는 로컬 앱이 재시작돼도 운영 상태를 추측하거나 이미 끝난 작업을 반복하지 않기 위한 비밀값 없는 재개 기준이다. 외부 상태를 변경한 뒤에는 해당 operation의 URL·commit·checksum·검증 결과와 다음 안전 작업을 갱신한다. token, credential, 원본 환경 파일 내용은 기록하지 않는다.
 
-## 2026-07-16 확인 상태
+## 2026-07-16 최종 운영 적용 상태
+
+- Issue: [#32](https://github.com/Team-Maple/MLS-BE/issues/32)
+- draft PR: [#33](https://github.com/Team-Maple/MLS-BE/pull/33)
+- 운영 애플리케이션 commit: `949976f0fd46ff60094c54e5b3df8433a6e4de59`
+- 최종 CI: [29490705349](https://github.com/Team-Maple/MLS-BE/actions/runs/29490705349) `success`; Gradle regression, Alloy 공식 validation, 운영 script/preflight/deploy/rollback 계약과 Grafana JSON 검증 포함
+- 운영 배포: [29490895778](https://github.com/Team-Maple/MLS-BE/actions/runs/29490895778) `success`; host-preflight, build-and-publish, production 승인, deploy 모두 성공
+- 운영 image digest: `sha256:0560502466a7b54f2bea0596e1963f68197e1bb085be42d99cd17ae959409875`; 실행 container RepoDigest와 일치
+- 이전 image ID `sha256:1b9b13b75debfe76ad755f618738bd63972a270b78d03f90d50133ee277fa3af`는 rollback tag `rollback-20260716T105725955628686-1b9b13b75deb-351732`로 보존했다. 최종 배포에서 rollback은 실행되지 않았다.
+- container는 `running`, restart count `0`, `SERVICE_VERSION`은 운영 commit과 일치한다. Recreate부터 started까지 2.454초, readiness까지 21.680초였고 외부 체감 중단 시간은 별도로 계측하지 않았다.
+- 공개 API `8080`은 기존 `0.0.0.0/[::]` binding을 유지했다. management `18080`과 Alloy `12345`는 정확히 `127.0.0.1`에만 bind했다. firewall과 공개 port는 변경하지 않았다.
+- 공개 `/api/v1/jobs`는 200이다. 공개 port의 `/actuator/prometheus`, `/actuator/health`, `/actuator/env`, `/actuator/configprops`는 모두 404다. Management Prometheus는 인증 없이는 401, root-only token을 stdin curl config로 제공하면 200이며 JVM, HTTP, HikariCP, process metric이 존재한다.
+- 운영 app container의 `GRAFANA_CLOUD_*` 환경변수는 0개다. Grafana write credential은 root-only Alloy environment file에만 있고 명령, CI, Issue, PR에 출력하지 않았다.
+- Alloy v1.17.1은 `active/enabled/ready`다. 30분 gate에서 prod active series 236, 배포 직전 복원 시점 대비 증가 127, RSS 최대 198,254,592 bytes, CPU 최대 0.005583 core다.
+- Loki 전송량의 보수적인 5분 rate 30분 최대 일일 환산은 410,041.71 bytes/day이고 15분 rate 확인값은 168,274.29 bytes/day다. dropped entries/bytes와 ECS parse failure는 모두 0이다.
+- 배포 직후 로컬 ECS 파일 42/42줄이 각각 유효한 단일-line JSON이었다. 필수 ECS field와 service 값 누락은 0이고 원본 member ID, 인증정보, secret field, email 패턴은 0이다. `0.0.0.0`은 Tomcat thread 이름에서만 탐지됐으며 사용자 IP가 아니다.
+- Alloy를 2초 중단한 동안 애플리케이션과 로컬 파일 기록은 계속됐고 public API는 200이었다. 재시작 뒤 app 1줄과 fixture 1줄만 이어서 읽어 기존 42줄을 replay하지 않았다. rename/create rotation 전후 marker는 Loki에서 각각 정확히 1건, structured metadata `event_action` 집계는 2건이었다. Drop은 0이며 fixture는 검증 뒤 제거했다.
+- 애플리케이션에 예외를 유발하지 않는 명시적 `observability.stack-trace-test` ECS fixture 1건으로 `error.type`, `error.message`, `error.stack_trace`, `event.action/outcome`을 검증했다. Loki는 정확히 한 로그 이벤트로 표시했고 stack trace newline은 JSON 문자열 안에 escape됐다. Fixture는 검증 뒤 제거했다.
+- 대표 API 30회는 200 30/30, 평균 5.820ms, p95 7.363ms, 최대 17.869ms였다. 기존 p95 3.494ms 대비 증가는 3.869ms로 승인 기준 `max(20%, 5ms)` 이내다.
+- Dashboard: [Mapleland / Production Overview](https://mungmnb777.grafana.net/d/mapleland-production-overview/mapleland-production-overview?orgId=1&from=now-6h&to=now&timezone=browser&var-instance=mapleland-oci-1&refresh=1m). 17개 핵심 panel이 실제 app/host metric과 Loki data로 렌더링되고 dashboard에서 production log Explore로 이동한다.
+- Loki indexed label은 `service_name`, `deployment_environment`, `level`, `cloud_provider` 네 개뿐이다. `logger`, `thread`, event/error/HTTP/mapleland field는 structured metadata 또는 JSON field로 조회한다.
+- Grafana folder는 title `Mapleland`, 실제 UID `fnp4gz`다. Versioned file-provisioning source의 논리 UID와 Cloud UI가 생성한 live UID가 다르므로 source wrapper를 Cloud API에 그대로 POST하거나 중복 생성하지 않는다.
+- Alert는 [application scrape down](https://mungmnb777.grafana.net/alerting/grafana/ffsa03ecs8z5sd/view), [traffic-aware 5xx increase](https://mungmnb777.grafana.net/alerting/grafana/dfsa0kel8tfk0e/view), [host disk below 10%](https://mungmnb777.grafana.net/alerting/grafana/afsa0v0l7t340b/view) 세 개다. 모두 1분 group에서 반복 평가 후 `Normal`; Firing/Pending 0, Active notifications 0이다.
+- 기존 `grafana-default-email` contact point와 default notification policy는 읽기만 했고 contact point, route, datasource, 기존 dashboard/alert, OAuth/MCP 연결을 수정·삭제하지 않았다.
+- Grafana MCP 도구는 현재 Codex session에 주입되지 않아 기존 로그인된 Grafana UI를 fallback으로 사용했다. 새 OAuth 연결을 추가하거나 기존 연결을 삭제하지 않았다.
+- 성공 뒤 rotation/stack fixture와 root-only `/var/log/mapleland-deploy/last-failure` 진단을 제거했다. Alloy ready, public API 200, drop 0을 다시 확인했다.
+
+## 2026-07-16 롤아웃 중간 이력 (최종 상태 아님)
 
 - Issue: [#32](https://github.com/Team-Maple/MLS-BE/issues/32)
 - draft PR: [#33](https://github.com/Team-Maple/MLS-BE/pull/33)
@@ -39,10 +66,10 @@
 
 ## 다음 안전 작업
 
-1. Firebase artifact permission 수정과 bootJar mode 검증을 CI에서 통과시킨다.
-2. 최종 commit SHA/checksum으로 active script와 `.env`를 갱신하고 production rollout을 재승인받는다.
-3. 운영 재적용 후 root-only 진단을 제거하고 metrics/ECS log/rotation/Alloy 재시작과 Grafana dashboard·alert behavioral evidence를 수집한다.
-4. 실패·롤백 및 최종 digest-pinned rollout evidence를 PR에 추가한다.
+1. PR #33의 최종 CI와 리뷰를 확인한 뒤 별도 요청이 있을 때만 merge한다.
+2. 반복됐던 Hikari connection validation warning의 발생량과 DB/server timeout·`maxLifetime` 정합성을 별도 후속 작업으로 조사한다.
+3. 인증 재발급 경로의 NullPointerException 재현 조건과 null contract를 별도 후속 작업으로 조사한다.
+4. 운영 traffic이 늘면 active series, Loki 일일 환산량, Alloy RSS/CPU와 alert noise를 같은 30분 gate로 다시 측정한다.
 
 ## 재개 규칙
 
