@@ -21,8 +21,10 @@
 - readiness 보강: 전체 health는 선택적 외부 contributor 때문에 후보 생존성과 무관하게 503일 수 있다. 후보의 실제 Alloy 경계인 Bearer 인증 `/actuator/prometheus`와 대표 공개 DB API를 함께 확인하도록 변경하며, token은 curl config stdin에만 전달한다. Root health 최소 응답 계약은 통합 테스트로 유지한다.
 - 두 번째 실제 전환 run: [29479980205](https://github.com/Team-Maple/MLS-BE/actions/runs/29479980205). 후보는 약 90초 동안 HTTP listener를 만들지 못했고 Docker journal에서 동일 container task가 반복 종료된 crash loop를 확인했다. `management_prometheus_status=000`, `public_smoke_status=000`이었으며 exact 이전 image로 자동 롤백 후 공개 API 200, restart count 0을 확인했다.
 - 진단 보강 후보: 후보의 첫 restart를 즉시 실패로 판정하고 rollback 전에 root-only `/var/log/mapleland-deploy/last-failure/`에 state와 최근 500줄을 보존한다. CI/PR에는 원문을 출력하지 않으며 다음 진단 rollout 후 root에서만 읽고 제거한다.
+- 진단 rollout: [29481404148](https://github.com/Team-Maple/MLS-BE/actions/runs/29481404148). 시작 약 1.3초 뒤 restart count 1을 포착하고 root-only 진단을 저장한 후 exact 이전 image로 약 19초 만에 복구했다. 원인은 image 내부 Firebase directory/key가 `1001:1001 0700/0600`인 반면 runtime이 `1002:1001`이라 Paketo memory calculator가 `/workspace`를 순회하지 못한 것이다.
+- 권한 수정 후보: FCM restore 입력이 비어 있지 않은 service-account JSON인지 출력 없이 확인하고 `0750/0640`으로 제한한다. `zipinfo` 기준 bootJar entry가 `-rwxr-x---`/`-rw-r-----`인지 publish 전에 검증하며 directory entry는 trailing slash로 식별한다. Publish 뒤에는 실제 non-root runtime user로 directory traverse/key read smoke check를 수행해 builder UID/GID 변경도 deploy 전에 차단한다. Secret 내용과 checksum은 출력하지 않는다.
 - 강제 command 보존 설계: `update-api.sh`의 non-root gateway가 OpenSSH의 `SSH_ORIGINAL_COMMAND`에서 정확한 단일 line `preflight <3 checksums>` 또는 `deploy <3 checksums> <immutable digest>`만 허용하고 `/usr/bin/sudo -n`으로 고정 root script를 호출한다. SSH forwarding/PTY 제한과 forced entrypoint는 그대로 유지한다.
-- 현재 활성 `/opt/mapleland/update-api.sh` SHA-256: `062d8cd638c2878f6bcea8c4bf09538ca2038b8e38988994357af1e4438174c6`; restart-loop 진단 후보 SHA-256은 `74e714fa058a6a2318b8f842de6ef7c0582da4e460446c844af22b12e43efb26`다.
+- 현재 활성 `/opt/mapleland/update-api.sh` SHA-256: `74e714fa058a6a2318b8f842de6ef7c0582da4e460446c844af22b12e43efb26` (restart-loop fail-fast와 root-only 진단 보존 포함).
 - 현재 활성 `/opt/mapleland/preflight-host.sh` SHA-256: `860fab026264378684f7d02c373fa7bc8fefb0216a97ffafc866cd5c5093e413`.
 - 현재 활성 `/opt/mapleland/docker-compose.observability.yml` SHA-256: `7a0a1f77815f19940b71f07921c7411fb91d12336df93046a6de3c676ef9e8c1`
 - root-only rollback backup: `/root/mapleland-observability-20260716T063108Z-1466ebe`; `/root/mapleland-observability-rollback.env`와 exact previous-image tag 생성 완료
@@ -30,15 +32,15 @@
 - 현재 운영 app은 exact 이전 image로 자동 롤백되어 상태 `running`; 공개 `/api/v1/jobs` smoke 성공
 - Alloy: 설치 완료, `active`; 애플리케이션 Observability image는 아직 미배포
 - base Compose는 `root:root 0640`, `.env`는 `root:root 0600`이며 active override, update/preflight script와 `SERVICE_VERSION` 준비가 완료됐다. 실행 중 container에는 아직 적용되지 않았고 `18080` listener도 없으므로 서비스 재시작은 발생하지 않았다.
-- Grafana Cloud MCP: 단일 재로그인 성공. dashboard/alert live 생성과 app metrics/ECS log 검증은 아직 완료되지 않음
+- Grafana Cloud MCP: 기존 단일 연결 재로그인은 완료됐지만 현재 Codex 세션에는 Grafana 도구가 노출되지 않는다. 연결을 추가·삭제하지 않고 기존 로그인 세션의 UI 또는 공식 API만 fallback으로 사용한다. Dashboard/alert live 생성과 app metrics/ECS log 검증은 아직 완료되지 않음
 - GitHub `production` Environment: 생성 완료. required reviewer는 `mungmnb777`, self-review 허용, 배포 branch는 `main`과 `feature/observability-phase-1`만 허용
 - 실패 전환은 자동 롤백 완료; public port와 firewall 변경 없음
 
 ## 다음 안전 작업
 
-1. Restart-loop 진단 보강을 CI에서 검증하고 최종 commit SHA/checksum으로 active update script와 `.env`를 갱신한다.
-2. 승인된 진단 rollout에서 root-only startup 로그를 보존하고 exact image rollback과 공개 API 복구를 확인한다.
-3. 보존 로그로 원인을 수정한 뒤 운영 재적용, metrics/ECS log/rotation/Alloy 재시작과 Grafana dashboard·alert behavioral evidence를 수집한다.
+1. Firebase artifact permission 수정과 bootJar mode 검증을 CI에서 통과시킨다.
+2. 최종 commit SHA/checksum으로 active script와 `.env`를 갱신하고 production rollout을 재승인받는다.
+3. 운영 재적용 후 root-only 진단을 제거하고 metrics/ECS log/rotation/Alloy 재시작과 Grafana dashboard·alert behavioral evidence를 수집한다.
 4. 실패·롤백 및 최종 digest-pinned rollout evidence를 PR에 추가한다.
 
 ## 재개 규칙

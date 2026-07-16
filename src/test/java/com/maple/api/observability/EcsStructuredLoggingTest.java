@@ -180,6 +180,17 @@ class EcsStructuredLoggingTest {
     }
 
     @Test
+    void safeExceptionLogDoesNotReplaceTheOriginalFailureWithANullPointerException()
+        throws Exception {
+        JsonNode json = objectMapper.readTree(encode(captureSafeException(null)));
+
+        assertThat(json.path("message").asText()).isEqualTo("Unexpected request failure");
+        assertThat(json.has("error.type")).isFalse();
+        assertThat(json.has("error.message")).isFalse();
+        assertThat(json.has("error.stack_trace")).isFalse();
+    }
+
+    @Test
     void genericExceptionHandlerWritesOneErrorTypeMemberInTheEcsEvent() throws Exception {
         IllegalStateException failure = new IllegalStateException(
             "memberId=" + SENSITIVE_MEMBER_ID + " Authorization=" + SENSITIVE_AUTHORIZATION);

@@ -26,6 +26,9 @@ public final class SafeExceptionLog {
     }
 
     public static LoggingEventBuilder addException(LoggingEventBuilder event, Throwable throwable) {
+        if (throwable == null) {
+            return event;
+        }
         return event
             .addKeyValue("error.type", throwable.getClass().getName())
             .addKeyValue("error.message", REDACTED_MESSAGE)

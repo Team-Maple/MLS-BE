@@ -78,10 +78,23 @@ jobs:
         env:
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
         run: |
+          set -euo pipefail
           umask 077
-          mkdir -p src/main/resources/firebase
+          firebase_dir=src/main/resources/firebase
+          firebase_key="${firebase_dir}/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json"
+          mkdir -p "${firebase_dir}"
           printf '%s' "$FIREBASE_KEY" \
-            > src/main/resources/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json
+            > "${firebase_key}"
+          test -s "${firebase_key}"
+          jq -e 'type == "object" and .type == "service_account" and
+            (.private_key | type == "string" and length > 0) and
+            (.client_email | type == "string" and length > 0)' \
+            "${firebase_key}" >/dev/null
+          # Paketo launches as uid 1002, gid 1001 while application layers are
+          # owned by 1001:1001. Keep the secret group-readable only so the
+          # runtime process can traverse/read it without making it world-readable.
+          chmod 0750 "${firebase_dir}"
+          chmod 0640 "${firebase_key}"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -93,7 +106,20 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build jar
-        run: ./gradlew clean bootJar
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew clean bootJar
+          jar_path=build/libs/api-0.0.1-SNAPSHOT.jar
+          firebase_dir_mode="$(zipinfo -l "${jar_path}" \
+            'BOOT-INF/classes/firebase/' | awk 'NR == 1 { print $1 }')"
+          firebase_key_mode="$(zipinfo -l "${jar_path}" \
+            'BOOT-INF/classes/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json' \
+            | awk 'NR == 1 { print $1 }')"
+          # ZIP directory entries use '-' in zipinfo's type column; the
+          # trailing slash still materializes this entry as a directory.
+          test "${firebase_dir_mode}" = '-rwxr-x---'
+          test "${firebase_key_mode}" = '-rw-r-----'
 
       - name: Set up pack CLI
         uses: buildpacks/github-actions/setup-pack@v5.11.0
@@ -112,6 +138,23 @@ jobs:
             --builder paketobuildpacks/builder-noble-java-tiny \
             --platform linux/arm64 \
             --publish
+
+      - name: Verify runtime can read FCM key
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_ref="${IMAGE_NAME}:${IMAGE_TAG}"
+          docker pull "${image_ref}" >/dev/null
+          runtime_user="$(docker image inspect --format '{{.Config.User}}' "${image_ref}")"
+          case "${runtime_user}" in
+            ''|0|0:*|root|root:*)
+              echo 'published image must use an explicit non-root runtime user' >&2
+              exit 1
+              ;;
+          esac
+          docker run --rm --entrypoint /bin/sh "${image_ref}" -ceu \
+            'test -x /workspace/BOOT-INF/classes/firebase &&
+             test -r /workspace/BOOT-INF/classes/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json'
 
       - name: Resolve published manifest digest
         id: published_image
