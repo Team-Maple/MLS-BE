@@ -13,8 +13,59 @@ permissions:
   id-token: write
 
 jobs:
+  host-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      preflight_sha256: ${{ steps.contract.outputs.preflight_sha256 }}
+      update_sha256: ${{ steps.contract.outputs.update_sha256 }}
+
+    steps:
+      - name: Checkout deployment contract
+        uses: actions/checkout@v4
+
+      - name: Resolve reviewed host contract checksums
+        id: contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          preflight_sha256="$(sha256sum deploy/observability/preflight-host.sh | awk '{print $1}')"
+          update_sha256="$(sha256sum deploy/observability/update-api.sh | awk '{print $1}')"
+          [[ $preflight_sha256 =~ ^[0-9a-f]{64}$ ]]
+          [[ $update_sha256 =~ ^[0-9a-f]{64}$ ]]
+          printf 'preflight_sha256=%s\n' "$preflight_sha256" >> "$GITHUB_OUTPUT"
+          printf 'update_sha256=%s\n' "$update_sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Verify OCI host deployment contract
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          EXPECTED_PREFLIGHT_SHA256: ${{ steps.contract.outputs.preflight_sha256 }}
+          EXPECTED_UPDATE_SHA256: ${{ steps.contract.outputs.update_sha256 }}
+        with:
+          host: oracle-cloud
+          username: ubuntu
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          envs: EXPECTED_PREFLIGHT_SHA256,EXPECTED_UPDATE_SHA256
+          script: |
+            set -eu
+            sudo /opt/mapleland/preflight-host.sh \
+              "$EXPECTED_PREFLIGHT_SHA256" \
+              "$EXPECTED_UPDATE_SHA256"
+
   build-and-publish:
+    needs: host-preflight
     runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
     outputs:
       image_ref: ${{ steps.published_image.outputs.image_ref }}
     env:
@@ -80,8 +131,13 @@ jobs:
           printf 'image_ref=%s@%s\n' "$IMAGE_NAME" "$digest" >> "$GITHUB_OUTPUT"
 
   deploy:
-    needs: build-and-publish
+    needs:
+      - host-preflight
+      - build-and-publish
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
     permissions:
       id-token: write
       contents: read
@@ -98,10 +154,18 @@ jobs:
 
       - name: Deploy over Tailscale SSH
         uses: appleboy/ssh-action@v1.2.5
+        env:
+          EXPECTED_PREFLIGHT_SHA256: ${{ needs['host-preflight'].outputs.preflight_sha256 }}
+          EXPECTED_UPDATE_SHA256: ${{ needs['host-preflight'].outputs.update_sha256 }}
         with:
           host: oracle-cloud
           username: ubuntu
           key: ${{ secrets.ORACLE_SSH_KEY }}
+          envs: EXPECTED_PREFLIGHT_SHA256,EXPECTED_UPDATE_SHA256
           script: |
+            set -eu
+            sudo /opt/mapleland/preflight-host.sh \
+              "$EXPECTED_PREFLIGHT_SHA256" \
+              "$EXPECTED_UPDATE_SHA256"
             sudo /opt/mapleland/update-api.sh \
               "${{ env.IMAGE_REF }}"

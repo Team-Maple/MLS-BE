@@ -2,6 +2,16 @@
 
 이 문서는 Issue [#32](https://github.com/Team-Maple/MLS-BE/issues/32)의 설계, 운영 적용, 검증, 장애 대응과 롤백 절차를 함께 관리한다. 이 단계의 대상은 Spring Boot 애플리케이션 로그·메트릭과 단일 Oracle Cloud VM 호스트 메트릭이다. Tempo, Java agent, OTLP 전환, synthetic monitoring은 포함하지 않는다.
 
+## 진행 체크포인트와 재개 규칙
+
+대화나 OAuth session을 운영 상태의 source of truth로 사용하지 않는다. 비밀값 없는 현재 상태, 마지막 외부 operation, exact checksum/image ID와 다음 안전 작업은 [`observability-rollout-checkpoint.md`](observability-rollout-checkpoint.md)에 기록한다. task가 재시작되면 이 파일, Issue, PR, 현재 branch HEAD와 운영 host의 read-only 상태를 대조한 뒤 재개한다. 이미 완료된 설치나 로그인부터 반복하지 않는다.
+
+Grafana Cloud MCP는 단일 Codex task에서만 사용한다. 병렬 agent가 같은 rotating refresh token을 갱신하지 않게 하고, 시작 시 read probe가 실패하면 반복 재로그인이나 중복 connection 생성을 하지 않는다. `invalid_grant`가 확인됐을 때만 모든 병렬 client를 정리한 상태에서 한 번 재인증한다. dashboard와 alert는 아래 고정 UID를 조회한 뒤 create-or-update한다.
+
+Manual OCI SSH는 1Password 앱의 잠금 상태를 추측하지 않는다. 명시적인 `SSH_AUTH_SOCK`에서 `ssh-add -l`로 Oracle key가 보이는지 확인하고, `BatchMode` SSH read-only command로 실제 signing과 접속을 검증한다. 이 두 검증 전에는 사용자에게 잠금 해제나 재로그인을 요청하지 않는다. Routine deploy는 GitHub Actions의 `ORACLE_SSH_KEY`를 사용하므로 1Password SSH agent를 배포 critical path에 넣지 않는다.
+
+샌드박스 안의 `gh auth status`나 network command가 실패하면 같은 read-only command를 승인된 network 경계에서 한 번 재검증한다. 이번 작업에서는 sandbox 내부가 token invalid를 보고했지만 외부 재검증에서 keyring login과 `repo`, `workflow` scope가 정상임을 확인했다.
+
 ## 조사 결과와 선택
 
 - 애플리케이션: Spring Boot 3.4.5, Java 21, Micrometer 1.14.6, Logback 1.5.18, HikariCP 5.1.0
@@ -450,13 +460,20 @@ test -n "$compose_image"
 test "$(printf '%s\n' "$compose_image" | grep -c .)" -eq 1
 expected_commit='<replace-with-full-40-character-commit-sha>'
 staged_update_script='<replace-with-absolute-reviewed-staging-path>/update-api.sh'
+staged_preflight_script='<replace-with-absolute-reviewed-staging-path>/preflight-host.sh'
 expected_update_script_sha256='<replace-with-reviewed-script-sha256>'
+expected_preflight_script_sha256='<replace-with-reviewed-script-sha256>'
 printf '%s\n' "$expected_commit" | grep -Eq '^[0-9a-f]{40}$'
 printf '%s\n' "$expected_update_script_sha256" | grep -Eq '^[0-9a-f]{64}$'
+printf '%s\n' "$expected_preflight_script_sha256" | grep -Eq '^[0-9a-f]{64}$'
 sudo test -f "$staged_update_script"
+sudo test -f "$staged_preflight_script"
 sudo bash -n "$staged_update_script"
+sudo bash -n "$staged_preflight_script"
 printf '%s  %s\n' "$expected_update_script_sha256" \
   "$staged_update_script" | sudo sha256sum -c -
+printf '%s  %s\n' "$expected_preflight_script_sha256" \
+  "$staged_preflight_script" | sudo sha256sum -c -
 
 sudo cp -a docker-compose.yml "$compose_backup"
 sudo cp -a .env "$env_backup"
@@ -471,6 +488,8 @@ sudo sh -c "umask 077; printf \
 sudo docker image inspect "$rollback_tag" >/dev/null
 sudo install -o root -g root -m 0755 "$staged_update_script" \
   /opt/mapleland/update-api.sh
+sudo install -o root -g root -m 0755 "$staged_preflight_script" \
+  /opt/mapleland/preflight-host.sh
 if ! sudo test -e /opt/mapleland/ghcr.env; then
   sudo install -o root -g root -m 0600 /dev/null /opt/mapleland/ghcr.env
 fi
@@ -485,13 +504,16 @@ sudoedit /opt/mapleland/ghcr.env
 4. `docker-compose.override.example.yml`의 management loopback publish, Bearer token과 fail-closed log bind mount를 `/opt/mapleland/docker-compose.yml`에 병합한다. App service의 기존 repository tag 계약은 `update-api.sh`가 digest-pinned image ID로 local retag하므로 임의 변경하지 않는다.
 5. `SERVICE_VERSION`을 위 `expected_commit`으로 설정한다. Publish workflow run, commit과 build job이 확정한 manifest digest를 운영 기록에 남긴다.
 6. 기존 `GRAFANA_CLOUD_*` Loki appender 환경 변수는 새 애플리케이션에서 사용하지 않으므로 Compose app 환경에서 제거한다. 롤백 window 동안 값은 root-only backup에만 보존하고 Alloy의 root-only env와 혼동하지 않는다.
-7. `18080`이 비어 있는지 다시 확인하고 `docker compose config --quiet`으로 merge 결과를 검증한다. public/Traefik routing이나 firewall rule은 추가하지 않는다.
-8. 승인 후 workflow를 dispatch한다. Build job은 manifest digest를 `image_ref` output으로 넘기고 deploy job이 `sudo /opt/mapleland/update-api.sh "<repository>@sha256:<digest>"`를 호출한다. Script가 digest pull, per-deploy rollback tag, local retag, `--pull never`, exact image ID, bounded readiness/smoke를 모두 성공해야 한다. 한 번의 전환으로 Loki4j를 제거하고 Alloy file tail을 시작해 중복 전송 구간을 만들지 않는다.
+7. `18080`이 비어 있는지 다시 확인하고 `docker compose config --quiet`으로 merge 결과를 검증한다. public/Traefik routing이나 firewall rule은 추가하지 않는다. 저장소에서 계산한 두 script checksum으로 `/opt/mapleland/preflight-host.sh`를 실행해 Compose, root-only env, active deployment script, log ACL, Alloy readiness/loopback listener, 현재 app container와 rollback image, public smoke를 읽기 전용으로 검증한다.
+8. 승인 후 workflow를 dispatch한다. Workflow 순서는 `host-preflight -> build-and-publish -> production Environment approval -> host-preflight recheck -> deploy`다. 첫 preflight가 실패하면 image를 만들지 않으며, 두 번째 preflight와 `update-api.sh`는 같은 SSH step에서 연속 실행한다. Build job은 manifest digest를 `image_ref` output으로 넘기고 deploy job이 `sudo /opt/mapleland/update-api.sh "<repository>@sha256:<digest>"`를 호출한다. Script가 digest pull, per-deploy rollback tag, local retag, `--pull never`, exact image ID, bounded readiness/smoke를 모두 성공해야 한다. 한 번의 전환으로 Loki4j를 제거하고 Alloy file tail을 시작해 중복 전송 구간을 만들지 않는다.
 9. 실행 container의 image ID와 `SERVICE_VERSION`이 기대값과 같은지 먼저 확인하고, management health, unauthenticated scrape 거부, 공용 health/proxy, 대표 API, local ECS file, Alloy authenticated scrape, Grafana arrival를 순서대로 확인한다.
 
 ```bash
 sudo chown root:root /opt/mapleland/.env
 sudo chmod 0600 /opt/mapleland/.env
+sudo chown root:root /opt/mapleland/docker-compose.yml
+sudo chmod 0640 /opt/mapleland/docker-compose.yml
+test "$(sudo stat -c '%U:%G %a' /opt/mapleland/docker-compose.yml)" = 'root:root 640'
 sudo test -f /opt/mapleland/ghcr.env
 sudo test ! -L /opt/mapleland/ghcr.env
 test "$(sudo stat -c '%U:%G %a' /opt/mapleland/ghcr.env)" = 'root:root 600'
@@ -511,7 +533,12 @@ effective_app_image="$(printf '%s\n' "$effective_images" |
   grep -E '^ghcr[.]io/team-maple/mls-be/mapleland-api:')"
 test -n "$effective_app_image"
 test "$effective_app_image" = "$compose_image"
+sudo /opt/mapleland/preflight-host.sh \
+  "$expected_preflight_script_sha256" \
+  "$expected_update_script_sha256"
 ```
+
+Preflight는 secret 값이나 rendered Compose를 출력하지 않고 non-secret checksum, current image ID와 management listener 상태로 만든 attestation만 출력한다. checksum mismatch, broad env permission, wildcard listener, Compose boundary 누락, Alloy/readiness/ACL 또는 public smoke 실패가 있으면 원인을 해결하기 전 workflow를 재실행하지 않는다. 특히 active script가 저장소와 다르면 legacy script를 실행해 보는 방식으로 확인하지 않는다.
 
 승인 요청에는 다음 값을 채운다.
 
@@ -523,7 +550,9 @@ test "$effective_app_image" = "$compose_image"
 - rollback: `/root/mapleland-observability-rollback.env`에 기록된 exact local image tag와 Compose/`.env`/script backup으로 아래 명령 실행
 - Grafana 확인: 아래 PromQL/LogQL 및 Production Overview panel
 
-승인을 받은 뒤에만 workflow를 dispatch한다. 아래는 workflow가 host에서 호출하는 명령과 사후 검증의 등가 표현이다. `image_ref`는 build job output에서 복사한 digest ref여야 하며 tag를 입력하면 script가 거부한다.
+GitHub `production` Environment required reviewer 승인을 받은 뒤에만 deploy job이 시작된다. 아래는 workflow가 host에서 preflight를 다시 통과한 직후 호출하는 명령과 사후 검증의 등가 표현이다. `image_ref`는 build job output에서 복사한 digest ref여야 하며 tag를 입력하면 script가 거부한다.
+
+`production` Environment는 required reviewer `mungmnb777`와 custom branch policy를 사용한다. 허용 branch는 `main`, `feature/observability-phase-1` 두 개뿐이며 이번 rollout 종료 후 feature branch policy만 제거한다. Environment 자체나 기존 deployment history는 삭제하지 않는다.
 
 ```bash
 image_ref='ghcr.io/team-maple/mls-be/mapleland-api@sha256:<replace-with-64-hex-digest>'
