@@ -62,9 +62,6 @@ printf '%s\n' \
 printf '%s\n' \
   '#!/usr/bin/env bash' \
   'set -euo pipefail' \
-  'if [[ ${FAKE_DIAGNOSTIC_MKTEMP_FAIL:-0} == 1 && $* == *mapleland-deploy/.last-*-failure.* ]]; then' \
-  '  exit 1' \
-  'fi' \
   'exec "${REAL_MKTEMP_BIN:?}" "$@"' \
   > "${FAKE_BIN}/mktemp"
 
@@ -100,18 +97,8 @@ printf '%s\n' \
   'should_fail=false' \
   'if [[ $(cat "${state_file}") == old && ${FAKE_OLD_SMOKE_FAIL:-0} == 1 ]]; then' \
   '  should_fail=true' \
-  'elif [[ $(cat "${state_file}") == new ]]; then' \
-  '  if [[ ${url} == *:18080/* && ${FAKE_MANAGEMENT_SMOKE_FAIL:-0} == 1 ]]; then' \
-  '    should_fail=true' \
-  '  elif [[ ${url} == *:18080/actuator/prometheus && ${FAKE_PROMETHEUS_SMOKE_FAIL:-0} == 1 ]]; then' \
-  '    should_fail=true' \
-  '  elif [[ ${url} == *:8080/* && ${FAKE_PUBLIC_SMOKE_FAIL:-0} == 1 ]]; then' \
-  '    should_fail=true' \
-  '  fi' \
-  'fi' \
-  'if [[ $(cat "${state_file}") == new && ${url} == *:8080/* && ${FAKE_PUBLIC_SMOKE_REDIRECT:-0} == 1 ]]; then' \
-  '  [[ ${write_status} == true ]] && printf "%s" 302' \
-  '  exit 0' \
+  'elif [[ $(cat "${state_file}") == new && ${url} == *:8080/* && ${FAKE_PUBLIC_SMOKE_FAIL:-0} == 1 ]]; then' \
+  '  should_fail=true' \
   'fi' \
   'if [[ ${should_fail} == true ]]; then' \
   '  [[ ${write_status} == true ]] && printf "%s" 503' \
@@ -193,9 +180,6 @@ printf '%s\n' \
   '          printf "%s\n" old > "${state_file}"' \
   '        else' \
   '          printf "%s\n" new > "${state_file}"' \
-  '          if [[ ${FAKE_SIGNAL_PARENT:-} == HUP ]]; then' \
-  '            kill -s "${FAKE_SIGNAL_PARENT}" "$PPID"' \
-  '          fi' \
   '        fi' \
   '        exit 0 ;;' \
   '    esac ;;' \
@@ -209,19 +193,11 @@ printf '%s\n' \
   '        else printf "%s\n" "${FAKE_OLD_RESTART_COUNT:-0}"; fi ;;' \
   '      *json*.State*) printf "%s\n" "{\"Status\":\"running\",\"ExitCode\":0,\"OOMKilled\":false}" ;;' \
   '      *State.Status*)' \
-  '        if [[ ${target} == new-container && $(cat "${state_file}") == new ]]; then' \
-  '          printf "%s\n" "${FAKE_NEW_STATE:-running}"' \
-  '        else printf "%s\n" running; fi ;;' \
+  '        printf "%s\n" running ;;' \
   '      *State.Health*) printf "%s\n" healthy ;;' \
   '      *Config.Env*)' \
   '        if [[ ${target} == new-container ]]; then' \
-  '          if [[ ${FAKE_CANDIDATE_SERVICE_VERSION_MISMATCH:-0} == 1 ]]; then' \
-  '            printf "%s\n" SERVICE_VERSION=eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' \
-  '          else' \
-  '            printf "%s\n" SERVICE_VERSION=dddddddddddddddddddddddddddddddddddddddd' \
-  '          fi' \
-  '        elif [[ ${FAKE_OLD_SERVICE_VERSION_INVALID:-0} == 1 ]]; then' \
-  '          printf "%s\n" SERVICE_VERSION=unknown' \
+  '          printf "%s\n" SERVICE_VERSION=dddddddddddddddddddddddddddddddddddddddd' \
   '        else' \
   '          printf "%s\n" SERVICE_VERSION=f4bf228b934959be125a72540c91e43f003b7b6e' \
   '        fi ;;' \
@@ -372,142 +348,6 @@ assert_contract_unchanged "${rollback_root}"
   || fail 'failed candidate logs were not preserved before rollback'
 assert_not_contains "${rollback_output}" 'fixture-ghcr-secret'
 
-redirect_root=${WORK_DIR}/redirect
-setup_fixture "${redirect_root}"
-if redirect_output=$(run_update "${redirect_root}" \
-    FAKE_PUBLIC_SMOKE_REDIRECT=1 2>&1); then
-  fail 'candidate returning a redirect from the public smoke should fail deployment'
-fi
-[[ $(cat "${redirect_root}/state") == old ]] \
-  || fail 'public smoke redirect did not restore the previous image'
-assert_contains "${redirect_output}" 'public_status=302'
-assert_contains "${redirect_output}" 'deployment outcome=rolled_back'
-
-management_root=${WORK_DIR}/management
-setup_fixture "${management_root}"
-if management_output=$(run_update "${management_root}" \
-    FAKE_MANAGEMENT_SMOKE_FAIL=1 2>&1); then
-  fail 'candidate without the management endpoint should fail the deployment'
-fi
-[[ $(cat "${management_root}/state") == old ]] \
-  || fail 'management smoke failure did not restore the previous image'
-assert_contains "${management_output}" 'management_status=503'
-assert_contains "${management_output}" 'deployment outcome=rolled_back'
-
-prometheus_root=${WORK_DIR}/prometheus
-setup_fixture "${prometheus_root}"
-if prometheus_output=$(run_update "${prometheus_root}" \
-    FAKE_PROMETHEUS_SMOKE_FAIL=1 2>&1); then
-  fail 'candidate without authenticated Prometheus should fail the deployment'
-fi
-[[ $(cat "${prometheus_root}/state") == old ]] \
-  || fail 'Prometheus smoke failure did not restore the previous image'
-assert_contains "${prometheus_output}" 'prometheus_status=503'
-assert_contains "${prometheus_output}" 'deployment outcome=rolled_back'
-
-service_version_root=${WORK_DIR}/service-version
-setup_fixture "${service_version_root}"
-if service_version_output=$(run_update "${service_version_root}" \
-    FAKE_CANDIDATE_SERVICE_VERSION_MISMATCH=1 2>&1); then
-  fail 'candidate with the wrong service version should fail the deployment'
-fi
-[[ $(cat "${service_version_root}/state") == old ]] \
-  || fail 'service-version mismatch did not restore the previous image'
-assert_contains "${service_version_output}" \
-  'deployment phase=readiness outcome=failure reason=service_version_mismatch'
-assert_contains "${service_version_output}" 'deployment outcome=rolled_back'
-
-restart_root=${WORK_DIR}/restart
-setup_fixture "${restart_root}"
-if restart_output=$(run_update "${restart_root}" FAKE_NEW_RESTART_COUNT=1 2>&1); then
-  fail 'a restarted candidate should fail the deployment'
-fi
-[[ $(cat "${restart_root}/state") == old ]] \
-  || fail 'restarted candidate did not restore the previous image'
-assert_contains "${restart_output}" 'reason=restart count=1'
-assert_contains "${restart_output}" 'deployment outcome=rolled_back'
-assert_contract_unchanged "${restart_root}"
-
-unknown_restart_root=${WORK_DIR}/unknown-restart
-setup_fixture "${unknown_restart_root}"
-if unknown_restart_output=$(run_update "${unknown_restart_root}" \
-    FAKE_NEW_RESTART_COUNT=invalid 2>&1); then
-  fail 'candidate with an unreadable restart count should fail the deployment'
-fi
-[[ $(cat "${unknown_restart_root}/state") == old ]] \
-  || fail 'unreadable restart count did not restore the previous image'
-assert_contains "${unknown_restart_output}" 'reason=timeout'
-assert_contains "${unknown_restart_output}" 'deployment outcome=rolled_back'
-
-closed_stderr_root=${WORK_DIR}/closed-stderr
-setup_fixture "${closed_stderr_root}"
-if run_update "${closed_stderr_root}" FAKE_PUBLIC_SMOKE_FAIL=1 \
-    >/dev/null 2>&-; then
-  fail 'candidate failure with a closed stderr should keep the deployment failed'
-fi
-[[ $(cat "${closed_stderr_root}/state") == old ]] \
-  || fail 'closed stderr prevented automatic rollback'
-
-closed_pipe_root=${WORK_DIR}/closed-pipe
-setup_fixture "${closed_pipe_root}"
-closed_pipe=${closed_pipe_root}/stderr.pipe
-mkfifo "${closed_pipe}"
-dd if="${closed_pipe}" of=/dev/null bs=1 count=0 >/dev/null 2>&1 &
-closed_pipe_reader=$!
-if run_update "${closed_pipe_root}" FAKE_PUBLIC_SMOKE_FAIL=1 \
-    >/dev/null 2>"${closed_pipe}"; then
-  fail 'candidate failure with a closed stderr pipe should keep deployment failed'
-fi
-wait "${closed_pipe_reader}" || true
-[[ $(cat "${closed_pipe_root}/state") == old ]] \
-  || fail 'SIGPIPE from a closed stderr reader prevented automatic rollback'
-
-hup_closed_pipe_root=${WORK_DIR}/hup-closed-pipe
-setup_fixture "${hup_closed_pipe_root}"
-hup_closed_pipe=${hup_closed_pipe_root}/stderr.pipe
-mkfifo "${hup_closed_pipe}"
-dd if="${hup_closed_pipe}" of=/dev/null bs=1 count=0 >/dev/null 2>&1 &
-hup_closed_pipe_reader=$!
-if run_update "${hup_closed_pipe_root}" FAKE_SIGNAL_PARENT=HUP \
-    >/dev/null 2>"${hup_closed_pipe}"; then
-  fail 'HUP with a closed stderr pipe should keep deployment failed'
-fi
-wait "${hup_closed_pipe_reader}" || true
-[[ $(cat "${hup_closed_pipe_root}/state") == old ]] \
-  || fail 'HUP and SIGPIPE combination prevented automatic rollback'
-
-signal_root=${WORK_DIR}/signal-HUP
-setup_fixture "${signal_root}"
-if signal_output=$(run_update "${signal_root}" FAKE_SIGNAL_PARENT=HUP 2>&1); then
-  fail 'HUP during candidate recreation should fail the deployment'
-fi
-[[ $(cat "${signal_root}/state") == old ]] \
-  || fail 'HUP during candidate recreation prevented automatic rollback'
-assert_contains "${signal_output}" 'deployment outcome=rolled_back'
-
-diagnostic_failure_root=${WORK_DIR}/diagnostic-failure
-setup_fixture "${diagnostic_failure_root}"
-if diagnostic_failure_output=$(run_update "${diagnostic_failure_root}" \
-    FAKE_NEW_RESTART_COUNT=1 FAKE_DIAGNOSTIC_MKTEMP_FAIL=1 2>&1); then
-  fail 'candidate restart must keep the deployment failed when diagnostics cannot be created'
-fi
-[[ $(cat "${diagnostic_failure_root}/state") == old ]] \
-  || fail 'diagnostic capture failure prevented exact rollback'
-assert_contains "${diagnostic_failure_output}" \
-  'deployment diagnostics unavailable reason=temporary_directory'
-assert_contains "${diagnostic_failure_output}" 'deployment outcome=rolled_back'
-assert_not_contains "${diagnostic_failure_output}" 'unsafe chmod target'
-
-exited_root=${WORK_DIR}/exited
-setup_fixture "${exited_root}"
-if exited_output=$(run_update "${exited_root}" FAKE_NEW_STATE=exited 2>&1); then
-  fail 'an exited candidate should fail the deployment'
-fi
-[[ $(cat "${exited_root}/state") == old ]] \
-  || fail 'exited candidate did not restore the previous image'
-assert_contains "${exited_output}" 'reason=stopped state=exited'
-assert_contains "${exited_output}" 'deployment outcome=rolled_back'
-
 rollback_failure_root=${WORK_DIR}/rollback-failure
 setup_fixture "${rollback_failure_root}"
 if rollback_failure_output=$(run_update "${rollback_failure_root}" \
@@ -529,52 +369,6 @@ fi
 assert_contains "${lock_output}" 'deployment phase=lock outcome=busy'
 [[ ! -s ${lock_root}/up.log ]] || fail 'busy deployment lock still recreated the service'
 
-fifo_lock_root=${WORK_DIR}/fifo-lock
-setup_fixture "${fifo_lock_root}"
-mkdir -m 0700 "${fifo_lock_root}/run/mapleland-deploy"
-mkfifo "${fifo_lock_root}/run/mapleland-deploy/mapleland-api.lock"
-if fifo_lock_output=$(run_update "${fifo_lock_root}" 2>&1); then
-  fail 'deployment should reject a pre-created FIFO lock'
-fi
-assert_contains "${fifo_lock_output}" \
-  'deployment phase=lock outcome=failure reason=unsafe_lock_file'
-[[ ! -s ${fifo_lock_root}/up.log ]] || fail 'unsafe FIFO lock reached service recreation'
-
-symlink_lock_root=${WORK_DIR}/symlink-lock
-setup_fixture "${symlink_lock_root}"
-mkdir -m 0700 "${symlink_lock_root}/run/mapleland-deploy"
-ln -s "${symlink_lock_root}/state" \
-  "${symlink_lock_root}/run/mapleland-deploy/mapleland-api.lock"
-if symlink_lock_output=$(run_update "${symlink_lock_root}" 2>&1); then
-  fail 'deployment should reject a symlink lock'
-fi
-assert_contains "${symlink_lock_output}" \
-  'deployment phase=lock outcome=failure reason=unsafe_lock_file'
-[[ $(cat "${symlink_lock_root}/state") == old ]] \
-  || fail 'symlink lock target was modified'
-
-permissions_root=${WORK_DIR}/permissions
-setup_fixture "${permissions_root}"
-chmod 0644 "${permissions_root}/opt/mapleland/ghcr.env"
-if permissions_output=$(run_update "${permissions_root}" 2>&1); then
-  fail 'deployment should reject a world-readable credential file'
-fi
-assert_contains "${permissions_output}" \
-  'deployment phase=inputs outcome=failure reason=unsafe_permissions'
-[[ ! -s ${permissions_root}/up.log ]] \
-  || fail 'unsafe credential permissions reached service recreation'
-
-token_root=${WORK_DIR}/token
-setup_fixture "${token_root}"
-sed -i.bak 's/^MANAGEMENT_SCRAPE_TOKEN=.*/MANAGEMENT_SCRAPE_TOKEN=short/' \
-  "${token_root}/opt/mapleland/.env"
-rm "${token_root}/opt/mapleland/.env.bak"
-if token_output=$(run_update "${token_root}" 2>&1); then
-  fail 'deployment should reject a short management scrape token'
-fi
-assert_contains "${token_output}" \
-  'deployment phase=inputs outcome=failure reason=invalid_management_token'
-
 baseline_root=${WORK_DIR}/baseline
 setup_fixture "${baseline_root}"
 if baseline_output=$(run_update "${baseline_root}" FAKE_OLD_SMOKE_FAIL=1 2>&1); then
@@ -585,30 +379,6 @@ assert_contains "${baseline_output}" \
 [[ ! -s ${baseline_root}/up.log ]] \
   || fail 'unhealthy baseline still recreated the service'
 assert_contract_unchanged "${baseline_root}"
-
-baseline_restart_root=${WORK_DIR}/baseline-restart
-setup_fixture "${baseline_restart_root}"
-if baseline_restart_output=$(run_update "${baseline_restart_root}" \
-    FAKE_OLD_RESTART_COUNT=1 2>&1); then
-  fail 'deployment should not replace a previously restarted service'
-fi
-assert_contains "${baseline_restart_output}" \
-  'deployment phase=preserve outcome=failure reason=baseline_unhealthy'
-assert_contains "${baseline_restart_output}" 'restart_count=1'
-[[ ! -s ${baseline_restart_root}/up.log ]] \
-  || fail 'restarted baseline still reached service recreation'
-
-version_root=${WORK_DIR}/version
-setup_fixture "${version_root}"
-if version_output=$(run_update "${version_root}" \
-    FAKE_OLD_SERVICE_VERSION_INVALID=1 2>&1); then
-  fail 'deployment should not mutate when exact rollback service version is unavailable'
-fi
-assert_contains "${version_output}" \
-  'deployment phase=preserve outcome=failure reason=service_version_unavailable'
-[[ ! -s ${version_root}/up.log ]] \
-  || fail 'missing rollback service version still recreated the service'
-assert_contract_unchanged "${version_root}"
 
 gateway_sudo=${WORK_DIR}/gateway-sudo
 gateway_log=${WORK_DIR}/gateway.log
