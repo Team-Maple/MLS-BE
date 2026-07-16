@@ -1,6 +1,8 @@
-# Merge this fragment into /opt/mapleland/docker-compose.yml during the
-# approved deployment window. The management endpoint is reachable only from
-# this VM; it is not attached to Traefik and no firewall port is opened.
+# Install this reviewed fragment as
+# /opt/mapleland/docker-compose.observability.yml. Deployment and preflight
+# always render it after the existing base Compose file. The management
+# endpoint is reachable only from this VM; it is not attached to Traefik and
+# no firewall port is opened.
 services:
   mapleland-api:
     environment:

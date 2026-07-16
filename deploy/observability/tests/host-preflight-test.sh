@@ -9,6 +9,7 @@ OBSERVABILITY_DIR=$(cd "${TEST_DIR}/.." && pwd)
 readonly OBSERVABILITY_DIR
 readonly PREFLIGHT_SCRIPT=${OBSERVABILITY_DIR}/preflight-host.sh
 readonly UPDATE_SCRIPT=${OBSERVABILITY_DIR}/update-api.sh
+readonly COMPOSE_OVERRIDE_SOURCE=${OBSERVABILITY_DIR}/docker-compose.override.example.yml
 readonly FIXTURE_VERSION=f4bf228b934959be125a72540c91e43f003b7b6e
 
 fail() {
@@ -43,6 +44,8 @@ mkdir -p \
   "${FAKE_BIN}"
 
 cp "${UPDATE_SCRIPT}" "${ROOT_DIR}/opt/mapleland/update-api.sh"
+cp "${COMPOSE_OVERRIDE_SOURCE}" \
+  "${ROOT_DIR}/opt/mapleland/docker-compose.observability.yml"
 printf '%s\n' \
   'GHCR_USER=fixture-user' \
   'GHCR_TOKEN=fixture-ghcr-secret' \
@@ -73,7 +76,7 @@ printf '%s\n' \
   "    case \${path} in" \
   "      */ghcr.env) printf '%s\\n' \"\${FAKE_GHCR_MODE:-600}\" ;;" \
   "      */.env|*/alloy.env) printf '%s\\n' 600 ;;" \
-  "      */docker-compose.yml|*/config.alloy) printf '%s\\n' 640 ;;" \
+  "      */docker-compose.yml|*/docker-compose.observability.yml|*/config.alloy) printf '%s\\n' 640 ;;" \
   "      */update-api.sh|*/preflight-host.sh) printf '%s\\n' 755 ;;" \
   "      *) printf '%s\\n' 750 ;;" \
   '    esac ;;' \
@@ -89,18 +92,20 @@ printf '%s\n' \
   'set -euo pipefail' \
   'if [[ ${1:-} == compose ]]; then' \
   '  shift' \
-  '  [[ ${1:-} == -f ]] && shift 2' \
+  '  while [[ ${1:-} == -f || ${1:-} == --env-file ]]; do shift 2; done' \
   '  case ${1:-} in' \
   '    config)' \
   '      if [[ ${2:-} == --quiet ]]; then exit 0; fi' \
   '      if [[ ${2:-} == --format && ${3:-} == json ]]; then' \
-  '        if [[ ${FAKE_COMPOSE_VALID:-1} == 1 ]]; then' \
-  '          printf "%s\\n" '\''{"services":{"mapleland-api":{"image":"ghcr.io/team-maple/mls-be/mapleland-api:latest-arm64","environment":{"MANAGEMENT_SERVER_ADDRESS":"0.0.0.0","MANAGEMENT_SERVER_PORT":"18080","MANAGEMENT_SCRAPE_TOKEN":"fixture-management-secret-0123456789","SERVICE_VERSION":"f4bf228b934959be125a72540c91e43f003b7b6e"},"ports":[{"host_ip":"127.0.0.1","target":18080,"published":"18080","protocol":"tcp"}],"volumes":[{"type":"bind","source":"/var/log/mapleland-api","target":"/workspace/logs","bind":{"create_host_path":false}}]}}}'\''
-        else
-          printf "%s\\n" '\''{"services":{"mapleland-api":{"image":"ghcr.io/team-maple/mls-be/mapleland-api:latest-arm64","environment":{},"ports":[{"host_ip":"0.0.0.0","target":18080,"published":"18080"}],"volumes":[]}}}'\''
-        fi
-        exit 0
-      fi ;;' \
+  "        if [[ \${FAKE_LEGACY_GRAFANA_ENV:-0} == 1 ]]; then" \
+  "          printf '%s\\n' '{\"services\":{\"mapleland-api\":{\"image\":\"ghcr.io/team-maple/mls-be/mapleland-api:latest-arm64\",\"environment\":{\"MANAGEMENT_SERVER_ADDRESS\":\"0.0.0.0\",\"MANAGEMENT_SERVER_PORT\":\"18080\",\"MANAGEMENT_SCRAPE_TOKEN\":\"fixture-management-secret-0123456789\",\"SERVICE_VERSION\":\"f4bf228b934959be125a72540c91e43f003b7b6e\",\"GRAFANA_CLOUD_PASSWORD\":\"fixture-legacy-secret\"},\"ports\":[{\"host_ip\":\"127.0.0.1\",\"target\":18080,\"published\":\"18080\",\"protocol\":\"tcp\"}],\"volumes\":[{\"type\":\"bind\",\"source\":\"/var/log/mapleland-api\",\"target\":\"/workspace/logs\",\"bind\":{\"create_host_path\":false}}]}}}'" \
+  "        elif [[ \${FAKE_COMPOSE_VALID:-1} == 1 ]]; then" \
+  "          printf '%s\\n' '{\"services\":{\"mapleland-api\":{\"image\":\"ghcr.io/team-maple/mls-be/mapleland-api:latest-arm64\",\"environment\":{\"MANAGEMENT_SERVER_ADDRESS\":\"0.0.0.0\",\"MANAGEMENT_SERVER_PORT\":\"18080\",\"MANAGEMENT_SCRAPE_TOKEN\":\"fixture-management-secret-0123456789\",\"SERVICE_VERSION\":\"f4bf228b934959be125a72540c91e43f003b7b6e\"},\"ports\":[{\"host_ip\":\"127.0.0.1\",\"target\":18080,\"published\":\"18080\",\"protocol\":\"tcp\"}],\"volumes\":[{\"type\":\"bind\",\"source\":\"/var/log/mapleland-api\",\"target\":\"/workspace/logs\",\"bind\":{\"create_host_path\":false}}]}}}'" \
+  "        else" \
+  "          printf '%s\\n' '{\"services\":{\"mapleland-api\":{\"image\":\"ghcr.io/team-maple/mls-be/mapleland-api:latest-arm64\",\"environment\":{},\"ports\":[{\"host_ip\":\"0.0.0.0\",\"target\":18080,\"published\":\"18080\"}],\"volumes\":[]}}}'" \
+  "        fi" \
+  "        exit 0" \
+  '      fi ;;' \
   '    ps) printf "%s\\n" fixture-container-id; exit 0 ;;' \
   '  esac' \
   'elif [[ ${1:-} == inspect ]]; then' \
@@ -167,51 +172,95 @@ chmod +x "${FAKE_BIN}"/*
 run_preflight() {
   local expected_self_sha=$1
   local expected_update_sha=$2
-  shift 2
+  local expected_override_sha=$3
+  shift 3
   env \
     PATH="${FAKE_BIN}:${PATH}" \
     MAPLELAND_PREFLIGHT_TEST_MODE=1 \
     MAPLELAND_PREFLIGHT_TEST_ROOT="${ROOT_DIR}" \
     "$@" \
     bash "${PREFLIGHT_SCRIPT}" \
-      "${expected_self_sha}" "${expected_update_sha}"
+      "${expected_self_sha}" \
+      "${expected_update_sha}" \
+      "${expected_override_sha}"
 }
 
 SELF_SHA=$(shasum -a 256 "${PREFLIGHT_SCRIPT}" | awk '{print $1}')
 readonly SELF_SHA
 UPDATE_SHA=$(shasum -a 256 "${UPDATE_SCRIPT}" | awk '{print $1}')
 readonly UPDATE_SHA
+OVERRIDE_SHA=$(shasum -a 256 "${COMPOSE_OVERRIDE_SOURCE}" | awk '{print $1}')
+readonly OVERRIDE_SHA
 
-success_output=$(run_preflight "${SELF_SHA}" "${UPDATE_SHA}" 2>&1) \
+success_output=$(run_preflight "${SELF_SHA}" "${UPDATE_SHA}" "${OVERRIDE_SHA}" 2>&1) \
   || fail "valid host contract should pass: ${success_output}"
 assert_contains "${success_output}" 'host_preflight=ok'
 assert_contains "${success_output}" 'management_listener=absent'
 assert_not_contains "${success_output}" 'fixture-ghcr-secret'
 assert_not_contains "${success_output}" 'fixture-management-secret'
 
+# Literal Compose interpolation expressions are intentional fixture data.
+# shellcheck disable=SC2016
+printf '%s\n' \
+  '      - GRAFANA_CLOUD_URL=${GRAFANA_CLOUD_URL}' \
+  '      - GRAFANA_CLOUD_USERNAME=${GRAFANA_CLOUD_USERNAME}' \
+  '      - GRAFANA_CLOUD_PASSWORD=${GRAFANA_CLOUD_PASSWORD}' \
+  >> "${ROOT_DIR}/opt/mapleland/docker-compose.yml"
+printf '%s\n' \
+  'GRAFANA_CLOUD_URL=https://example.invalid' \
+  'GRAFANA_CLOUD_USERNAME=fixture-user' \
+  'GRAFANA_CLOUD_PASSWORD=fixture-legacy-secret' \
+  >> "${ROOT_DIR}/opt/mapleland/.env"
+transition_output=$(run_preflight "${SELF_SHA}" "${UPDATE_SHA}" "${OVERRIDE_SHA}" 2>&1) \
+  || fail "complete first-rollout rollback contract should pass: ${transition_output}"
+assert_contains "${transition_output}" 'legacy_rollback_contract=preserved'
+assert_not_contains "${transition_output}" 'fixture-legacy-secret'
+for transition_file in \
+  "${ROOT_DIR}/opt/mapleland/docker-compose.yml" \
+  "${ROOT_DIR}/opt/mapleland/.env"; do
+  awk '!/GRAFANA_CLOUD_(URL|USERNAME|PASSWORD)/' \
+    "${transition_file}" > "${transition_file}.clean"
+  mv "${transition_file}.clean" "${transition_file}"
+done
+
 if mismatch_output=$(run_preflight "${SELF_SHA}" \
   '0000000000000000000000000000000000000000000000000000000000000000' \
+  "${OVERRIDE_SHA}" \
   2>&1); then
   fail 'stale update-api.sh checksum should fail'
 fi
 assert_contains "${mismatch_output}" 'update-api.sh checksum mismatch'
 
-if mode_output=$(run_preflight "${SELF_SHA}" "${UPDATE_SHA}" \
+if override_output=$(run_preflight "${SELF_SHA}" "${UPDATE_SHA}" \
+  '0000000000000000000000000000000000000000000000000000000000000000' \
+  2>&1); then
+  fail 'stale Compose observability override checksum should fail'
+fi
+assert_contains "${override_output}" 'docker-compose.observability.yml checksum mismatch'
+
+if mode_output=$(run_preflight "${SELF_SHA}" "${UPDATE_SHA}" "${OVERRIDE_SHA}" \
   FAKE_GHCR_MODE=644 2>&1); then
   fail 'broad ghcr.env permissions should fail'
 fi
 assert_contains "${mode_output}" 'ghcr.env must be owned by root with mode 0600'
 
-if listener_output=$(run_preflight "${SELF_SHA}" "${UPDATE_SHA}" \
+if listener_output=$(run_preflight "${SELF_SHA}" "${UPDATE_SHA}" "${OVERRIDE_SHA}" \
   FAKE_MANAGEMENT_LISTENER=wildcard 2>&1); then
   fail 'wildcard management listener should fail'
 fi
 assert_contains "${listener_output}" 'management port must be absent or bound only to 127.0.0.1'
 
-if compose_output=$(run_preflight "${SELF_SHA}" "${UPDATE_SHA}" \
+if compose_output=$(run_preflight "${SELF_SHA}" "${UPDATE_SHA}" "${OVERRIDE_SHA}" \
   FAKE_COMPOSE_VALID=0 2>&1); then
   fail 'Compose without the observability boundary should fail'
 fi
 assert_contains "${compose_output}" 'Compose observability contract is incomplete'
+
+if legacy_output=$(run_preflight "${SELF_SHA}" "${UPDATE_SHA}" "${OVERRIDE_SHA}" \
+  FAKE_LEGACY_GRAFANA_ENV=1 2>&1); then
+  fail 'legacy appender credentials in the app environment should fail'
+fi
+assert_contains "${legacy_output}" 'Compose observability contract is incomplete'
+assert_not_contains "${legacy_output}" 'fixture-legacy-secret'
 
 echo 'host-preflight tests passed'

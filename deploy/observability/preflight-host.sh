@@ -4,6 +4,8 @@ set -euo pipefail
 readonly EXPECTED_REPOSITORY=ghcr.io/team-maple/mls-be/mapleland-api
 readonly EXPECTED_SHA256_REGEX='^[0-9a-f]{64}$'
 readonly EXPECTED_SERVICE_VERSION_REGEX='^[0-9a-f]{40}$'
+readonly LEGACY_COMPOSE_ENV_REGEX='^[[:space:]]*-[[:space:]]*GRAFANA_CLOUD_(URL|USERNAME|PASSWORD)='
+readonly LEGACY_APP_ENV_REGEX='^GRAFANA_CLOUD_(URL|USERNAME|PASSWORD)='
 
 fail() {
   echo "host preflight failed: $*" >&2
@@ -28,6 +30,8 @@ host_path() {
 
 COMPOSE_FILE=$(host_path /opt/mapleland/docker-compose.yml)
 readonly COMPOSE_FILE
+COMPOSE_OVERRIDE_FILE=$(host_path /opt/mapleland/docker-compose.observability.yml)
+readonly COMPOSE_OVERRIDE_FILE
 APP_ENV_FILE=$(host_path /opt/mapleland/.env)
 readonly APP_ENV_FILE
 GHCR_ENV_FILE=$(host_path /opt/mapleland/ghcr.env)
@@ -43,15 +47,18 @@ readonly APP_LOG_DIR
 APP_LOG_FILE=$(host_path /var/log/mapleland-api/mapleland-api.json)
 readonly APP_LOG_FILE
 
-if [[ $# -ne 2 ]]; then
-  fail 'usage: preflight-host.sh <expected-preflight-sha256> <expected-update-sha256>'
+if [[ $# -ne 3 ]]; then
+  fail 'usage: preflight-host.sh <expected-preflight-sha256> <expected-update-sha256> <expected-compose-override-sha256>'
 fi
 readonly expected_preflight_sha=$1
 readonly expected_update_sha=$2
+readonly expected_compose_override_sha=$3
 [[ ${expected_preflight_sha} =~ ${EXPECTED_SHA256_REGEX} ]] \
   || fail 'expected preflight checksum must be 64 lowercase hex characters'
 [[ ${expected_update_sha} =~ ${EXPECTED_SHA256_REGEX} ]] \
   || fail 'expected update checksum must be 64 lowercase hex characters'
+[[ ${expected_compose_override_sha} =~ ${EXPECTED_SHA256_REGEX} ]] \
+  || fail 'expected Compose override checksum must be 64 lowercase hex characters'
 
 for required_command in awk bash curl docker getfacl grep id jq runuser sha256sum ss stat systemctl; do
   command -v "${required_command}" >/dev/null \
@@ -72,6 +79,7 @@ require_root_file() {
 require_root_file "${PREFLIGHT_FILE}" 755 preflight-host.sh
 require_root_file "${UPDATE_FILE}" 755 update-api.sh
 require_root_file "${COMPOSE_FILE}" 640 docker-compose.yml
+require_root_file "${COMPOSE_OVERRIDE_FILE}" 640 docker-compose.observability.yml
 require_root_file "${APP_ENV_FILE}" 600 .env
 require_root_file "${GHCR_ENV_FILE}" 600 ghcr.env
 require_root_file "${ALLOY_CONFIG_FILE}" 640 config.alloy
@@ -85,6 +93,10 @@ actual_update_sha=$(sha256sum "${UPDATE_FILE}" | awk '{print $1}')
 [[ ${actual_update_sha} == "${expected_update_sha}" ]] \
   || fail 'update-api.sh checksum mismatch; active host script is stale or unreviewed'
 bash -n "${UPDATE_FILE}"
+
+actual_compose_override_sha=$(sha256sum "${COMPOSE_OVERRIDE_FILE}" | awk '{print $1}')
+[[ ${actual_compose_override_sha} == "${expected_compose_override_sha}" ]] \
+  || fail 'docker-compose.observability.yml checksum mismatch; install the reviewed repository version'
 
 validate_ghcr_env() {
   local line
@@ -125,6 +137,10 @@ validate_app_env() {
   local value
   local management_token_seen=false
   local service_version_seen=false
+  local legacy_url_seen=false
+  local legacy_username_seen=false
+  local legacy_password_seen=false
+  app_legacy_count=0
 
   while IFS= read -r line || [[ -n ${line} ]]; do
     case ${line} in
@@ -134,6 +150,21 @@ validate_app_env() {
     key=${line%%=*}
     value=${line#*=}
     case ${key} in
+      GRAFANA_CLOUD_URL)
+        [[ ${legacy_url_seen} == false ]] || fail '.env contains duplicate GRAFANA_CLOUD_URL'
+        legacy_url_seen=true
+        (( app_legacy_count += 1 ))
+        ;;
+      GRAFANA_CLOUD_USERNAME)
+        [[ ${legacy_username_seen} == false ]] || fail '.env contains duplicate GRAFANA_CLOUD_USERNAME'
+        legacy_username_seen=true
+        (( app_legacy_count += 1 ))
+        ;;
+      GRAFANA_CLOUD_PASSWORD)
+        [[ ${legacy_password_seen} == false ]] || fail '.env contains duplicate GRAFANA_CLOUD_PASSWORD'
+        legacy_password_seen=true
+        (( app_legacy_count += 1 ))
+        ;;
       MANAGEMENT_SCRAPE_TOKEN)
         [[ ${management_token_seen} == false ]] \
           || fail '.env contains duplicate MANAGEMENT_SCRAPE_TOKEN'
@@ -158,8 +189,44 @@ validate_app_env() {
 validate_ghcr_env
 validate_app_env
 
-docker compose -f "${COMPOSE_FILE}" config --quiet
-compose_json=$(docker compose -f "${COMPOSE_FILE}" config --format json)
+base_legacy_count=0
+for legacy_key in URL USERNAME PASSWORD; do
+  legacy_key_count=$(grep -Ec \
+    "^[[:space:]]*-[[:space:]]*GRAFANA_CLOUD_${legacy_key}=" \
+    "${COMPOSE_FILE}" || true)
+  (( legacy_key_count <= 1 )) \
+    || fail "docker-compose.yml contains duplicate GRAFANA_CLOUD_${legacy_key}"
+  base_legacy_count=$((base_legacy_count + legacy_key_count))
+done
+case "${base_legacy_count}:${app_legacy_count}" in
+  0:0) legacy_rollback_contract=removed ;;
+  3:3) legacy_rollback_contract=preserved ;;
+  *) fail 'legacy Grafana rollback environment must be either fully preserved or fully removed' ;;
+esac
+readonly legacy_rollback_contract
+
+# Compose otherwise auto-loads /opt/mapleland/.env. Use a root-only filtered
+# copy so the first deployment can keep its exact legacy rollback inputs while
+# proving that the new container model receives none of them.
+sanitized_app_env=$(mktemp)
+readonly sanitized_app_env
+chmod 0600 "${sanitized_app_env}"
+awk -v regex="${LEGACY_APP_ENV_REGEX}" '$0 !~ regex' \
+  "${APP_ENV_FILE}" > "${sanitized_app_env}"
+sanitized_compose_file=$(mktemp "$(dirname "${COMPOSE_FILE}")/.docker-compose.preflight.XXXXXX")
+readonly sanitized_compose_file
+chmod 0640 "${sanitized_compose_file}"
+awk -v regex="${LEGACY_COMPOSE_ENV_REGEX}" '$0 !~ regex' \
+  "${COMPOSE_FILE}" > "${sanitized_compose_file}"
+trap 'rm -f "${sanitized_app_env}" "${sanitized_compose_file}"' EXIT
+
+readonly -a COMPOSE_ARGS=(
+  --env-file "${sanitized_app_env}"
+  -f "${sanitized_compose_file}"
+  -f "${COMPOSE_OVERRIDE_FILE}"
+)
+docker compose "${COMPOSE_ARGS[@]}" config --quiet
+compose_json=$(docker compose "${COMPOSE_ARGS[@]}" config --format json)
 if ! printf '%s' "${compose_json}" | jq -e --arg repository "${EXPECTED_REPOSITORY}:" '
   .services["mapleland-api"] as $app |
   ($app | type == "object") and
@@ -170,6 +237,8 @@ if ! printf '%s' "${compose_json}" | jq -e --arg repository "${EXPECTED_REPOSITO
   (($app.environment.MANAGEMENT_SCRAPE_TOKEN | length) >= 32) and
   (($app.environment.SERVICE_VERSION | type) == "string") and
   ($app.environment.SERVICE_VERSION | test("^[0-9a-f]{40}$")) and
+  ([ ($app.environment // {} | keys[]) |
+      select(startswith("GRAFANA_CLOUD_")) ] | length == 0) and
   ([ $app.ports[]? | select((.target | tostring) == "18080") ] | length == 1) and
   ([ $app.ports[]? |
       select((.target | tostring) == "18080" and
@@ -248,7 +317,7 @@ if validate_exact_loopback_listener 18080 true; then
     || fail 'application management health endpoint failed'
 fi
 
-app_container_ids=$(docker compose -f "${COMPOSE_FILE}" ps -q mapleland-api)
+app_container_ids=$(docker compose "${COMPOSE_ARGS[@]}" ps -q mapleland-api)
 [[ $(printf '%s\n' "${app_container_ids}" | grep -c .) -eq 1 ]] \
   || fail 'exactly one existing mapleland-api container is required'
 readonly app_container_id=${app_container_ids}
@@ -266,11 +335,14 @@ curl --fail --silent --show-error --max-time 5 \
 attestation=$(printf '%s\n' \
   "${actual_preflight_sha}" \
   "${actual_update_sha}" \
+  "${actual_compose_override_sha}" \
   "${compose_sha}" \
   "${app_container_id}" \
   "${current_image_id}" \
+  "${legacy_rollback_contract}" \
   "${management_listener}" |
   sha256sum | awk '{print $1}')
 
-printf 'host_preflight=ok attestation=%s current_image=%s management_listener=%s\n' \
-  "${attestation}" "${current_image_id}" "${management_listener}"
+printf 'host_preflight=ok attestation=%s current_image=%s legacy_rollback_contract=%s management_listener=%s\n' \
+  "${attestation}" "${current_image_id}" "${legacy_rollback_contract}" \
+  "${management_listener}"

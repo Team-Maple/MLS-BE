@@ -461,19 +461,25 @@ test "$(printf '%s\n' "$compose_image" | grep -c .)" -eq 1
 expected_commit='<replace-with-full-40-character-commit-sha>'
 staged_update_script='<replace-with-absolute-reviewed-staging-path>/update-api.sh'
 staged_preflight_script='<replace-with-absolute-reviewed-staging-path>/preflight-host.sh'
+staged_compose_override='<replace-with-absolute-reviewed-staging-path>/docker-compose.override.example.yml'
 expected_update_script_sha256='<replace-with-reviewed-script-sha256>'
 expected_preflight_script_sha256='<replace-with-reviewed-script-sha256>'
+expected_compose_override_sha256='<replace-with-reviewed-file-sha256>'
 printf '%s\n' "$expected_commit" | grep -Eq '^[0-9a-f]{40}$'
 printf '%s\n' "$expected_update_script_sha256" | grep -Eq '^[0-9a-f]{64}$'
 printf '%s\n' "$expected_preflight_script_sha256" | grep -Eq '^[0-9a-f]{64}$'
+printf '%s\n' "$expected_compose_override_sha256" | grep -Eq '^[0-9a-f]{64}$'
 sudo test -f "$staged_update_script"
 sudo test -f "$staged_preflight_script"
+sudo test -f "$staged_compose_override"
 sudo bash -n "$staged_update_script"
 sudo bash -n "$staged_preflight_script"
 printf '%s  %s\n' "$expected_update_script_sha256" \
   "$staged_update_script" | sudo sha256sum -c -
 printf '%s  %s\n' "$expected_preflight_script_sha256" \
   "$staged_preflight_script" | sudo sha256sum -c -
+printf '%s  %s\n' "$expected_compose_override_sha256" \
+  "$staged_compose_override" | sudo sha256sum -c -
 
 sudo cp -a docker-compose.yml "$compose_backup"
 sudo cp -a .env "$env_backup"
@@ -490,6 +496,8 @@ sudo install -o root -g root -m 0755 "$staged_update_script" \
   /opt/mapleland/update-api.sh
 sudo install -o root -g root -m 0755 "$staged_preflight_script" \
   /opt/mapleland/preflight-host.sh
+sudo install -o root -g root -m 0640 "$staged_compose_override" \
+  /opt/mapleland/docker-compose.observability.yml
 if ! sudo test -e /opt/mapleland/ghcr.env; then
   sudo install -o root -g root -m 0600 /dev/null /opt/mapleland/ghcr.env
 fi
@@ -501,12 +509,16 @@ sudoedit /opt/mapleland/ghcr.env
 1. `/var/log/mapleland-api`의 owner `1002:1001`, mode와 기존/default Alloy ACL을 확인한다.
 2. root-only `/opt/mapleland/.env`와 `/etc/alloy/alloy.env`에 동일한 `MANAGEMENT_SCRAPE_TOKEN`을 안전하게 입력한다. `/opt/mapleland/.env`는 `root:root 0600`으로 낮춘다.
 3. 기존 Compose `.env`를 shell로 `source`하지 않는다. `ghcr.env.example`의 두 key만 포함하는 `/opt/mapleland/ghcr.env`를 별도로 만들고 `root:root 0600`, non-symlink인지 확인한다. `update-api.sh`는 이 파일을 실행하지 않고 exact key/value parser로만 읽는다.
-4. `docker-compose.override.example.yml`의 management loopback publish, Bearer token과 fail-closed log bind mount를 `/opt/mapleland/docker-compose.yml`에 병합한다. App service의 기존 repository tag 계약은 `update-api.sh`가 digest-pinned image ID로 local retag하므로 임의 변경하지 않는다.
+4. `docker-compose.override.example.yml`을 checksum 검증 후 `/opt/mapleland/docker-compose.observability.yml`로 설치한다. 첫 전환 전에는 base Compose와 `.env`의 `GRAFANA_CLOUD_URL`, `GRAFANA_CLOUD_USERNAME`, `GRAFANA_CLOUD_PASSWORD` 세 legacy entry를 제거하지 않는다. 새 container가 실패하면 이전 Loki4j image가 exact rollback 입력으로 사용할 수 있어야 하기 때문이다. `update-api.sh`와 preflight는 이 세 entry를 제외한 root-only 임시 base와 `--env-file`을 사용해 새 container model을 render한다. App service의 기존 repository tag 계약은 `update-api.sh`가 digest-pinned image ID로 local retag하므로 임의 변경하지 않는다.
 5. `SERVICE_VERSION`을 위 `expected_commit`으로 설정한다. Publish workflow run, commit과 build job이 확정한 manifest digest를 운영 기록에 남긴다.
-6. 기존 `GRAFANA_CLOUD_*` Loki appender 환경 변수는 새 애플리케이션에서 사용하지 않으므로 Compose app 환경에서 제거한다. 롤백 window 동안 값은 root-only backup에만 보존하고 Alloy의 root-only env와 혼동하지 않는다.
-7. `18080`이 비어 있는지 다시 확인하고 `docker compose config --quiet`으로 merge 결과를 검증한다. public/Traefik routing이나 firewall rule은 추가하지 않는다. 저장소에서 계산한 두 script checksum으로 `/opt/mapleland/preflight-host.sh`를 실행해 Compose, root-only env, active deployment script, log ACL, Alloy readiness/loopback listener, 현재 app container와 rollback image, public smoke를 읽기 전용으로 검증한다.
-8. 승인 후 workflow를 dispatch한다. Workflow 순서는 `host-preflight -> build-and-publish -> production Environment approval -> host-preflight recheck -> deploy`다. 첫 preflight가 실패하면 image를 만들지 않으며, 두 번째 preflight와 `update-api.sh`는 같은 SSH step에서 연속 실행한다. Build job은 manifest digest를 `image_ref` output으로 넘기고 deploy job이 `sudo /opt/mapleland/update-api.sh "<repository>@sha256:<digest>"`를 호출한다. Script가 digest pull, per-deploy rollback tag, local retag, `--pull never`, exact image ID, bounded readiness/smoke를 모두 성공해야 한다. 한 번의 전환으로 Loki4j를 제거하고 Alloy file tail을 시작해 중복 전송 구간을 만들지 않는다.
+6. 새 image의 readiness, management health, public smoke와 실제 container environment의 legacy key 부재가 모두 확인된 뒤에만 `update-api.sh`가 base Compose와 `.env`의 세 entry를 같은 directory의 root-only candidate로 만들고 render validation 후 atomic rename한다. 실패 전에는 원본을 보존하고, 성공 뒤에는 root-only backup에만 남긴다. Alloy write secret과 이 legacy rollback 값은 서로 다른 파일과 목적을 유지한다.
+7. `18080`이 비어 있는지 다시 확인한다. public/Traefik routing이나 firewall rule은 추가하지 않는다. 저장소에서 계산한 두 script와 override checksum으로 `/opt/mapleland/preflight-host.sh`를 실행해 sanitized Compose render, legacy rollback entry의 `3:3` 또는 `0:0` 완전성, root-only env, active deployment script, log ACL, Alloy readiness/loopback listener, 현재 app container와 rollback image, public smoke를 읽기 전용으로 검증한다.
+8. 승인 후 workflow를 dispatch한다. Workflow 순서는 `host-preflight -> build-and-publish -> production Environment approval -> host-preflight recheck -> deploy`다. 첫 preflight가 실패하면 image를 만들지 않으며, 두 번째 preflight와 `update-api.sh`는 같은 SSH step에서 연속 실행한다. Build job은 manifest digest를 `image_ref` output으로 넘기고 deploy job이 `sudo /opt/mapleland/update-api.sh "<repository>@sha256:<digest>"`를 호출한다. Script가 digest pull, per-deploy rollback tag, local retag, `--pull never`, legacy environment 부재, exact image ID, bounded readiness/smoke를 모두 성공해야 한다. 첫 전환 실패 시 base Compose와 원래 `.env`로 이전 Loki4j image를 복구하고, 성공 시에만 legacy entry를 제거한다. 한 번의 전환으로 Loki4j를 제거하고 Alloy file tail을 시작해 중복 전송 구간을 만들지 않는다.
 9. 실행 container의 image ID와 `SERVICE_VERSION`이 기대값과 같은지 먼저 확인하고, management health, unauthenticated scrape 거부, 공용 health/proxy, 대표 API, local ECS file, Alloy authenticated scrape, Grafana arrival를 순서대로 확인한다.
+
+첫 전환 동안 preflight와 update script는 기본 `.env` 자동 로드를 사용하지 않고 legacy 세 entry만 제외한 mode `0640` 임시 base와 mode `0600` 임시 `--env-file`을 같은 project directory에서 사용한다. 따라서 원본 rollback 값은 보존하면서도 새 container에는 전달하지 않는다. 명시적 env file의 project environment 동작은 [Docker Compose `--env-file` 규칙](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/#local-env-file-versus-project-directory-env-file)을 따른다. 실제 container의 `.Config.Env`도 readiness gate에서 값 출력 없이 재검증한다. 성공한 후보 파일만 active base와 `.env`로 승격된다.
+
+`sudo`는 Docker 접근을 위한 것이 아니라 root-only deployment state를 위한 것이다. Script는 mode `0600`인 `.env`/`ghcr.env`를 읽고 mode `0640`인 Compose 계약을 검증·교체하므로 EUID 0이 아니면 중단한다. Workflow가 상승시키는 범위는 checksum이 preflight에서 검증된 `/opt/mapleland/update-api.sh` 실행 한 번이며, 일반 사용자에게 secret read나 Compose write 권한을 부여하지 않는다.
 
 ```bash
 sudo chown root:root /opt/mapleland/.env
@@ -514,6 +526,7 @@ sudo chmod 0600 /opt/mapleland/.env
 sudo chown root:root /opt/mapleland/docker-compose.yml
 sudo chmod 0640 /opt/mapleland/docker-compose.yml
 test "$(sudo stat -c '%U:%G %a' /opt/mapleland/docker-compose.yml)" = 'root:root 640'
+test "$(sudo stat -c '%U:%G %a' /opt/mapleland/docker-compose.observability.yml)" = 'root:root 640'
 sudo test -f /opt/mapleland/ghcr.env
 sudo test ! -L /opt/mapleland/ghcr.env
 test "$(sudo stat -c '%U:%G %a' /opt/mapleland/ghcr.env)" = 'root:root 600'
@@ -527,15 +540,15 @@ if ss -lntH 'sport = :18080' | grep -q .; then
   exit 1
 fi
 cd /opt/mapleland
-sudo docker compose config --quiet
-effective_images="$(sudo docker compose config --images)"
+effective_images="$(sudo docker compose -f docker-compose.yml config --images)"
 effective_app_image="$(printf '%s\n' "$effective_images" |
   grep -E '^ghcr[.]io/team-maple/mls-be/mapleland-api:')"
 test -n "$effective_app_image"
 test "$effective_app_image" = "$compose_image"
 sudo /opt/mapleland/preflight-host.sh \
   "$expected_preflight_script_sha256" \
-  "$expected_update_script_sha256"
+  "$expected_update_script_sha256" \
+  "$expected_compose_override_sha256"
 ```
 
 Preflight는 secret 값이나 rendered Compose를 출력하지 않고 non-secret checksum, current image ID와 management listener 상태로 만든 attestation만 출력한다. checksum mismatch, broad env permission, wildcard listener, Compose boundary 누락, Alloy/readiness/ACL 또는 public smoke 실패가 있으면 원인을 해결하기 전 workflow를 재실행하지 않는다. 특히 active script가 저장소와 다르면 legacy script를 실행해 보는 방식으로 확인하지 않는다.
@@ -567,7 +580,7 @@ sudo docker inspect mapleland-mapleland-api-1 |
     '.[0].Config.Env | index($expected) != null' >/dev/null
 ```
 
-`update-api.sh` 내부 readiness 또는 smoke가 실패하면 배포마다 생성한 exact previous-image tag로 먼저 자동 복구되고 workflow는 실패한다. 초기 Observability 전환은 Compose/env 경계도 함께 바뀌므로 자동 image rollback이 public smoke를 회복하지 못하거나 이후 behavioral 검증이 실패하면 다음 full rollback을 즉시 실행한다.
+`update-api.sh` 내부 readiness, legacy environment 부재 또는 smoke가 실패하면 배포마다 생성한 exact previous-image tag로 먼저 자동 복구되고 workflow는 실패한다. 첫 Observability 전환에서는 성공 전까지 보존한 base Compose와 `.env`를 사용하므로 이전 Loki4j image의 환경도 함께 복구된다. 전환 완료 뒤의 배포는 sanitized env와 observability override로 직전 image를 복구한다. 자동 rollback이 public smoke를 회복하지 못하거나 이후 behavioral 검증이 실패하면 다음 full rollback을 즉시 실행한다.
 
 ```bash
 sudo sh -eu -c '
@@ -575,6 +588,10 @@ sudo sh -eu -c '
   cp -a "$COMPOSE_BACKUP" /opt/mapleland/docker-compose.yml
   cp -a "$ENV_BACKUP" /opt/mapleland/.env
   cp -a "$UPDATE_SCRIPT_BACKUP" /opt/mapleland/update-api.sh
+  if test -f /opt/mapleland/docker-compose.observability.yml; then
+    mv /opt/mapleland/docker-compose.observability.yml \
+      "/root/docker-compose.observability.yml.disabled-${EXPECTED_COMMIT}"
+  fi
   docker image tag "$ROLLBACK_TAG" "$ROLLBACK_COMPOSE_IMAGE"
   expected_rollback_image_id="$(docker image inspect --format "{{.Id}}" "$ROLLBACK_TAG")"
   cd /opt/mapleland

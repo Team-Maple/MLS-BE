@@ -20,6 +20,7 @@ jobs:
       id-token: write
       contents: read
     outputs:
+      compose_override_sha256: ${{ steps.contract.outputs.compose_override_sha256 }}
       preflight_sha256: ${{ steps.contract.outputs.preflight_sha256 }}
       update_sha256: ${{ steps.contract.outputs.update_sha256 }}
 
@@ -32,12 +33,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          compose_override_sha256="$(sha256sum deploy/observability/docker-compose.override.example.yml | awk '{print $1}')"
           preflight_sha256="$(sha256sum deploy/observability/preflight-host.sh | awk '{print $1}')"
           update_sha256="$(sha256sum deploy/observability/update-api.sh | awk '{print $1}')"
+          [[ $compose_override_sha256 =~ ^[0-9a-f]{64}$ ]]
           [[ $preflight_sha256 =~ ^[0-9a-f]{64}$ ]]
           [[ $update_sha256 =~ ^[0-9a-f]{64}$ ]]
-          printf 'preflight_sha256=%s\n' "$preflight_sha256" >> "$GITHUB_OUTPUT"
-          printf 'update_sha256=%s\n' "$update_sha256" >> "$GITHUB_OUTPUT"
+          {
+            printf 'compose_override_sha256=%s\n' "$compose_override_sha256"
+            printf 'preflight_sha256=%s\n' "$preflight_sha256"
+            printf 'update_sha256=%s\n' "$update_sha256"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Connect to Tailscale
         uses: tailscale/github-action@v4
@@ -49,18 +55,20 @@ jobs:
       - name: Verify OCI host deployment contract
         uses: appleboy/ssh-action@v1.2.5
         env:
+          EXPECTED_COMPOSE_OVERRIDE_SHA256: ${{ steps.contract.outputs.compose_override_sha256 }}
           EXPECTED_PREFLIGHT_SHA256: ${{ steps.contract.outputs.preflight_sha256 }}
           EXPECTED_UPDATE_SHA256: ${{ steps.contract.outputs.update_sha256 }}
         with:
           host: oracle-cloud
           username: ubuntu
           key: ${{ secrets.ORACLE_SSH_KEY }}
-          envs: EXPECTED_PREFLIGHT_SHA256,EXPECTED_UPDATE_SHA256
+          envs: EXPECTED_COMPOSE_OVERRIDE_SHA256,EXPECTED_PREFLIGHT_SHA256,EXPECTED_UPDATE_SHA256
           script: |
             set -eu
             sudo /opt/mapleland/preflight-host.sh \
               "$EXPECTED_PREFLIGHT_SHA256" \
-              "$EXPECTED_UPDATE_SHA256"
+              "$EXPECTED_UPDATE_SHA256" \
+              "$EXPECTED_COMPOSE_OVERRIDE_SHA256"
 
   build-and-publish:
     needs: host-preflight
@@ -155,17 +163,19 @@ jobs:
       - name: Deploy over Tailscale SSH
         uses: appleboy/ssh-action@v1.2.5
         env:
+          EXPECTED_COMPOSE_OVERRIDE_SHA256: ${{ needs['host-preflight'].outputs.compose_override_sha256 }}
           EXPECTED_PREFLIGHT_SHA256: ${{ needs['host-preflight'].outputs.preflight_sha256 }}
           EXPECTED_UPDATE_SHA256: ${{ needs['host-preflight'].outputs.update_sha256 }}
         with:
           host: oracle-cloud
           username: ubuntu
           key: ${{ secrets.ORACLE_SSH_KEY }}
-          envs: EXPECTED_PREFLIGHT_SHA256,EXPECTED_UPDATE_SHA256
+          envs: EXPECTED_COMPOSE_OVERRIDE_SHA256,EXPECTED_PREFLIGHT_SHA256,EXPECTED_UPDATE_SHA256
           script: |
             set -eu
             sudo /opt/mapleland/preflight-host.sh \
               "$EXPECTED_PREFLIGHT_SHA256" \
-              "$EXPECTED_UPDATE_SHA256"
+              "$EXPECTED_UPDATE_SHA256" \
+              "$EXPECTED_COMPOSE_OVERRIDE_SHA256"
             sudo /opt/mapleland/update-api.sh \
               "${{ env.IMAGE_REF }}"
