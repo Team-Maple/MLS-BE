@@ -30,7 +30,9 @@ public class AuthService {
   }
 
   public void logout(String memberId) {
-    log.info("Logging out member with ID: {}", memberId);
+    log.atInfo()
+      .addKeyValue("event.action", "authentication.logout")
+      .log("Member logout requested");
     refreshTokenService.delete(memberId);
   }
 

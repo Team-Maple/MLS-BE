@@ -18,12 +18,16 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
                      HttpServletResponse response,
                      AccessDeniedException accessDeniedException)
     throws IOException {
-    // 필요한 권한이 없이 접근하려 할때 403
-    String accessDeniedErrorMsg = "필요한 권한이 없음" +
+    log.atWarn()
+      .addKeyValue("event.action", "http.request.denied")
+      .addKeyValue("event.outcome", "failure")
+      .addKeyValue("http.request.method", request.getMethod())
+      .addKeyValue("http.response.status_code", HttpServletResponse.SC_FORBIDDEN)
+      .addKeyValue("error.type", accessDeniedException.getClass().getName())
+      .log("Request authorization denied");
+    String accessDeniedErrorMessage = "필요한 권한이 없음" +
       "\nuri : " + request.getRequestURI() +
-      "\nException : " +
-      accessDeniedException.getClass() + "," + accessDeniedException.getMessage();
-    log.error(accessDeniedErrorMsg);
-    response.sendError(HttpServletResponse.SC_FORBIDDEN, accessDeniedErrorMsg);
+      "\nException : " + accessDeniedException.getClass() + "," + accessDeniedException.getMessage();
+    response.sendError(HttpServletResponse.SC_FORBIDDEN, accessDeniedErrorMessage);
   }
 }

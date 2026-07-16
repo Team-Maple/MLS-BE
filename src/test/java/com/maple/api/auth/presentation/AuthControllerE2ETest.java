@@ -91,7 +91,7 @@ public class AuthControllerE2ETest {
       );
 
       // then
-      MvcResult result = mockMvc.perform(post("/api/v1/auth/signup/kakao")
+      mockMvc.perform(post("/api/v1/auth/signup/kakao")
           .header("access-token", "valid-access-token")
           .accept(MediaType.APPLICATION_JSON)
           .contentType(MediaType.APPLICATION_JSON)
@@ -99,10 +99,7 @@ public class AuthControllerE2ETest {
         )
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.accessToken").exists())
-        .andExpect(jsonPath("$.data.refreshToken").exists())
-        .andReturn();
-
-      System.out.println(result.getResponse().getContentAsString());
+        .andExpect(jsonPath("$.data.refreshToken").exists());
     }
 
     @Test
@@ -123,7 +120,7 @@ public class AuthControllerE2ETest {
       );
 
       // then
-      MvcResult result = mockMvc.perform(post("/api/v1/auth/signup/kakao")
+      mockMvc.perform(post("/api/v1/auth/signup/kakao")
           .header("access-token", "valid-access-token")
           .accept(MediaType.APPLICATION_JSON)
           .contentType(MediaType.APPLICATION_JSON)
@@ -131,10 +128,7 @@ public class AuthControllerE2ETest {
         )
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.accessToken").exists())
-        .andExpect(jsonPath("$.data.refreshToken").exists())
-        .andReturn();
-
-      System.out.println(result.getResponse().getContentAsString());
+        .andExpect(jsonPath("$.data.refreshToken").exists());
     }
 
     @Test
@@ -145,15 +139,12 @@ public class AuthControllerE2ETest {
       when(kakaoUserInfoClient.getUserInfo(anyString())).thenReturn(kakaoUserInfo);
 
       // then
-      MvcResult result = mockMvc.perform(post("/api/v1/auth/login/kakao")
+      mockMvc.perform(post("/api/v1/auth/login/kakao")
           .header("access-token", "valid-access-token")
           .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.accessToken").exists())
-        .andExpect(jsonPath("$.data.refreshToken").exists())
-        .andReturn();
-
-      System.out.println(result.getResponse().getContentAsString());
+        .andExpect(jsonPath("$.data.refreshToken").exists());
     }
 
     @Test
@@ -230,7 +221,7 @@ public class AuthControllerE2ETest {
       int level = 120;
       int jobId = 5;
       UpdateCommand.Profile requestDto = new UpdateCommand.Profile(level, jobId);
-      doReturn(Optional.of(mock(MemberDto.class)))
+      doReturn(mock(MemberDto.class))
         .when(memberService).updateProfile(providerId, level, jobId);
 
       // then

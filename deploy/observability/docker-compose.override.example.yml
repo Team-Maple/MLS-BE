@@ -1,0 +1,22 @@
+# Install this reviewed fragment as
+# /opt/mapleland/docker-compose.observability.yml. Deployment and preflight
+# always render it after the existing base Compose file. The management
+# endpoint is reachable only from this VM; it is not attached to Traefik and
+# no firewall port is opened.
+services:
+  mapleland-api:
+    environment:
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
+      MANAGEMENT_SERVER_PORT: "18080"
+      MANAGEMENT_SCRAPE_TOKEN: "${MANAGEMENT_SCRAPE_TOKEN:?MANAGEMENT_SCRAPE_TOKEN must be set}"
+      SERVICE_VERSION: "${SERVICE_VERSION:-unknown}"
+    ports:
+      - "127.0.0.1:18080:18080"
+    volumes:
+      - type: bind
+        source: /var/log/mapleland-api
+        target: /workspace/logs
+        bind:
+          # Fail closed instead of letting Docker create a root-owned path
+          # that the non-root application cannot write.
+          create_host_path: false

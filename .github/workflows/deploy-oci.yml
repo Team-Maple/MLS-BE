@@ -3,26 +3,98 @@ name: Deploy Spring Boot App to Oracle Cloud
 on:
   workflow_dispatch:
 
+concurrency:
+  group: deploy-oci
+  cancel-in-progress: false
+
 permissions:
   contents: read
   packages: write
   id-token: write
 
 jobs:
+  host-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      compose_override_sha256: ${{ steps.contract.outputs.compose_override_sha256 }}
+      preflight_sha256: ${{ steps.contract.outputs.preflight_sha256 }}
+      update_sha256: ${{ steps.contract.outputs.update_sha256 }}
+
+    steps:
+      - name: Checkout deployment contract
+        uses: actions/checkout@v4
+
+      - name: Resolve reviewed host contract checksums
+        id: contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          compose_override_sha256="$(sha256sum deploy/observability/docker-compose.override.example.yml | awk '{print $1}')"
+          preflight_sha256="$(sha256sum deploy/observability/preflight-host.sh | awk '{print $1}')"
+          update_sha256="$(sha256sum deploy/observability/update-api.sh | awk '{print $1}')"
+          [[ $compose_override_sha256 =~ ^[0-9a-f]{64}$ ]]
+          [[ $preflight_sha256 =~ ^[0-9a-f]{64}$ ]]
+          [[ $update_sha256 =~ ^[0-9a-f]{64}$ ]]
+          {
+            printf 'compose_override_sha256=%s\n' "$compose_override_sha256"
+            printf 'preflight_sha256=%s\n' "$preflight_sha256"
+            printf 'update_sha256=%s\n' "$update_sha256"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Verify OCI host deployment contract
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: oracle-cloud
+          username: ubuntu
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          script: preflight ${{ steps.contract.outputs.preflight_sha256 }} ${{ steps.contract.outputs.update_sha256 }} ${{ steps.contract.outputs.compose_override_sha256 }}
+
   build-and-publish:
+    needs: host-preflight
     runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    outputs:
+      image_ref: ${{ steps.published_image.outputs.image_ref }}
     env:
       IMAGE_NAME: ghcr.io/team-maple/mls-be/mapleland-api
-      IMAGE_TAG: latest-arm64
+      IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-arm64
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Restore FCM key file
+        env:
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
         run: |
-          mkdir -p src/main/resources/firebase
-          echo '${{ secrets.FIREBASE_KEY }}' > src/main/resources/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json
+          set -euo pipefail
+          umask 077
+          firebase_dir=src/main/resources/firebase
+          firebase_key="${firebase_dir}/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json"
+          mkdir -p "${firebase_dir}"
+          printf '%s' "$FIREBASE_KEY" \
+            > "${firebase_key}"
+          test -s "${firebase_key}"
+          jq -e 'type == "object" and .type == "service_account" and
+            (.private_key | type == "string" and length > 0) and
+            (.client_email | type == "string" and length > 0)' \
+            "${firebase_key}" >/dev/null
+          # Paketo launches as uid 1002, gid 1001 while application layers are
+          # owned by 1001:1001. Keep the secret group-readable only so the
+          # runtime process can traverse/read it without making it world-readable.
+          chmod 0750 "${firebase_dir}"
+          chmod 0640 "${firebase_key}"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -34,7 +106,20 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build jar
-        run: ./gradlew clean bootJar
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew clean bootJar
+          jar_path=build/libs/api-0.0.1-SNAPSHOT.jar
+          firebase_dir_mode="$(zipinfo -l "${jar_path}" \
+            'BOOT-INF/classes/firebase/' | awk 'NR == 1 { print $1 }')"
+          firebase_key_mode="$(zipinfo -l "${jar_path}" \
+            'BOOT-INF/classes/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json' \
+            | awk 'NR == 1 { print $1 }')"
+          # ZIP directory entries use '-' in zipinfo's type column; the
+          # trailing slash still materializes this entry as a directory.
+          test "${firebase_dir_mode}" = '-rwxr-x---'
+          test "${firebase_key_mode}" = '-rw-r-----'
 
       - name: Set up pack CLI
         uses: buildpacks/github-actions/setup-pack@v5.11.0
@@ -54,15 +139,69 @@ jobs:
             --platform linux/arm64 \
             --publish
 
+      - name: Verify published image FCM permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_ref="${IMAGE_NAME}:${IMAGE_TAG}"
+          docker pull "${image_ref}" >/dev/null
+          runtime_user="$(docker image inspect --format '{{.Config.User}}' "${image_ref}")"
+          test "${runtime_user}" = '1002:1001'
+
+          verification_container="fcm-permission-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            docker rm -f "${verification_container}" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker create --name "${verification_container}" "${image_ref}" >/dev/null
+          metadata="$(docker export "${verification_container}" \
+            | tar --numeric-owner -tvf - \
+            | awk '
+                $NF == "workspace/BOOT-INF/classes/firebase/" {
+                  directory_mode = $1; directory_owner = $2
+                }
+                $NF == "workspace/BOOT-INF/classes/firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json" {
+                  key_mode = $1; key_owner = $2
+                }
+                END {
+                  if (!directory_mode || !key_mode) exit 1
+                  print directory_mode, directory_owner, key_mode, key_owner
+                }
+              ')"
+          read -r directory_mode directory_owner key_mode key_owner <<< "${metadata}"
+          test "${directory_mode}" = 'drwxr-x---'
+          test "${directory_owner}" = '1001/1001'
+          test "${key_mode}" = '-rw-r-----'
+          test "${key_owner}" = '1001/1001'
+
+      - name: Resolve published manifest digest
+        id: published_image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_tag="${IMAGE_NAME}:${IMAGE_TAG}"
+          digest="$(docker buildx imagetools inspect "$image_tag" \
+            --format '{{json .Manifest}}' | jq -er '.digest')"
+          if [[ ! $digest =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "invalid published image digest" >&2
+            exit 1
+          fi
+          docker buildx imagetools inspect "${IMAGE_NAME}@${digest}" >/dev/null
+          printf 'image_ref=%s@%s\n' "$IMAGE_NAME" "$digest" >> "$GITHUB_OUTPUT"
+
   deploy:
-    needs: build-and-publish
+    needs:
+      - host-preflight
+      - build-and-publish
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
     permissions:
       id-token: write
       contents: read
     env:
-      IMAGE_NAME: ghcr.io/team-maple/mls-be/mapleland-api
-      IMAGE_TAG: latest-arm64
+      IMAGE_REF: ${{ needs['build-and-publish'].outputs.image_ref }}
 
     steps:
       - name: Connect to Tailscale
@@ -78,5 +217,4 @@ jobs:
           host: oracle-cloud
           username: ubuntu
           key: ${{ secrets.ORACLE_SSH_KEY }}
-          script: |
-            /opt/mapleland/update-api.sh
+          script: deploy ${{ needs['host-preflight'].outputs.preflight_sha256 }} ${{ needs['host-preflight'].outputs.update_sha256 }} ${{ needs['host-preflight'].outputs.compose_override_sha256 }} ${{ env.IMAGE_REF }}

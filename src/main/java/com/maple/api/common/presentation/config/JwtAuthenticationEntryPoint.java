@@ -18,12 +18,16 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
                        HttpServletResponse response,
                        AuthenticationException authException)
     throws IOException {
-    // 토큰이 유효하지 않을 때 401
-    String invalidTokenErrorMsg = "토큰이 유효하지 않음" +
+    log.atInfo()
+      .addKeyValue("event.action", "http.request.unauthenticated")
+      .addKeyValue("event.outcome", "failure")
+      .addKeyValue("http.request.method", request.getMethod())
+      .addKeyValue("http.response.status_code", HttpServletResponse.SC_UNAUTHORIZED)
+      .addKeyValue("error.type", authException.getClass().getName())
+      .log("Request authentication failed");
+    String invalidTokenErrorMessage = "토큰이 유효하지 않음" +
       "\nuri : " + request.getRequestURI() +
-      "\nException : " +
-      authException.getClass() + "," + authException.getMessage();
-//    log.error(invalidTokenErrorMsg);
-    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, invalidTokenErrorMsg);
+      "\nException : " + authException.getClass() + "," + authException.getMessage();
+    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, invalidTokenErrorMessage);
   }
 }

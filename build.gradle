@@ -31,6 +31,7 @@ dependencies {
   implementation 'org.springframework.boot:spring-boot-starter-web'
   implementation 'org.springframework.boot:spring-boot-starter-actuator'
   implementation 'org.springframework.boot:spring-boot-starter-validation'
+  runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 
   implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
 
@@ -51,9 +52,6 @@ dependencies {
 
   // JSoup
   implementation 'org.jsoup:jsoup:1.17.2'
-
-  // logging
-  implementation 'com.github.loki4j:loki-logback-appender:2.0.1'
 
   // QueryDSL
   implementation 'com.querydsl:querydsl-jpa:5.1.0:jakarta'

@@ -8,6 +8,7 @@ import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
 import com.maple.api.alrim.domain.Alrim;
 import com.maple.api.auth.repository.MemberRepository;
+import com.maple.api.common.logging.SafeExceptionLog;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,11 +63,17 @@ public class AlrimFcmManager {
             alrim.getTitle()
           );
 
-          log.info("{} 푸시 메세지 발송 성공 FCM 토큰 {} 유저 ID {}",
-            alrim.getType(), it.getFcmToken(), it.getId());
+          log.atInfo()
+            .addKeyValue("event.action", "notification.send")
+            .addKeyValue("event.outcome", "success")
+            .addKeyValue("mapleland.notification.type", alrim.getType())
+            .log("Push notification sent");
         } catch (Exception e) {
-          log.warn("{} 푸시 메세지 발송 실패 FCM 토큰 {} 유저 ID {}",
-            alrim.getType(), it.getFcmToken(), it.getId());
+          SafeExceptionLog.addException(log.atWarn(), e)
+            .addKeyValue("event.action", "notification.send")
+            .addKeyValue("event.outcome", "failure")
+            .addKeyValue("mapleland.notification.type", alrim.getType())
+            .log("Push notification delivery failed");
         }
       });
   }

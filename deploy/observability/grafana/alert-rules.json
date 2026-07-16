@@ -1,0 +1,430 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "folder": "Mapleland",
+      "interval": "1m",
+      "name": "Mapleland Production",
+      "orgId": 1,
+      "rules": [
+        {
+          "annotations": {
+            "__dashboardUid__": "mapleland-production-overview",
+            "__panelId__": "1",
+            "description": "Grafana Alloy has not reported a successful scrape of the loopback-only Spring Boot management endpoint for 5 minutes. Check the application container, the 127.0.0.1:18080 host mapping, and Alloy before restarting the service.",
+            "mapleland_evaluation_interval": "1m",
+            "mapleland_folder_uid": "mapleland",
+            "mapleland_rule_group": "Mapleland Production",
+            "summary": "Mapleland production application scrape is down"
+          },
+          "condition": "C",
+          "dashboardUid": "mapleland-production-overview",
+          "data": [
+            {
+              "datasourceUid": "grafanacloud-prom",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "grafanacloud-prom"
+                },
+                "editorMode": "code",
+                "expr": "up{job=\"mapleland-api\",service_name=\"mapleland-api\",deployment_environment=\"prod\",cloud_provider=\"oci\"}",
+                "instant": false,
+                "interval": "",
+                "intervalMs": 60000,
+                "legendFormat": "{{instance}}",
+                "maxDataPoints": 43200,
+                "range": true,
+                "refId": "A"
+              },
+              "queryType": "",
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "B",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "type": "reduce"
+              },
+              "queryType": "",
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        1
+                      ],
+                      "type": "lt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              },
+              "queryType": "",
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Error",
+          "for": "5m",
+          "isPaused": true,
+          "labels": {
+            "environment": "prod",
+            "service": "mapleland-api",
+            "severity": "critical"
+          },
+          "noDataState": "Alerting",
+          "panelId": 1,
+          "title": "Mapleland application scrape down",
+          "uid": "mapleland-app-down"
+        },
+        {
+          "annotations": {
+            "__dashboardUid__": "mapleland-production-overview",
+            "__panelId__": "4",
+            "description": "The rolling 10-minute public-API 5xx ratio is above 5% and at least 20 public-API requests occurred in that same window. Actuator traffic is excluded, and the minimum-volume gate avoids alerting on a single failed request during low traffic.",
+            "mapleland_evaluation_interval": "1m",
+            "mapleland_folder_uid": "mapleland",
+            "mapleland_rule_group": "Mapleland Production",
+            "summary": "Mapleland production 5xx errors are elevated"
+          },
+          "condition": "C",
+          "dashboardUid": "mapleland-production-overview",
+          "data": [
+            {
+              "datasourceUid": "grafanacloud-prom",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "grafanacloud-prom"
+                },
+                "editorMode": "code",
+                "expr": "((sum(increase(http_server_requests_seconds_count{service_name=\"mapleland-api\",deployment_environment=\"prod\",cloud_provider=\"oci\",uri!~\"/actuator.*\",status=~\"5..\"}[10m])) or vector(0)) / clamp_min((sum(increase(http_server_requests_seconds_count{service_name=\"mapleland-api\",deployment_environment=\"prod\",cloud_provider=\"oci\",uri!~\"/actuator.*\"}[10m])) or vector(0)), 1) > bool 0.05) * ((sum(increase(http_server_requests_seconds_count{service_name=\"mapleland-api\",deployment_environment=\"prod\",cloud_provider=\"oci\",uri!~\"/actuator.*\"}[10m])) or vector(0)) >= bool 20)",
+                "instant": true,
+                "interval": "",
+                "intervalMs": 60000,
+                "legendFormat": "traffic-aware 5xx",
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              },
+              "queryType": "",
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "B",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "type": "reduce"
+              },
+              "queryType": "",
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        0.5
+                      ],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              },
+              "queryType": "",
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Error",
+          "for": "10m",
+          "isPaused": true,
+          "labels": {
+            "environment": "prod",
+            "service": "mapleland-api",
+            "severity": "warning"
+          },
+          "noDataState": "OK",
+          "panelId": 4,
+          "title": "Mapleland traffic-aware 5xx increase",
+          "uid": "mapleland-5xx-increase"
+        },
+        {
+          "annotations": {
+            "__dashboardUid__": "mapleland-production-overview",
+            "__panelId__": "15",
+            "description": "A writable persistent filesystem has remained below 10% available capacity for 15 minutes. Local ECS logs are retained on disk, so investigate rotation and Alloy delivery before space is exhausted.",
+            "mapleland_evaluation_interval": "1m",
+            "mapleland_folder_uid": "mapleland",
+            "mapleland_rule_group": "Mapleland Production",
+            "summary": "Mapleland production host disk space is low"
+          },
+          "condition": "C",
+          "dashboardUid": "mapleland-production-overview",
+          "data": [
+            {
+              "datasourceUid": "grafanacloud-prom",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "grafanacloud-prom"
+                },
+                "editorMode": "code",
+                "expr": "(100 * node_filesystem_avail_bytes{job=\"integrations/unix\",deployment_environment=\"prod\",cloud_provider=\"oci\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs|tracefs|fusectl|autofs\"} / node_filesystem_size_bytes{job=\"integrations/unix\",deployment_environment=\"prod\",cloud_provider=\"oci\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs|tracefs|fusectl|autofs\"}) and on (instance, device, mountpoint, fstype) (node_filesystem_readonly{job=\"integrations/unix\",deployment_environment=\"prod\",cloud_provider=\"oci\"} == 0)",
+                "instant": false,
+                "interval": "",
+                "intervalMs": 60000,
+                "legendFormat": "{{instance}} {{mountpoint}}",
+                "maxDataPoints": 43200,
+                "range": true,
+                "refId": "A"
+              },
+              "queryType": "",
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "B",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "type": "reduce"
+              },
+              "queryType": "",
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        10
+                      ],
+                      "type": "lt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              },
+              "queryType": "",
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Error",
+          "for": "15m",
+          "isPaused": true,
+          "labels": {
+            "environment": "prod",
+            "service": "mapleland-host",
+            "severity": "warning"
+          },
+          "noDataState": "OK",
+          "panelId": 15,
+          "title": "Mapleland host disk below 10%",
+          "uid": "mapleland-disk-low"
+        }
+      ]
+    }
+  ]
+}

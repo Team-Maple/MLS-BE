@@ -1,5 +1,6 @@
 package com.maple.api.common.presentation.exception;
 
+import com.maple.api.common.logging.SafeExceptionLog;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +10,8 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.HandlerMapping;
+import org.slf4j.spi.LoggingEventBuilder;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,7 +37,8 @@ public class GlobalExceptionHandler {
                 errors
         );
         
-        log.warn("Validation failed: {}", errors);
+        httpFailure(log.atWarn(), request, GlobalException.VALIDATION_FAILED.getStatus().value(), ex)
+                .log("Request validation failed");
         return ResponseEntity.status(GlobalException.VALIDATION_FAILED.getStatus()).body(exceptionResponse);
     }
 
@@ -55,7 +59,8 @@ public class GlobalExceptionHandler {
                 errors
         );
         
-        log.warn("Bind failed: {}", errors);
+        httpFailure(log.atWarn(), request, GlobalException.BIND_FAILED.getStatus().value(), ex)
+                .log("Request parameter binding failed");
         return ResponseEntity.status(GlobalException.BIND_FAILED.getStatus()).body(exceptionResponse);
     }
 
@@ -76,7 +81,8 @@ public class GlobalExceptionHandler {
                 errors
         );
         
-        log.warn("Constraint violation: {}", errors);
+        httpFailure(log.atWarn(), request, GlobalException.CONSTRAINT_VIOLATION.getStatus().value(), ex)
+                .log("Request constraint validation failed");
         return ResponseEntity.status(GlobalException.CONSTRAINT_VIOLATION.getStatus()).body(exceptionResponse);
     }
 
@@ -89,7 +95,8 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         
-        log.warn("Invalid argument: {}", ex.getMessage());
+        httpFailure(log.atWarn(), request, GlobalException.INVALID_ARGUMENT.getStatus().value(), ex)
+                .log("Request argument was invalid");
         return ResponseEntity.status(GlobalException.INVALID_ARGUMENT.getStatus()).body(exceptionResponse);
     }
 
@@ -102,7 +109,8 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         
-        log.warn("API exception occurred: {}", ex.getMessage());
+        httpFailure(log.atWarn(), request, ex.getExceptionCode().getStatus().value(), ex)
+                .log("Request failed with an application error");
         return ResponseEntity.status(ex.getExceptionCode().getStatus()).body(exceptionResponse);
     }
 
@@ -115,7 +123,34 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         
-        log.error("Unexpected error occurred", ex);
+        httpFailure(SafeExceptionLog.addException(log.atError(), ex), request,
+                GlobalException.INTERNAL_SERVER_ERROR.getStatus().value())
+                .log("Unexpected request failure");
         return ResponseEntity.status(GlobalException.INTERNAL_SERVER_ERROR.getStatus()).body(exceptionResponse);
+    }
+
+    private LoggingEventBuilder httpFailure(
+            LoggingEventBuilder event,
+            HttpServletRequest request,
+            int status,
+            Exception exception) {
+        return httpFailure(event, request, status)
+                .addKeyValue("error.type", exception.getClass().getName());
+    }
+
+    private LoggingEventBuilder httpFailure(
+            LoggingEventBuilder event,
+            HttpServletRequest request,
+            int status) {
+        event.addKeyValue("event.action", "http.request.failure")
+                .addKeyValue("event.outcome", "failure")
+                .addKeyValue("http.request.method", request.getMethod())
+                .addKeyValue("http.response.status_code", status);
+
+        Object route = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        if (route != null) {
+            event.addKeyValue("http.route", route.toString());
+        }
+        return event;
     }
 }
