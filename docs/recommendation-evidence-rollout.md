@@ -258,7 +258,8 @@ versioned dashboard JSON과 live Grafana dashboard UID `mapleland-production-ove
 - [ ] Firebase key가 image layer에 포함되는 기존 잔여 위험을 owner가 명시적으로 수용하거나 runtime secret mount 전환과 key rotation을 완료함
 - [ ] 삭제 대상 legacy EC2 경로가 DNS/LB/failover/DR에서 쓰이지 않음을 운영 inventory로 확인하고 HOST/USERNAME/KEY/PORT/GHCR credential revoke·rotation·secret 제거를 완료함
 - [x] host의 기존 `/opt/mapleland/update-api.sh`가 legacy no-arg 계약이고 CI forced command가 이를 `sudo -n`으로 실행하도록 owner 승인 maintenance와 read-only 검증을 완료함
-- [ ] read-only host attestation으로 exact previous image와 legacy host script에 맞는 수동 rollback 명령을 확인해 checkpoint에 기록함
+- [x] host `update-api.sh`가 base와 observability override를 함께 사용하며 deployed image에서 공개 API와 인증 management scrape가 200이고 restart count 0임을 확인함
+- [x] exact current image와 base+observability override를 사용하는 수동 rollback 절차를 운영 복구에서 검증하고 checkpoint에 기록함
 - [x] Grafana versioned JSON과 live dashboard UID/version이 일치하고 새 panel query가 오류 없이 완료됨. 실제 series 검증은 배포 후 smoke gate로 남음
 - [ ] merge와 운영 배포에 대한 owner의 명시적 승인이 있음
 

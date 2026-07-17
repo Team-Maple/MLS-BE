@@ -2,15 +2,18 @@
 
 이 문서는 Codex task, OAuth 또는 로컬 앱이 재시작돼도 운영 상태를 추측하거나 이미 끝난 작업을 반복하지 않기 위한 비밀값 없는 재개 기준이다. 외부 상태를 변경한 뒤에는 해당 operation의 URL·commit·checksum·검증 결과와 다음 안전 작업을 갱신한다. token, credential, 원본 환경 파일 내용은 기록하지 않는다.
 
-## 2026-07-17 legacy OCI 배포 경로 복원 (아직 운영 미적용)
+## 2026-07-17 legacy OCI 배포 경로 복원과 운영 복구
 
 - Owner가 성공 이력이 있는 [deploy run 28788801815](https://github.com/Team-Maple/MLS-BE/actions/runs/28788801815), commit `c49ee3255afb4ddfa0168ce91783fff368864a4d`의 legacy 배포 구조 복원을 명시적으로 승인했다. 동시 `latest-arm64` overwrite를 막는 `deploy-oci` concurrency와 실제로 쓰지 않는 `id-token: write` 제거만 적용했다.
 - Workflow는 arm64 image를 `latest-arm64`로 build/publish한 뒤 Tailscale과 `appleboy/ssh-action@v1.2.5`로 접속해 host의 `/opt/mapleland/update-api.sh`를 인자 없이 실행한다.
 - `host-preflight`, repository checksum, immutable digest 전달, image metadata/FCM permission gate, 별도 Environment 승인과 native OpenSSH fingerprint 검증은 사용하지 않는다.
-- 새 immutable runner 구현과 전용 CI test는 저장소에서 제거했다. Owner 승인 host maintenance에서 active `/opt/mapleland/update-api.sh`가 legacy no-arg script이고 SHA-256이 `76650cef0cac9edf426bbc67203f4a967bb10a7b353128c6ac53aba65cc63b77`임을 read-only로 확인했다. Script 자체는 수정하거나 실행하지 않았다.
+- 새 immutable runner 구현과 전용 CI test는 저장소에서 제거했다. 초기 read-only 확인에서 active `/opt/mapleland/update-api.sh`가 legacy no-arg script이고 SHA-256이 `76650cef0cac9edf426bbc67203f4a967bb10a7b353128c6ac53aba65cc63b77`임을 확인했다.
 - CI key의 forced command를 `command="/opt/mapleland/update-api.sh"`에서 `command="/usr/bin/sudo -n /opt/mapleland/update-api.sh"`로 원자 교체했다. Backup은 `/home/ubuntu/.ssh/authorized_keys.before-ci-sudo-20260716T235214Z`이며 active와 backup 모두 `ubuntu:ubuntu 0600`이다. Script는 `root:root 0755`, `.env`는 `root:root 0600`을 유지한다.
-- Host에는 기존 `ubuntu ALL=(ALL) NOPASSWD: ALL`이 있어 sudoers는 변경하지 않았다. `sudo -n -l`, root의 `.env` read, script `bash -n`, authorized_keys key parsing과 forced-command exact-count를 검증했다. 배포 script, Docker pull과 container 재생성은 실행하지 않았다.
-- Legacy workflow에는 이전 image 식별·보존·자동 복구 계약이 없다. 첫 dispatch 전에 read-only host attestation으로 exact previous image가 존재하는지와 현재 host script에 맞는 수동 rollback 명령을 확인해 비밀값 없이 checkpoint에 기록해야 한다. 확인 전에는 deploy readiness P1 blocker다.
+- Host에는 기존 `ubuntu ALL=(ALL) NOPASSWD: ALL`이 있어 sudoers는 변경하지 않았다. 초기 gateway 변경 뒤 `sudo -n -l`, root의 `.env` read, script `bash -n`, authorized_keys key parsing과 forced-command exact-count를 배포 실행 없이 검증했다.
+- Legacy workflow는 host script를 root로 실행했지만 base Compose만 사용해 새 image에 `MANAGEMENT_SCRAPE_TOKEN`을 전달하지 못했고 container가 crash loop에 들어갔다. 이전 image `sha256:1b9b13b75debfe76ad755f618738bd63972a270b78d03f90d50133ee277fa3af` rollback도 당시 container에만 있던 Loki 설정이 재생성 과정에서 사라져 `URI with undefined scheme`으로 실패했다.
+- 실패 image `sha256:3ee144df80b5110e4d72b723f570a53908f14cf9c036ae2fecb11cbbdba9569f`는 `failed-20260717T001115Z-3ee144df80b5` 태그로 보존했다. Owner 승인 복구에서 같은 image를 base와 `/opt/mapleland/docker-compose.observability.yml` 조합으로 재생성했고 exact image, `running`, restart count `0`, 공개 `/api/v1/jobs` 200과 Bearer 인증 `/actuator/prometheus` 200을 확인했다.
+- Owner 승인 재발 방지 maintenance로 `/opt/mapleland/update-api.sh`의 pull/up 두 명령이 base와 observability override를 함께 사용하도록 변경했다. Root-only backup은 `/root/update-api.sh.before-observability-override-20260717T001948Z`, old SHA-256은 `76650cef0cac9edf426bbc67203f4a967bb10a7b353128c6ac53aba65cc63b77`, active SHA-256은 `436dae8156ec7115f823589aeb46b586b15e3259443bf9b1786d61fcec331b4d`다. Active는 `root:root 0755`이고 `bash -n`과 Compose render를 통과했으며 변경 후 script 자체는 실행하지 않았다.
+- Legacy workflow에는 자동 복구 계약이 없다. 다음 dispatch의 수동 rollback baseline은 현재 정상 image `sha256:3ee144df80b5110e4d72b723f570a53908f14cf9c036ae2fecb11cbbdba9569f`이며 보존 tag와 base+observability override `--pull never --force-recreate` 절차를 사용한다. 다음 배포 전에도 exact current image와 tag 존재를 다시 확인한다.
 - 이 복원은 검증된 운영 단순성을 우선한 명시적 위험 수용이다. `latest-arm64`의 가변성, third-party SSH action, workflow 내부 owner approval 부재, host script의 저장소 밖 drift는 잔여 위험이다. Concurrency는 겹치는 workflow run만 직렬화하며 mutable tag 자체를 immutable하게 만들지 않는다.
 - 실패한 [deploy run 29540196835](https://github.com/Team-Maple/MLS-BE/actions/runs/29540196835)는 deploy 전에 추가 image 검증 script의 Bash `case` 문법 오류로 끝났고 host 변경은 시작되지 않았다.
 - Merge와 운영 workflow dispatch는 owner의 별도 명시적 승인 전에는 수행하지 않는다.

@@ -464,7 +464,8 @@ Repository의 host preflight와 update runner를 동기화하거나 설치하지
 API를 수동 확인한다. Host script 변경은 이 runbook의 routine deploy 범위가 아니다.
 
 Owner 승인 maintenance에서 active host script가 legacy no-arg 계약이고 SHA-256이
-`76650cef0cac9edf426bbc67203f4a967bb10a7b353128c6ac53aba65cc63b77`임을 확인했다. CI key의
+`436dae8156ec7115f823589aeb46b586b15e3259443bf9b1786d61fcec331b4d`임을 확인했다. Script의
+pull/up은 base와 `/opt/mapleland/docker-compose.observability.yml`을 항상 함께 사용한다. CI key의
 forced command는 `command="/usr/bin/sudo -n /opt/mapleland/update-api.sh"`이며, script와 `.env`는
 각각 `root:root 0755`, `root:root 0600`을 유지한다. Host의 기존 broad `NOPASSWD: ALL`은 이번
 maintenance에서 변경하지 않았다. 상세 backup과 검증 결과는 checkpoint를 따른다.
