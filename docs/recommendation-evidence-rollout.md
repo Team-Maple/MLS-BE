@@ -266,7 +266,8 @@ versioned dashboard JSON과 live Grafana dashboard UID `mapleland-production-ove
 ## MySQL 활성화 게이트
 
 다음 항목은 initial AURA/default-off image merge를 막지 않지만, v2를 켜거나 v1을 MySQL로
-전환하기 전에는 모두 P1 blocker다.
+전환하기 전에는 모두 P1 blocker로 정의했다. 2026-07-17 owner 승인 운영 maintenance에서 v2가
+먼저 활성화됐으므로, 미완료 항목은 현재 공개 v2의 잔여 운영 위험이자 v1 MySQL 전환 blocker다.
 
 - [ ] mapleland schema PR의 forward/rollback/preflight SQL과 `EXPLAIN` 근거가 검토됨
 - [ ] MLS-BE production DB topology와 SELECT 권한 blocker가 해소됨
@@ -311,14 +312,14 @@ index rollback은 애플리케이션 rollback과 분리한다. scoring traffic d
 ## 현재 미완료 또는 남은 위험
 
 - MLS-BE production DB와 mapleland DB의 endpoint/schema equality가 확인되지 않았다.
-- production reverse proxy의 recommendation 전용 rate-limit은 확인되지 않아 v2는 default-off다.
+- production reverse proxy의 recommendation 전용 rate-limit은 확인되지 않았지만 v2는 현재 활성화 상태다.
 - Hikari connection 획득 대기 상한과 pool saturation 대응은 결정되지 않아 statement timeout만으로 endpoint 전체 wall-clock을 보장하지 않는다.
 - deploy credential은 legacy workflow 요구대로 repository scope에 있으며 Environment 승인으로 격리되지 않는다.
 - 삭제되는 legacy workflow의 SSH/GHCR repository secret revoke·제거도 아직 수행하지 않았다.
 - Legacy workflow는 mutable `latest-arm64`, third-party SSH action과 host-local script에 의존하고 자동 rollback을 보장하지 않는다.
 - Firebase service-account key는 기존 방식대로 image layer에 포함되므로 GHCR package read 권한을 key 접근 권한으로 취급해야 한다. Runtime secret mount 전환과 key rotation은 별도 보안 작업이다.
 - production index DDL은 실행하지 않았다.
-- live Grafana dashboard layout/version 갱신은 완료했지만 배포 전이므로 recommendation metric의 live series 검증은 남아 있다.
+- live Grafana dashboard layout/version 갱신과 애플리케이션 배포는 완료했지만 recommendation metric의 live series 검증은 남아 있다.
 - 로컬 전체 test는 기존 외부 실사이트 crawler 3건의 timeout 때문에 91개 중 88개 성공 상태이며 CI/required review의 최종 결과도 확인해야 한다. 추천/설정 바인딩 테스트군과 패키징은 성공했다.
 - Testcontainers 수치는 local characterization이며 production latency 표본이 아니다.
-- 이 문서 작성 시점에는 구현 merge, v1 MySQL 설정 전환, 운영 배포, Aura 제거를 수행하지 않았다.
+- 이 문서 작성 시점에는 feature branch image와 v2 MySQL 경로가 운영에 배포됐지만 구현 merge, v1 MySQL 설정 전환과 Aura 제거는 수행하지 않았다.

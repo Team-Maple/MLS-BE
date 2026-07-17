@@ -468,7 +468,8 @@ Owner 승인 maintenance에서 active host script가 legacy no-arg 계약이고 
 pull/up은 base와 `/opt/mapleland/docker-compose.observability.yml`을 항상 함께 사용한다. CI key의
 forced command는 `command="/usr/bin/sudo -n /opt/mapleland/update-api.sh"`이며, script와 `.env`는
 각각 `root:root 0755`, `root:root 0600`을 유지한다. Host의 기존 broad `NOPASSWD: ALL`은 이번
-maintenance에서 변경하지 않았다. 상세 backup과 검증 결과는 checkpoint를 따른다.
+maintenance에서 변경하지 않았다. Override는 management 설정과 세 `RECOMMENDATION_*` 설정을
+명시적으로 container에 전달한다. 상세 backup, checksum과 현재 활성값 검증 결과는 checkpoint를 따른다.
 또한 첫 dispatch 전에 exact previous image의 존재와 현재 host script에 맞는 수동 rollback 명령을
 read-only로 확인해 checkpoint에 기록한다. 폐기된 immutable runner의 `rollback_tag` 절차를
 legacy workflow에 사용하지 않는다.
