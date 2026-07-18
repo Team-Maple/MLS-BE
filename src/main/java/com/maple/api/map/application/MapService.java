@@ -3,8 +3,6 @@ package com.maple.api.map.application;
 import com.maple.api.bookmark.application.BookmarkFlagService;
 import com.maple.api.bookmark.domain.BookmarkType;
 import com.maple.api.common.presentation.exception.ApiException;
-import com.maple.api.job.exception.JobException;
-import com.maple.api.job.repository.JobRepository;
 import com.maple.api.map.application.dto.*;
 import com.maple.api.map.domain.Map;
 import com.maple.api.map.exception.MapException;
@@ -17,9 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,8 +26,6 @@ public class MapService {
     private final MapMonsterQueryDslRepository mapMonsterQueryDslRepository;
     private final MapNpcQueryDslRepository mapNpcQueryDslRepository;
     private final BookmarkFlagService bookmarkFlagService;
-    private final Optional<MapRecommendationRepository> mapRecommendationRepository;
-    private final JobRepository jobRepository;
 
     @Transactional(readOnly = true)
     public Page<MapSummaryDto> searchMaps(String memberId, MapSearchRequestDto request, Pageable pageable) {
@@ -74,45 +67,4 @@ public class MapService {
         return mapQueryDslRepository.countMapsByKeyword(keyword);
     }
 
-    @Transactional(readOnly = true)
-    public List<MapRecommendationDto> recommendMaps(String memberId, int level, int jobId, Integer limit) {
-        validateJobExists(jobId);
-
-        MapRecommendationRepository repository = mapRecommendationRepository
-                .orElseThrow(() -> ApiException.of(MapException.MAP_RECOMMENDATION_UNAVAILABLE));
-
-        int sanitizedLimit = limit == null || limit <= 0 ? 5 : limit;
-
-        List<MapRecommendationDto> recommendations = repository.findRecommendedMaps(level, jobId, sanitizedLimit);
-        if (recommendations.isEmpty()) {
-            return recommendations;
-        }
-
-        List<Integer> mapIds = recommendations.stream()
-                .map(MapRecommendationDto::mapId)
-                .toList();
-
-        var mapsById = mapRepository.findByMapIdIn(mapIds).stream()
-                .collect(Collectors.toMap(Map::getMapId, Function.identity()));
-        var bookmarkIds = bookmarkFlagService.findBookmarkIds(memberId, BookmarkType.MAP, mapIds);
-
-        return recommendations.stream()
-                .map(recommendation -> {
-                    Map map = mapsById.get(recommendation.mapId());
-                    return new MapRecommendationDto(
-                            recommendation.mapId(),
-                            recommendation.score(),
-                            map != null ? map.getIconUrl() : null,
-                            map != null ? map.getNameKr() : null,
-                            bookmarkIds.get(recommendation.mapId())
-                    );
-                })
-                .toList();
-    }
-
-    private void validateJobExists(int jobId) {
-        if (!jobRepository.existsById(jobId)) {
-            throw ApiException.of(JobException.JOB_NOT_FOUND);
-        }
-    }
 }

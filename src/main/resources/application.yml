@@ -53,6 +53,13 @@ auradb:
   username: ${AURADB_USERNAME:}
   password: ${AURADB_PASSWORD:}
   database: ${AURADB_DATABASE:neo4j}
+
+recommendation:
+  # Keep the public v1 route on Aura until the MySQL schema preflight and v2 gate are approved.
+  v1-engine: ${RECOMMENDATION_V1_ENGINE:AURA}
+  # Keep the unauthenticated MySQL route dark until topology, schema, and rate-limit gates pass.
+  v2-enabled: ${RECOMMENDATION_V2_ENABLED:false}
+  query-timeout-seconds: ${RECOMMENDATION_QUERY_TIMEOUT_SECONDS:10}
 ---
 spring:
   config:

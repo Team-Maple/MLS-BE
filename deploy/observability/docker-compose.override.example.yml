@@ -1,6 +1,6 @@
 # Install this reviewed fragment as
-# /opt/mapleland/docker-compose.observability.yml. Deployment and preflight
-# always render it after the existing base Compose file. The management
+# /opt/mapleland/docker-compose.observability.yml. Deployment renders it after
+# the existing base Compose file. The management
 # endpoint is reachable only from this VM; it is not attached to Traefik and
 # no firewall port is opened.
 services:
@@ -10,6 +10,9 @@ services:
       MANAGEMENT_SERVER_PORT: "18080"
       MANAGEMENT_SCRAPE_TOKEN: "${MANAGEMENT_SCRAPE_TOKEN:?MANAGEMENT_SCRAPE_TOKEN must be set}"
       SERVICE_VERSION: "${SERVICE_VERSION:-unknown}"
+      RECOMMENDATION_V1_ENGINE: "${RECOMMENDATION_V1_ENGINE:-AURA}"
+      RECOMMENDATION_V2_ENABLED: "${RECOMMENDATION_V2_ENABLED:-false}"
+      RECOMMENDATION_QUERY_TIMEOUT_SECONDS: "${RECOMMENDATION_QUERY_TIMEOUT_SECONDS:-10}"
     ports:
       - "127.0.0.1:18080:18080"
     volumes:

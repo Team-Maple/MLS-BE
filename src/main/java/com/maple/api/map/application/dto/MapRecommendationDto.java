@@ -7,7 +7,10 @@ public record MapRecommendationDto(
         @Schema(description = "추천 맵 ID", example = "100000000")
         Integer mapId,
 
-        @Schema(description = "레벨/직업 가중치를 반영한 최종 점수", example = "8.0")
+        @Schema(
+                description = "선택 엔진의 실제 추천 점수. MySQL 엔진에서는 APPROVED 근거의 signed freshness contribution을 합산한 evidence net score",
+                example = "0.95"
+        )
         double score,
 
         @Schema(description = "맵 아이콘 URL", example = "https://maplestory.io/api/gms/62/map/100000000/icon?resize=2")
@@ -21,5 +24,15 @@ public record MapRecommendationDto(
 ) {
     public MapRecommendationDto(Integer mapId, double score) {
         this(mapId, score, null, null, null);
+    }
+
+    public static MapRecommendationDto toDto(MapRecommendationResultDto result) {
+        return new MapRecommendationDto(
+                result.mapId(),
+                result.score(),
+                result.iconUrl(),
+                result.nameKr(),
+                result.bookmarkId()
+        );
     }
 }
