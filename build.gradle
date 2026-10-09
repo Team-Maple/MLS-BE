@@ -8,6 +8,11 @@ plugins {
 group = 'com.maple'
 version = '0.0.1-SNAPSHOT'
 
+// Container builds receive their revision from Coolify without a .git directory.
+gitProperties {
+  failOnNoGitDirectory = false
+}
+
 java {
   toolchain {
     languageVersion = JavaLanguageVersion.of(21)

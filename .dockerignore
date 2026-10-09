@@ -1,0 +1,10 @@
+.git
+.gradle
+build
+.idea
+.vscode
+.env
+.env.*
+**/src/main/resources/firebase
+**/*firebase-adminsdk*.json
+**/secrets

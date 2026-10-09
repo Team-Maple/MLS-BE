@@ -14,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 
 import java.io.InputStream;
 
@@ -24,10 +26,12 @@ import java.io.InputStream;
 public class AlrimFcmManager {
   private final MemberRepository memberRepository;
 
+  @Value("${firebase.credentials:classpath:firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json}")
+  private Resource firebaseCredentials;
+
   @PostConstruct
   public void init() {
-    try (InputStream serviceAccount = getClass().getClassLoader()
-      .getResourceAsStream("firebase/maple-9f1a7-firebase-adminsdk-fbsvc-7c3b6fc032.json")) {
+    try (InputStream serviceAccount = firebaseCredentials.getInputStream()) {
 
       FirebaseOptions options = FirebaseOptions.builder()
         .setCredentials(GoogleCredentials.fromStream(serviceAccount))

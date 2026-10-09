@@ -1,0 +1,51 @@
+services:
+  mapleland-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:18080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 90s
+    mem_limit: 2g
+    ports:
+      - "${API_HTTP_BIND:-0.0.0.0:8080}:8080"
+      - "${API_MANAGEMENT_BIND:-127.0.0.1:18080}:18080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      FIREBASE_CREDENTIALS: file:/run/secrets/firebase-service-account.json
+      ALRIM_EVENT_BATCH_ENABLED: ${ALRIM_EVENT_BATCH_ENABLED:-true}
+      AURADB_KEEP_ALIVE_ENABLED: ${AURADB_KEEP_ALIVE_ENABLED:-true}
+      MANAGEMENT_SERVER_ADDRESS: 0.0.0.0
+      MANAGEMENT_SERVER_PORT: "18080"
+      DB_URL: ${DB_URL:?Set DB_URL in Coolify}
+      DB_USER: ${DB_USER:?Set DB_USER in Coolify}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in Coolify}
+      AURADB_URI: ${AURADB_URI:?Set AURADB_URI in Coolify}
+      AURADB_USERNAME: ${AURADB_USERNAME:?Set AURADB_USERNAME in Coolify}
+      AURADB_PASSWORD: ${AURADB_PASSWORD:?Set AURADB_PASSWORD in Coolify}
+      MANAGEMENT_SCRAPE_TOKEN: ${MANAGEMENT_SCRAPE_TOKEN:?Set MANAGEMENT_SCRAPE_TOKEN in Coolify}
+      CLOUD_PROVIDER: ${CLOUD_PROVIDER:-ORACLE}
+      RECOMMENDATION_QUERY_TIMEOUT_SECONDS: ${RECOMMENDATION_QUERY_TIMEOUT_SECONDS:-10}
+      RECOMMENDATION_V1_ENGINE: ${RECOMMENDATION_V1_ENGINE:-MYSQL}
+      RECOMMENDATION_V2_ENABLED: ${RECOMMENDATION_V2_ENABLED:-true}
+    volumes:
+      - /opt/mapleland/secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
+      - /var/log/mapleland-api:/workspace/logs
+    networks:
+      - mysql
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+networks:
+  mysql:
+    external: true
+    name: mysql
