@@ -7,7 +7,7 @@ RUN printf 'git.commit.id=%s\n' "$SOURCE_COMMIT" > src/main/resources/git.proper
 RUN chmod +x gradlew
 RUN --mount=type=cache,target=/root/.gradle \
     ./gradlew --no-daemon --max-workers=2 \
-    test --tests com.maple.api.alrim.application.command.AlrimFcmManagerTest bootJar
+    test --tests 'com.maple.api.alrim.application.command.AlrimFcm*Test' bootJar
 
 FROM eclipse-temurin:21-jre-jammy
 RUN groupadd --gid 1001 mapleland \

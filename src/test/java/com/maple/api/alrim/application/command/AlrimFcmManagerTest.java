@@ -1,63 +1,180 @@
 package com.maple.api.alrim.application.command;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.firebase.FirebaseApp;
+import com.maple.api.alrim.domain.Alrim;
+import com.maple.api.auth.domain.Member;
 import com.maple.api.auth.repository.MemberRepository;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.security.KeyPairGenerator;
-import java.util.Base64;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
+@ExtendWith(MockitoExtension.class)
 class AlrimFcmManagerTest {
-  @TempDir Path directory;
 
-  @AfterEach
-  void clearFirebase() {
-    FirebaseApp.getApps().forEach(FirebaseApp::delete);
-  }
+  @Mock
+  private MemberRepository memberRepository;
 
-  @Test
-  void initializesFromExternalFileWithoutBundledCredentials() throws Exception {
-    var generator = KeyPairGenerator.getInstance("RSA");
-    generator.initialize(2048);
-    var pem = "-----BEGIN PRIVATE KEY-----\n"
-        + Base64.getMimeEncoder(64, new byte[]{'\n'})
-            .encodeToString(generator.generateKeyPair().getPrivate().getEncoded())
-        + "\n-----END PRIVATE KEY-----\n";
-    var path = directory.resolve("firebase.json");
-    new ObjectMapper().writeValue(path.toFile(), Map.of(
-        "type", "service_account", "project_id", "test-project",
-        "private_key_id", "test-key", "private_key", pem,
-        "client_email", "test@test-project.iam.gserviceaccount.com",
-        "client_id", "123456789", "token_uri", "https://oauth2.googleapis.com/token"));
-    var manager = manager(path);
-    manager.init();
-    assertThat(FirebaseApp.getInstance().getOptions().getProjectId()).isEqualTo("test-project");
-  }
+  @Spy
+  @InjectMocks
+  private AlrimFcmManager fcmManager;
 
   @Test
-  void rejectsMissingOrInvalidFileInsteadOfSilentlyDisablingNotifications() throws Exception {
-    var path = directory.resolve("firebase.json");
-    assertThatThrownBy(() -> manager(path).init()).isInstanceOf(IllegalStateException.class);
-    Files.writeString(path, "{}");
-    assertThatThrownBy(() -> manager(path).init()).isInstanceOf(IllegalStateException.class);
-    assertThat(FirebaseApp.getApps()).isEmpty();
+  @DisplayName("기본 테스트 FCM 유저 한명 (공지사항 true), FCM 없는 유저 한명일떄 공지사항이 있다면")
+  void sendFcmMessage_noticeType_sendsToAgreedMembersOnly() throws Exception {
+    // given
+    var alrim = Alrim.createNotice("공지 제목", LocalDateTime.now(), "링크");
+
+    var fcmMember = Member.builder()
+      .id("user1")
+      .fcmToken("token-1")
+      .noticeAgreement(true)
+      .patchNoteAgreement(false)
+      .eventAgreement(false)
+      .build();
+
+    var nonFcmMember = Member.builder()
+      .id("user2")
+      .fcmToken(null)
+      .build();
+
+    given(memberRepository.findAllByFcmTokenIsNotNull())
+      .willReturn(List.of(fcmMember));
+
+    // when
+    fcmManager.sendFcmMessage(alrim);
+
+    // then
+    verify(fcmManager, times(1)).sendMessageDirect(any(), any(), any());
   }
 
-  private AlrimFcmManager manager(Path path) {
-    var manager = new AlrimFcmManager(mock(MemberRepository.class));
-    ReflectionTestUtils.setField(manager, "firebaseCredentials", new FileSystemResource(path));
-    return manager;
+  @Nested
+  @DisplayName("공지사항 테스트")
+  class NoticesTest {
+    @Test
+    @DisplayName("공지사항은 2명에게 전달")
+    void sendFcmTest() throws Exception {
+      // given
+      var alrim = Alrim.createNotice("공지 제목", LocalDateTime.now(), "링크");
+
+      var fcmMember1 = Member.builder()
+        .id("user1")
+        .fcmToken("token-1")
+        .noticeAgreement(true)
+        .build();
+
+      var fcmMember2 = Member.builder()
+        .id("user2")
+        .fcmToken(null)
+        .noticeAgreement(true)
+        .build();
+
+      var fcmMemberFake = Member.builder()
+        .id("user3")
+        .fcmToken(null)
+        .noticeAgreement(false)
+        .eventAgreement(true)
+        .build();
+
+      given(memberRepository.findAllByFcmTokenIsNotNull())
+        .willReturn(List.of(fcmMember1, fcmMember2, fcmMemberFake));
+
+      // when
+      fcmManager.sendFcmMessage(alrim);
+
+      // then
+      verify(fcmManager, times(2)).sendMessageDirect(any(), any(), any());
+    }
+  }
+
+  @Nested
+  @DisplayName("패치노트 테스트")
+  class PatchNotesTest {
+    @Test
+    @DisplayName("패치노트 는 2명에게 전달")
+    void sendFcmTest() throws Exception {
+      // given
+      var alrim = Alrim.createPatchNote("패치노트 제목", LocalDateTime.now(), "링크");
+
+      var fcmMember1 = Member.builder()
+        .id("user1")
+        .fcmToken("token-1")
+        .patchNoteAgreement(true)
+        .build();
+
+      var fcmMember2 = Member.builder()
+        .id("user2")
+        .fcmToken(null)
+        .patchNoteAgreement(true)
+        .build();
+
+      var fcmMemberFake = Member.builder()
+        .id("user3")
+        .fcmToken(null)
+        .patchNoteAgreement(false)
+        .eventAgreement(true)
+        .build();
+
+      given(memberRepository.findAllByFcmTokenIsNotNull())
+        .willReturn(List.of(fcmMember1, fcmMember2, fcmMemberFake));
+
+      // when
+      fcmManager.sendFcmMessage(alrim);
+
+      // then
+      verify(fcmManager, times(2)).sendMessageDirect(any(), any(), any());
+    }
+  }
+
+
+  @Nested
+  @DisplayName("이벤트 테스트")
+  class EventsTest {
+    @Test
+    @DisplayName("이벤트 는 2명에게 전달")
+    void sendFcmTest() throws Exception {
+      // given
+      var alrim = Alrim.createEvents("이벤트 제목", LocalDateTime.now(), "링크");
+
+      var fcmMember1 = Member.builder()
+        .id("user1")
+        .fcmToken("token-1")
+        .eventAgreement(true)
+        .build();
+
+      var fcmMember2 = Member.builder()
+        .id("user2")
+        .fcmToken(null)
+        .eventAgreement(true)
+        .build();
+
+      var fcmMemberFake = Member.builder()
+        .id("user3")
+        .fcmToken(null)
+        .eventAgreement(false)
+        .patchNoteAgreement(true)
+        .build();
+
+      given(memberRepository.findAllByFcmTokenIsNotNull())
+        .willReturn(List.of(fcmMember1, fcmMember2, fcmMemberFake));
+
+      // when
+      fcmManager.sendFcmMessage(alrim);
+
+      // then
+      verify(fcmManager, times(2)).sendMessageDirect(any(), any(), any());
+    }
   }
 }
+
