@@ -6,6 +6,12 @@ services:
       args:
         SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:18080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 90s
     mem_limit: 2g
     ports:
       - "${API_HTTP_BIND:-0.0.0.0:8080}:8080"

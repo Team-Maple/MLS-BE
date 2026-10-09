@@ -1,6 +1,7 @@
 package com.maple.api.alrim.application.command;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.firebase.FirebaseApp;
 import com.maple.api.auth.repository.MemberRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -43,7 +44,9 @@ class AlrimFcmCredentialsTest {
         "client_id", "123456789", "token_uri", "https://oauth2.googleapis.com/token"));
     var manager = manager(path);
     manager.init();
-    assertThat(FirebaseApp.getInstance().getOptions().getProjectId()).isEqualTo("test-project");
+    var credentials = FirebaseApp.getInstance().getOptions().getCredentials();
+    assertThat(credentials).isInstanceOf(ServiceAccountCredentials.class);
+    assertThat(((ServiceAccountCredentials) credentials).getProjectId()).isEqualTo("test-project");
   }
 
   @Test

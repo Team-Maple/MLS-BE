@@ -10,6 +10,8 @@ RUN --mount=type=cache,target=/root/.gradle \
     test --tests 'com.maple.api.alrim.application.command.AlrimFcm*Test' bootJar
 
 FROM eclipse-temurin:21-jre-jammy
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 RUN groupadd --gid 1001 mapleland \
     && useradd --uid 1002 --gid 1001 --no-create-home mapleland \
     && mkdir -p /workspace/logs \
