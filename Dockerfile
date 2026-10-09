@@ -10,6 +10,8 @@ RUN --mount=type=cache,target=/root/.gradle \
     test --tests 'com.maple.api.alrim.application.command.AlrimFcm*Test' bootJar
 
 FROM eclipse-temurin:21-jre-jammy
+ARG SOURCE_COMMIT=unknown
+ENV SERVICE_VERSION=${SOURCE_COMMIT}
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 RUN groupadd --gid 1001 mapleland \

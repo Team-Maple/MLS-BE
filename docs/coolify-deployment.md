@@ -28,8 +28,12 @@ The runtime user is 1002:1001 and logs remain under `/workspace/logs`.
 Host management binding stays `127.0.0.1:18080` for Alloy. The existing HTTP
 binding is retained. Hibernate validates the schema and does not apply DDL.
 
-For parallel validation, override API_HTTP_BIND, API_MANAGEMENT_BIND and
-API_LOG_DIR and disable ALRIM_EVENT_BATCH_ENABLED and AURADB_KEEP_ALIVE_ENABLED.
+Enable Coolify's "Include Source Commit in Build" setting to embed the deployed
+revision into the image and SERVICE_VERSION. Do not set SERVICE_VERSION manually.
+
+For parallel validation, override API_HTTP_BIND and API_MANAGEMENT_BIND,
+set LOG_DIR to a separate writable directory such as /tmp/mapleland-validation,
+and disable ALRIM_EVENT_BATCH_ENABLED and AURADB_KEEP_ALIVE_ENABLED.
 Stop the previous production container before enabling jobs and production
 bindings to avoid duplicate scheduled jobs or port conflicts.
 

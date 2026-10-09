@@ -35,15 +35,9 @@ services:
       RECOMMENDATION_QUERY_TIMEOUT_SECONDS: ${RECOMMENDATION_QUERY_TIMEOUT_SECONDS:-10}
       RECOMMENDATION_V1_ENGINE: ${RECOMMENDATION_V1_ENGINE:-MYSQL}
       RECOMMENDATION_V2_ENABLED: ${RECOMMENDATION_V2_ENABLED:-true}
-      SERVICE_VERSION: ${SOURCE_COMMIT:-unknown}
     volumes:
-      - type: bind
-        source: /opt/mapleland/secrets/firebase-service-account.json
-        target: /run/secrets/firebase-service-account.json
-        read_only: true
-        bind:
-          create_host_path: false
-      - ${API_LOG_DIR:-/var/log/mapleland-api}:/workspace/logs
+      - /opt/mapleland/secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
+      - /var/log/mapleland-api:/workspace/logs
     networks:
       - mysql
     logging:
