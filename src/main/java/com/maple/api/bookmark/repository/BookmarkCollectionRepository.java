@@ -12,6 +12,26 @@ import java.util.List;
 @Repository
 public interface BookmarkCollectionRepository extends JpaRepository<BookmarkCollection, Integer> {
 
+    @Query("""
+            SELECT bc.collectionId AS collectionId, COUNT(DISTINCT bc.bookmarkId) AS includedCount
+            FROM BookmarkCollection bc
+            WHERE bc.collection.memberId = :memberId
+              AND bc.bookmark.memberId = :memberId
+              AND bc.collectionId IN :collectionIds
+              AND bc.bookmarkId IN :bookmarkIds
+            GROUP BY bc.collectionId
+            """)
+    List<CollectionInclusionCount> countIncludedBookmarksByCollections(
+            @Param("memberId") String memberId,
+            @Param("collectionIds") List<Integer> collectionIds,
+            @Param("bookmarkIds") List<Integer> bookmarkIds
+    );
+
+    interface CollectionInclusionCount {
+        Integer getCollectionId();
+        Long getIncludedCount();
+    }
+
     @Query("SELECT bc.bookmarkId FROM BookmarkCollection bc WHERE bc.collectionId = :collectionId AND bc.bookmarkId IN :bookmarkIds")
     List<Integer> findExistingBookmarkIds(@Param("collectionId") Integer collectionId, @Param("bookmarkIds") List<Integer> bookmarkIds);
     
