@@ -86,4 +86,8 @@ public interface BookmarkCollectionRepository extends JpaRepository<BookmarkColl
     }
 
     List<BookmarkCollection> findByCollectionIdInAndBookmarkIdIn(List<Integer> collectionIds, List<Integer> bookmarkIds);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM BookmarkCollection bc WHERE bc.bookmarkId IN :bookmarkIds")
+    int deleteByBookmarkIds(@Param("bookmarkIds") List<Integer> bookmarkIds);
 }
