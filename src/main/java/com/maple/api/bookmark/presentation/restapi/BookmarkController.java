@@ -33,6 +33,28 @@ public class BookmarkController {
     private final BookmarkQueryService bookmarkQueryService;
     private final CollectionService collectionService;
 
+    @DeleteMapping
+    @Operation(
+            summary = "북마크 자체 일괄 삭제",
+            description = "선택한 북마크 자체와 모든 컬렉션의 해당 연결을 함께 삭제합니다. " +
+                    "컬렉션과 선택하지 않은 북마크는 유지합니다. " +
+                    "대상의 존재 여부와 소유권을 모두 검증한 후 한 트랜잭션으로 처리합니다. " +
+                    "JSON 바디와 bookmarkIds는 필수입니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "삭제 성공. deletedCount는 실제 삭제한 북마크 수"),
+            @ApiResponse(responseCode = "400", description = "누락되거나 잘못된 요청 바디 또는 ID 목록"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "북마크 소유자가 아님"),
+            @ApiResponse(responseCode = "404", description = "북마크를 찾을 수 없음")
+    })
+    public ResponseEntity<ResponseTemplate<BookmarkBulkDeleteResponseDto>> deleteBookmarks(
+            @AuthenticationPrincipal PrincipalDetails principalDetails,
+            @Valid @RequestBody BookmarkBulkDeleteRequestDto request) {
+        return ResponseEntity.ok(ResponseTemplate.success(
+                bookmarkService.deleteBookmarks(principalDetails.getProviderId(), request)));
+    }
+
     @GetMapping
     @Operation(
             summary = "북마크 전체 조회",

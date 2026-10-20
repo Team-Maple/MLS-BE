@@ -2,6 +2,7 @@ package com.maple.api.bookmark.repository;
 
 import com.maple.api.bookmark.domain.BookmarkCollection;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -55,4 +56,8 @@ public interface BookmarkCollectionRepository extends JpaRepository<BookmarkColl
     }
 
     List<BookmarkCollection> findByCollectionIdInAndBookmarkIdIn(List<Integer> collectionIds, List<Integer> bookmarkIds);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM BookmarkCollection bc WHERE bc.bookmarkId IN :bookmarkIds")
+    int deleteByBookmarkIds(@Param("bookmarkIds") List<Integer> bookmarkIds);
 }
