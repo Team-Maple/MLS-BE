@@ -12,6 +12,26 @@ import java.util.List;
 @Repository
 public interface BookmarkCollectionRepository extends JpaRepository<BookmarkCollection, Integer> {
 
+    @Query("""
+            SELECT bc.collectionId AS collectionId, COUNT(DISTINCT bc.bookmarkId) AS includedCount
+            FROM BookmarkCollection bc
+            WHERE bc.collection.memberId = :memberId
+              AND bc.bookmark.memberId = :memberId
+              AND bc.collectionId IN :collectionIds
+              AND bc.bookmarkId IN :bookmarkIds
+            GROUP BY bc.collectionId
+            """)
+    List<CollectionInclusionCount> countIncludedBookmarksByCollections(
+            @Param("memberId") String memberId,
+            @Param("collectionIds") List<Integer> collectionIds,
+            @Param("bookmarkIds") List<Integer> bookmarkIds
+    );
+
+    interface CollectionInclusionCount {
+        Integer getCollectionId();
+        Long getIncludedCount();
+    }
+
     @Query("SELECT bc.bookmarkId FROM BookmarkCollection bc WHERE bc.collectionId = :collectionId AND bc.bookmarkId IN :bookmarkIds")
     List<Integer> findExistingBookmarkIds(@Param("collectionId") Integer collectionId, @Param("bookmarkIds") List<Integer> bookmarkIds);
     
@@ -19,6 +39,16 @@ public interface BookmarkCollectionRepository extends JpaRepository<BookmarkColl
     List<Integer> findExistingCollectionIds(@Param("bookmarkId") Integer bookmarkId, @Param("collectionIds") List<Integer> collectionIds);
     
     void deleteByCollectionId(Integer collectionId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            DELETE FROM BookmarkCollection bc
+            WHERE bc.collectionId IN :collectionIds AND bc.bookmarkId IN :bookmarkIds
+            """)
+    int deleteByCollectionIdsAndBookmarkIds(
+            @Param("collectionIds") List<Integer> collectionIds,
+            @Param("bookmarkIds") List<Integer> bookmarkIds
+    );
 
     @Query(value = "WITH ranked AS (\n" +
             "  SELECT\n" +

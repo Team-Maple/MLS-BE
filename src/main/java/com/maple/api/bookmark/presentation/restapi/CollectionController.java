@@ -8,6 +8,7 @@ import com.maple.api.bookmark.application.dto.BookmarkSummaryDto;
 import com.maple.api.bookmark.application.dto.CollectionAddBookmarksRequestDto;
 import com.maple.api.bookmark.application.dto.CollectionAddBookmarksResponseDto;
 import com.maple.api.bookmark.application.dto.CollectionResponseDto;
+import com.maple.api.bookmark.application.dto.CollectionSearchRequestDto;
 import com.maple.api.bookmark.application.dto.CollectionWithBookmarksDto;
 import com.maple.api.bookmark.application.dto.CreateCollectionRequestDto;
 import com.maple.api.bookmark.application.dto.UpdateCollectionRequestDto;
@@ -144,6 +145,8 @@ public class CollectionController {
     @Operation(
             summary = "컬렉션 목록 조회",
             description = "사용자의 컬렉션 목록을 조회합니다. 각 컬렉션마다 최신 4개의 북마크 정보를 포함합니다.\\n\\n" +
+                    "bookmarkIds를 지정하면 컬렉션별 includedCount와 allIncluded를 함께 반환합니다. " +
+                    "포함 상태는 최신 4개가 아닌 컬렉션 전체를 기준으로 계산하며, 생략하면 기존 응답을 유지합니다.\\n\\n" +
                     "**정렬 옵션:**\\n" +
                     "- `createdAt`: 컬렉션 생성순 (최신순/오래된순)\\n" +
                     "- `name`: 컬렉션명 가나다순\\n\\n" +
@@ -154,16 +157,21 @@ public class CollectionController {
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "컬렉션 목록 조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 북마크 ID 목록"),
             @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "북마크 소유자가 아님"),
+            @ApiResponse(responseCode = "404", description = "북마크를 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     public ResponseEntity<ResponseTemplate<List<CollectionWithBookmarksDto>>> getCollections(
             @AuthenticationPrincipal PrincipalDetails principalDetails,
+            @Valid @ParameterObject @ModelAttribute CollectionSearchRequestDto request,
             @ParameterObject Sort sort) {
 
         Sort effectiveSort = resolveSort(sort);
         Page<CollectionWithBookmarksDto> collections = collectionQueryService.getCollectionsWithRecentBookmarks(
-                principalDetails.getProviderId(), PageRequest.of(0, Integer.MAX_VALUE, effectiveSort));
+                principalDetails.getProviderId(), PageRequest.of(0, Integer.MAX_VALUE, effectiveSort),
+                request.bookmarkIds());
 
         return ResponseEntity.ok(ResponseTemplate.success(collections.getContent()));
     }
