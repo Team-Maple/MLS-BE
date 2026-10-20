@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -19,6 +20,15 @@ import java.util.Map;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ExceptionResponse> handleUnreadableRequestBody(
+            HttpMessageNotReadableException ex, HttpServletRequest request) {
+        httpFailure(log.atWarn(), request, GlobalException.VALIDATION_FAILED.getStatus().value(), ex)
+                .log("Request body could not be read");
+        return ResponseEntity.status(GlobalException.VALIDATION_FAILED.getStatus())
+                .body(ExceptionResponse.of(GlobalException.VALIDATION_FAILED, request.getRequestURI()));
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ExceptionResponse> handleValidationException(

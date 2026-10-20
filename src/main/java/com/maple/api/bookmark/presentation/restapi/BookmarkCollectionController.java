@@ -4,6 +4,8 @@ import com.maple.api.auth.domain.PrincipalDetails;
 import com.maple.api.bookmark.application.CollectionService;
 import com.maple.api.bookmark.application.dto.BookmarkCollectionBulkAddRequestDto;
 import com.maple.api.bookmark.application.dto.BookmarkCollectionBulkAddResponseDto;
+import com.maple.api.bookmark.application.dto.BookmarkCollectionBulkRemoveRequestDto;
+import com.maple.api.bookmark.application.dto.BookmarkCollectionBulkRemoveResponseDto;
 import com.maple.api.common.presentation.restapi.ResponseTemplate;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -14,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,6 +28,28 @@ import org.springframework.web.bind.annotation.RestController;
 public class BookmarkCollectionController {
 
     private final CollectionService collectionService;
+
+    @DeleteMapping
+    @Operation(
+            summary = "여러 컬렉션에서 북마크 연결 제거",
+            description = "collectionIds의 각 컬렉션에서 bookmarkIds의 북마크 연결만 제거합니다. " +
+                    "북마크 자체와 다른 컬렉션의 연결은 유지하며, 이미 없는 연결은 건너뜁니다. " +
+                    "요청 대상의 존재 여부와 소유권을 모두 검증한 후 일괄 처리합니다. " +
+                    "JSON 바디와 두 ID 목록은 필수입니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "연결 제거 성공. removedCount는 실제 제거한 연결 수"),
+            @ApiResponse(responseCode = "400", description = "누락되거나 잘못된 요청 바디 또는 ID 목록"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "컬렉션 또는 북마크 소유자가 아님"),
+            @ApiResponse(responseCode = "404", description = "컬렉션 또는 북마크를 찾을 수 없음")
+    })
+    public ResponseEntity<ResponseTemplate<BookmarkCollectionBulkRemoveResponseDto>> removeBookmarksFromCollections(
+            @AuthenticationPrincipal PrincipalDetails principalDetails,
+            @Valid @RequestBody BookmarkCollectionBulkRemoveRequestDto request) {
+        return ResponseEntity.ok(ResponseTemplate.success(
+                collectionService.removeBookmarksFromCollections(principalDetails.getProviderId(), request)));
+    }
 
     @PostMapping
     @Operation(

@@ -6,6 +6,8 @@ import com.maple.api.bookmark.application.dto.CollectionAddBookmarksRequestDto;
 import com.maple.api.bookmark.application.dto.CollectionAddBookmarksResponseDto;
 import com.maple.api.bookmark.application.dto.BookmarkCollectionBulkAddRequestDto;
 import com.maple.api.bookmark.application.dto.BookmarkCollectionBulkAddResponseDto;
+import com.maple.api.bookmark.application.dto.BookmarkCollectionBulkRemoveRequestDto;
+import com.maple.api.bookmark.application.dto.BookmarkCollectionBulkRemoveResponseDto;
 import com.maple.api.bookmark.application.dto.CollectionResponseDto;
 import com.maple.api.bookmark.application.dto.CreateCollectionRequestDto;
 import com.maple.api.bookmark.application.dto.UpdateCollectionRequestDto;
@@ -162,6 +164,29 @@ public class CollectionService {
         }
 
         return BookmarkCollectionBulkAddResponseDto.of(bookmarkCollections.size());
+    }
+
+    public BookmarkCollectionBulkRemoveResponseDto removeBookmarksFromCollections(
+            String memberId, BookmarkCollectionBulkRemoveRequestDto request) {
+        List<Collection> collections = collectionRepository.findAllById(request.collectionIds());
+        if (collections.size() != request.collectionIds().size()) {
+            throw new ApiException(BookmarkException.COLLECTION_NOT_FOUND);
+        }
+        if (collections.stream().anyMatch(collection -> !collection.getMemberId().equals(memberId))) {
+            throw new ApiException(BookmarkException.ACCESS_DENIED);
+        }
+
+        List<Bookmark> bookmarks = bookmarkRepository.findAllById(request.bookmarkIds());
+        if (bookmarks.size() != request.bookmarkIds().size()) {
+            throw new ApiException(BookmarkException.BOOKMARK_NOT_FOUND);
+        }
+        if (bookmarks.stream().anyMatch(bookmark -> !bookmark.getMemberId().equals(memberId))) {
+            throw new ApiException(BookmarkException.ACCESS_DENIED);
+        }
+
+        int removedCount = bookmarkCollectionRepository.deleteByCollectionIdsAndBookmarkIds(
+                request.collectionIds(), request.bookmarkIds());
+        return new BookmarkCollectionBulkRemoveResponseDto(removedCount);
     }
 
     public void validateCollectionOwnership(String memberId, Integer collectionId) {

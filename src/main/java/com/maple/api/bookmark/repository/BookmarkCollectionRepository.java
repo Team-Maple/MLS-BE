@@ -2,6 +2,7 @@ package com.maple.api.bookmark.repository;
 
 import com.maple.api.bookmark.domain.BookmarkCollection;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -38,6 +39,16 @@ public interface BookmarkCollectionRepository extends JpaRepository<BookmarkColl
     List<Integer> findExistingCollectionIds(@Param("bookmarkId") Integer bookmarkId, @Param("collectionIds") List<Integer> collectionIds);
     
     void deleteByCollectionId(Integer collectionId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            DELETE FROM BookmarkCollection bc
+            WHERE bc.collectionId IN :collectionIds AND bc.bookmarkId IN :bookmarkIds
+            """)
+    int deleteByCollectionIdsAndBookmarkIds(
+            @Param("collectionIds") List<Integer> collectionIds,
+            @Param("bookmarkIds") List<Integer> bookmarkIds
+    );
 
     @Query(value = "WITH ranked AS (\n" +
             "  SELECT\n" +
